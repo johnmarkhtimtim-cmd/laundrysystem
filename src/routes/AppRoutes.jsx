@@ -1,11 +1,20 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Login from "../pages/Login";
-import Dashboard from "../pages/Dashboard";
-import ProtectedRoute from "./ProtectedRoute";
-import CustomerDashboard from "../pages/CustomerDashboard";
-import AdminDashboard from "../pages/AdminDashboard";
+import AdminDashboard from "../pages/Admin/AdminDashboard";
 import AdminLayout from "../layouts/AdminLayout";
 import RoleRoute from "./RoleRoute";
+import Booking from "../pages/Admin/Booking";
+import StaffManagement from "../pages/Admin/StaffManagement";
+import Payment from "../pages/Admin/Payment";
+import User from "../pages/Admin/User";
+import Reports from "../pages/Admin/Reports";
+import CustomerLayout from "../layouts/CustomerLayout";
+import CustomerDashboard from "../pages/Customer/CustomerDashboard";
+import BookNow from "../pages/Customer/BookNow";
+import MyBookings from "../pages/Customer/MyBookings";
+import Payments from "../pages/Customer/Payments";
+import Notification from "../pages/Customer/Notification";
+import Profile from "../pages/Customer/Profile";
 
 function AppRoutes() {
   return (
@@ -21,16 +30,28 @@ function AppRoutes() {
           }
         >
           <Route index element={<AdminDashboard />} />
+          <Route path="booking" element={<Booking />} />
+          <Route path="staff-management" element={<StaffManagement />} />
+          <Route path="payment" element={<Payment />} />
+          <Route path="user" element={<User />} />
+          <Route path="reports" element={<Reports />} />
         </Route>
 
         <Route
           path="/customer"
           element={
             <RoleRoute allowedRole="customer">
-              <CustomerDashboard />
+              <CustomerLayout />
             </RoleRoute>
           }
-        />
+        >
+          <Route index element={<CustomerDashboard />} />
+          <Route path="booknow" element={<BookNow />} />
+          <Route path="mybookings" element={<MyBookings />} />
+          <Route path="payments" element={<Payments />} />
+          <Route path="notification" element={<Notification />} />
+          <Route path="profile" element={<Profile />} />
+        </Route>
       </Routes>
     </BrowserRouter>
   );

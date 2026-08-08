@@ -19,7 +19,7 @@ function AdminLayout() {
   return (
     <div className="admin-layout">
       <header className="admin-header">
-        <h2>Voting System</h2>
+        <h2>AdminDashboard</h2>
 
         <div className="admin-user">
           <span>{user?.email}</span>
@@ -43,39 +43,48 @@ function AdminLayout() {
           </NavLink>
 
           <NavLink
-            to="/admin/positions"
+            to="/admin/booking"
             className={({ isActive }) =>
               isActive ? "nav-link active" : "nav-link"
             }
           >
-            Positions
+            Booking
           </NavLink>
 
           <NavLink
-            to="/admin/candidates"
+            to="/admin/staff-management"
             className={({ isActive }) =>
               isActive ? "nav-link active" : "nav-link"
             }
           >
-            Candidates
+            Staff Management
           </NavLink>
 
           <NavLink
-            to="/admin/voters"
+            to="/admin/payment"
             className={({ isActive }) =>
               isActive ? "nav-link active" : "nav-link"
             }
           >
-            Voters
+            payment
           </NavLink>
 
           <NavLink
-            to="/admin/results"
+            to="/admin/user"
             className={({ isActive }) =>
               isActive ? "nav-link active" : "nav-link"
             }
           >
-            Results
+            User
+          </NavLink>
+
+          <NavLink
+            to="/admin/reports"
+            className={({ isActive }) =>
+              isActive ? "nav-link active" : "nav-link"
+            }
+          >
+            Reports
           </NavLink>
         </aside>
 

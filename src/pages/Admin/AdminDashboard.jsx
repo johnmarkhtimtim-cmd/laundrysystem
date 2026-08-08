@@ -3,7 +3,7 @@ function AdminDashboard() {
     <>
       <h1>Dashboard</h1>
 
-      <p>Welcome to the Voting System Administration.</p>
+      <p>Welcome to LaundryStaff Administration.</p>
     </>
   );
 }
