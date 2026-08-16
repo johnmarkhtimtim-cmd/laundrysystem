@@ -1,62 +1,66 @@
 /* =========================================
-   CUSTOMER LAYOUT
-========================================= */
+   LAUNDRYMATE - MODERN ADMIN PORTAL
+   ========================================= */
 
 * {
+  margin: 0;
+  padding: 0;
   box-sizing: border-box;
 }
 
-.customer-layout {
+.admin-layout {
   min-height: 100vh;
   background: #f5f7fb;
   color: #172033;
   font-family: "Inter", "Poppins", Arial, sans-serif;
 }
 
-
 /* =========================================
    HEADER
-========================================= */
+   ========================================= */
 
-.customer-header {
-  position: sticky;
-  top: 0;
-  z-index: 1000;
-
+.admin-header {
   height: 76px;
+  width: 100%;
+  background: #ffffff;
+  border-bottom: 1px solid #e7ebf2;
 
   display: flex;
   align-items: center;
   justify-content: space-between;
 
-  padding: 0 32px;
+  padding: 0 30px;
 
-  background: #ffffff;
-  border-bottom: 1px solid #e7ebf2;
-
-  box-shadow: 0 2px 12px rgba(15, 23, 42, 0.04);
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 1000;
 }
 
+/* Admin Logo / Title */
 
-/* =========================================
-   BRAND
-========================================= */
+.admin-header h2 {
+  position: relative;
+  padding-left: 52px;
 
-.brand-wrap {
-  display: flex;
-  align-items: center;
-  gap: 12px;
+  font-size: 20px;
+  font-weight: 750;
+  color: #172033;
+  letter-spacing: -0.4px;
 }
 
-.brand-mark {
-  width: 44px;
-  height: 44px;
+.admin-header h2::before {
+  content: "🧺";
 
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
 
-  border-radius: 13px;
+  width: 40px;
+  height: 40px;
+
+  border-radius: 11px;
 
   background: linear-gradient(
     135deg,
@@ -64,92 +68,54 @@
     #1d4ed8
   );
 
-  color: #ffffff;
-
-  font-size: 21px;
-  font-weight: 800;
-
-  box-shadow: 0 7px 16px rgba(37, 99, 235, 0.22);
-}
-
-.brand-label {
-  margin: 0;
-
-  color: #2563eb;
-
-  font-size: 10px;
-  font-weight: 800;
-
-  letter-spacing: 1.3px;
-  text-transform: uppercase;
-}
-
-.brand-wrap h2 {
-  margin: 2px 0 0;
-
-  color: #172033;
-
-  font-size: 16px;
-  font-weight: 750;
-}
-
-
-/* =========================================
-   CUSTOMER USER
-========================================= */
-
-.customer-user {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.user-pill {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-
-  padding: 6px 12px 6px 6px;
-
-  border: 1px solid #e6eaf0;
-  border-radius: 30px;
-
-  background: #f8fafc;
-
-  color: #4b5565;
-
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.user-avatar {
-  width: 34px;
-  height: 34px;
-
   display: flex;
   align-items: center;
   justify-content: center;
 
-  border-radius: 50%;
+  font-size: 21px;
 
-  background: #2563eb;
-  color: #ffffff;
-
-  font-size: 13px;
-  font-weight: 800;
+  box-shadow:
+    0 6px 16px rgba(37, 99, 235, 0.22);
 }
 
+/* =========================================
+   ADMIN USER
+   ========================================= */
+
+.admin-user {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.admin-user span {
+  max-width: 220px;
+
+  color: #596273;
+  font-size: 13px;
+  font-weight: 550;
+
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* =========================================
+   LOGOUT BUTTON
+   ========================================= */
+
 .logout-btn {
-  border: none;
-  border-radius: 10px;
+  border: 1px solid #e4e8ef;
+  background: #ffffff;
 
-  padding: 10px 15px;
+  color: #596273;
 
-  background: #fff1f2;
-  color: #dc2626;
+  padding: 9px 16px;
+
+  border-radius: 9px;
 
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 650;
 
   cursor: pointer;
 
@@ -157,206 +123,156 @@
 }
 
 .logout-btn:hover {
-  background: #fee2e2;
+  background: #fff3f3;
+  border-color: #fecaca;
+  color: #dc2626;
+
   transform: translateY(-1px);
 }
 
-
 /* =========================================
    BODY
-========================================= */
+   ========================================= */
 
-.customer-body {
+.admin-body {
   display: flex;
-  min-height: calc(100vh - 76px);
-}
 
+  min-height: 100vh;
+
+  padding-top: 76px;
+}
 
 /* =========================================
    SIDEBAR
-========================================= */
+   ========================================= */
 
 .sidebar {
-  position: sticky;
+  position: fixed;
+
   top: 76px;
+  left: 0;
+  bottom: 0;
 
-  width: 255px;
-  height: calc(100vh - 76px);
-
-  display: flex;
-  flex-direction: column;
-
-  padding: 25px 16px;
+  width: 245px;
 
   background: #ffffff;
+
   border-right: 1px solid #e7ebf2;
+
+  padding: 22px 14px;
 
   overflow-y: auto;
 }
 
-.sidebar-header {
-  padding: 0 12px 12px;
-}
-
-.sidebar-header p {
-  margin: 0;
-
-  color: #a0a8b6;
-
-  font-size: 10px;
-  font-weight: 800;
-
-  letter-spacing: 1.2px;
-  text-transform: uppercase;
-}
-
-
 /* =========================================
    NAVIGATION
-========================================= */
+   ========================================= */
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
 
 .nav-link {
-  position: relative;
+  min-height: 47px;
+
+  width: 100%;
 
   display: flex;
   align-items: center;
-  gap: 12px;
 
-  margin-bottom: 5px;
-  padding: 12px 13px;
+  padding: 0 15px;
 
-  border-radius: 11px;
+  border-radius: 10px;
 
-  color: #6b7280;
+  color: #697386;
 
   text-decoration: none;
 
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 550;
 
-  transition: all 0.2s ease;
+  transition:
+    background 0.2s ease,
+    color 0.2s ease,
+    transform 0.2s ease;
 }
 
 .nav-link:hover {
-  background: #f5f8ff;
+  background: #f3f6fc;
   color: #2563eb;
+
+  transform: translateX(2px);
 }
 
 .nav-link.active {
-  background: #eff6ff;
+  background: #eaf1ff;
   color: #2563eb;
 
   font-weight: 700;
+
+  box-shadow:
+    inset 3px 0 0 #2563eb;
 }
 
-.nav-link.active::before {
-  content: "";
+/* =========================================
+   ADD ICONS USING TEXT
+   ========================================= */
 
-  position: absolute;
-  left: 0;
-
-  width: 3px;
-  height: 22px;
-
-  border-radius: 0 5px 5px 0;
-
-  background: #2563eb;
+.nav-link:nth-child(1)::before {
+  content: "📊";
 }
 
-.nav-icon {
-  width: 30px;
-  height: 30px;
+.nav-link:nth-child(2)::before {
+  content: "📋";
+}
+
+.nav-link:nth-child(3)::before {
+  content: "👨‍🔧";
+}
+
+.nav-link:nth-child(4)::before {
+  content: "💳";
+}
+
+.nav-link:nth-child(5)::before {
+  content: "👥";
+}
+
+.nav-link:nth-child(6)::before {
+  content: "📈";
+}
+
+.nav-link::before {
+  width: 28px;
+
+  margin-right: 10px;
+
+  font-size: 17px;
 
   display: flex;
-  align-items: center;
   justify-content: center;
-
-  border-radius: 8px;
-
-  background: #f7f8fa;
-
-  font-size: 16px;
+  align-items: center;
 }
-
-.nav-link.active .nav-icon {
-  background: #dbeafe;
-  color: #2563eb;
-}
-
 
 /* =========================================
-   SIDEBAR SERVICE CARD
-========================================= */
-
-.sidebar-card {
-  display: flex;
-  align-items: flex-start;
-  gap: 11px;
-
-  margin-top: auto;
-  padding: 15px;
-
-  border: 1px solid #dbeafe;
-  border-radius: 15px;
-
-  background: linear-gradient(
-    135deg,
-    #eff6ff,
-    #f8fbff
-  );
-}
-
-.sidebar-card .status-dot {
-  width: 9px;
-  height: 9px;
-
-  flex-shrink: 0;
-
-  margin-top: 5px;
-
-  border-radius: 50%;
-
-  background: #22c55e;
-
-  box-shadow: 0 0 0 4px #dcfce7;
-}
-
-.sidebar-card strong {
-  display: block;
-
-  color: #1e3a8a;
-
-  font-size: 11px;
-  font-weight: 750;
-}
-
-.sidebar-card p {
-  margin: 5px 0 0;
-
-  color: #64748b;
-
-  font-size: 10px;
-  line-height: 1.5;
-}
-
-
-/* =========================================
-   MAIN CONTENT
-========================================= */
+   CONTENT
+   ========================================= */
 
 .content {
   flex: 1;
+
+  margin-left: 245px;
+
   min-width: 0;
 
-  padding: 32px;
-
-  overflow-x: hidden;
+  padding: 30px;
 }
 
-
 /* =========================================
-   CUSTOM SCROLLBAR
-========================================= */
+   SCROLLBAR
+   ========================================= */
 
 .sidebar::-webkit-scrollbar {
   width: 5px;
@@ -367,170 +283,123 @@
 }
 
 .sidebar::-webkit-scrollbar-thumb {
-  background: #dbe1ea;
+  background: #d7deea;
   border-radius: 10px;
 }
 
+.sidebar::-webkit-scrollbar-thumb:hover {
+  background: #b9c3d5;
+}
 
 /* =========================================
    TABLET
-========================================= */
+   ========================================= */
 
-@media (max-width: 1000px) {
+@media (max-width: 900px) {
 
   .sidebar {
-    width: 220px;
+    width: 215px;
   }
 
   .content {
+    margin-left: 215px;
     padding: 24px;
   }
 
-  .customer-header {
-    padding: 0 22px;
+  .admin-user span {
+    display: none;
   }
-
 }
-
 
 /* =========================================
    MOBILE
-========================================= */
+   ========================================= */
 
-@media (max-width: 768px) {
+@media (max-width: 700px) {
 
-  .customer-header {
+  .admin-header {
     height: 68px;
     padding: 0 16px;
   }
 
-  .brand-mark {
-    width: 39px;
-    height: 39px;
+  .admin-header h2 {
+    padding-left: 46px;
+    font-size: 16px;
+  }
 
-    border-radius: 11px;
+  .admin-header h2::before {
+    width: 36px;
+    height: 36px;
 
     font-size: 18px;
   }
 
-  .brand-label {
-    font-size: 8px;
-  }
-
-  .brand-wrap h2 {
-    font-size: 13px;
-  }
-
-  .user-pill span:last-child {
-    display: none;
-  }
-
-  .user-pill {
-    padding: 4px;
-    border: none;
-    background: transparent;
-  }
-
-  .user-avatar {
-    width: 35px;
-    height: 35px;
-  }
-
-  .logout-btn {
-    padding: 9px 11px;
-  }
-
-  .customer-body {
-    display: block;
+  .admin-body {
+    padding-top: 68px;
   }
 
   .sidebar {
-    position: static;
+    top: 68px;
 
-    width: 100%;
-    height: auto;
+    width: 70px;
 
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-
-    padding: 10px;
-
-    border-right: none;
-    border-bottom: 1px solid #e7ebf2;
-
-    overflow-x: auto;
-    overflow-y: hidden;
-  }
-
-  .sidebar-header,
-  .sidebar-card {
-    display: none;
+    padding: 15px 9px;
   }
 
   .nav-link {
-    flex-shrink: 0;
+    justify-content: center;
 
+    padding: 0;
+
+    font-size: 0;
+  }
+
+  .nav-link::before {
     margin: 0;
-    padding: 9px 12px;
 
-    font-size: 11px;
-  }
+    width: auto;
 
-  .nav-link.active::before {
-    display: none;
-  }
-
-  .nav-icon {
-    width: 27px;
-    height: 27px;
-
-    font-size: 14px;
+    font-size: 18px;
   }
 
   .content {
-    padding: 20px 16px;
+    margin-left: 70px;
+
+    padding: 18px;
   }
 
-}
+  .logout-btn {
+    padding: 8px 11px;
 
+    font-size: 11px;
+  }
+}
 
 /* =========================================
    SMALL MOBILE
-========================================= */
+   ========================================= */
 
-@media (max-width: 480px) {
+@media (max-width: 450px) {
 
-  .brand-wrap h2 {
-    display: none;
+  .admin-header {
+    padding: 0 12px;
   }
 
-  .brand-label {
-    font-size: 9px;
-  }
-
-  .customer-header {
-    gap: 10px;
-  }
-
-  .logout-btn {
-    font-size: 11px;
+  .admin-header h2 {
+    font-size: 15px;
   }
 
   .sidebar {
-    gap: 2px;
-  }
-
-  .nav-link {
-    padding: 8px;
-  }
-
-  .nav-link span:not(.nav-icon) {
-    display: none;
+    width: 62px;
   }
 
   .content {
-    padding: 16px 12px;
+    margin-left: 62px;
+
+    padding: 14px;
   }
 
+  .logout-btn {
+    display: none;
+  }
 }

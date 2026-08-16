@@ -47,9 +47,6 @@ function StaffLayout() {
                 {user?.name || "Staff Member"}
               </span>
             </div>
-            <button className="logout-btn" onClick={handleLogout}>
-              Logout
-            </button>
           </div>
         </div>
       </header>
@@ -71,38 +68,80 @@ function StaffLayout() {
               <span>Dashboard</span>
             </NavLink>
 
-            {/* Bookings */}
+            {/* Orders / Bookings */}
             <NavLink
               to="/staff/bookings"
               className={({ isActive }) =>
                 isActive ? "nav-link active" : "nav-link"
               }
             >
-              <span className="nav-icon">📅</span>
-              <span>Bookings</span>
+              <span className="nav-icon">📋</span>
+              <span>Orders / Bookings</span>
             </NavLink>
 
-            {/* Tasks */}
+            {/* Laundry Processing */}
             <NavLink
-              to="/staff/tasks"
+              to="/staff/laundry-processing"
               className={({ isActive }) =>
                 isActive ? "nav-link active" : "nav-link"
               }
             >
-              <span className="nav-icon">✓</span>
-              <span>Tasks</span>
+              <span className="nav-icon">🌊</span>
+              <span>Laundry Processing</span>
             </NavLink>
 
-            {/* Reports */}
+            {/* Pickup Management */}
             <NavLink
-              to="/staff/reports"
+              to="/staff/pickup-management"
               className={({ isActive }) =>
                 isActive ? "nav-link active" : "nav-link"
               }
             >
-              <span className="nav-icon">📈</span>
-              <span>Reports</span>
+              <span className="nav-icon">🛍️</span>
+              <span>Pickup Management</span>
             </NavLink>
+
+            {/* Payments */}
+            <NavLink
+              to="/staff/payments"
+              className={({ isActive }) =>
+                isActive ? "nav-link active" : "nav-link"
+              }
+            >
+              <span className="nav-icon">💳</span>
+              <span>Payments</span>
+            </NavLink>
+
+            {/* Notifications */}
+            <NavLink
+              to="/staff/notifications"
+              className={({ isActive }) =>
+                isActive ? "nav-link active" : "nav-link"
+              }
+            >
+              <span className="nav-icon">🔔</span>
+              <span>Notifications</span>
+            </NavLink>
+
+            {/* My Profile */}
+            <NavLink
+              to="/staff/profile"
+              className={({ isActive }) =>
+                isActive ? "nav-link active" : "nav-link"
+              }
+            >
+              <span className="nav-icon">👤</span>
+              <span>My Profile</span>
+            </NavLink>
+
+            {/* Logout */}
+            <button
+              className="nav-link logout-link"
+              onClick={handleLogout}
+            >
+              <span className="nav-icon">🚪</span>
+              <span>Logout</span>
+            </button>
           </nav>
         </aside>
 
