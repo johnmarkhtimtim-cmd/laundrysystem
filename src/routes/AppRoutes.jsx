@@ -13,7 +13,7 @@ import CustomerDashboard from "../pages/Customer/CustomerDashboard";
 import BookNow from "../pages/Customer/BookNow";
 import MyBookings from "../pages/Customer/MyBookings";
 import Payments from "../pages/Customer/Payments";
-import Notification from "../pages/Customer/Notification";
+import Notification from "../pages/Customer/Notifications";
 import Profile from "../pages/Customer/Profile";
 
 function AppRoutes() {
