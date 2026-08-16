@@ -15,6 +15,12 @@ import MyBookings from "../pages/Customer/MyBookings";
 import Payments from "../pages/Customer/Payments";
 import Notification from "../pages/Customer/Notifications";
 import Profile from "../pages/Customer/Profile";
+import StaffLayout from "../layouts/StaffLayout";
+import StaffRoute from "./StaffRoute";
+import StaffDashboard from "../pages/Staff/StaffDashboard";
+import StaffBookings from "../pages/Staff/Bookings";
+import StaffTasks from "../pages/Staff/Tasks";
+import StaffReports from "../pages/Staff/Reports";
 
 function AppRoutes() {
   return (
@@ -51,6 +57,20 @@ function AppRoutes() {
           <Route path="payments" element={<Payments />} />
           <Route path="notification" element={<Notification />} />
           <Route path="profile" element={<Profile />} />
+        </Route>
+
+        <Route
+          path="/staff"
+          element={
+            <StaffRoute>
+              <StaffLayout />
+            </StaffRoute>
+          }
+        >
+          <Route index element={<StaffDashboard />} />
+          <Route path="bookings" element={<StaffBookings />} />
+          <Route path="tasks" element={<StaffTasks />} />
+          <Route path="reports" element={<StaffReports />} />
         </Route>
       </Routes>
     </BrowserRouter>

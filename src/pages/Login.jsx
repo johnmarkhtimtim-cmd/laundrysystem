@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import "../styles/Login.css";
-import { login } from "../services/authService";
+import { login, getNavigationPathByRole } from "../services/authService";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { getUserData } from "../services/userService";
@@ -28,24 +28,25 @@ function Login() {
       const userCredential = await login(email, password);
       const userData = await getUserData(userCredential.user.uid);
 
-      console.log(userData);
+      console.log("User data:", userData);
 
       if (!userData) {
-        alert("User profile not found.");
+        alert("User profile not found. Please contact administrator.");
+        return;
+      }
+
+      // Validate and get navigation path by role
+      const path = getNavigationPathByRole(userData.role);
+      
+      if (!path) {
+        alert("Invalid user role: " + (userData.role || "undefined") + ". Please contact administrator.");
         return;
       }
 
       alert("Login Successful!");
-
-      if (userData.role === "admin") {
-        navigate("/admin");
-      } else if (userData.role === "customer") {
-        navigate("/customer");
-      } else {
-        alert("Invalid user role.");
-      }
+      navigate(path);
     } catch (error) {
-      alert(error.message);
+      alert("Login failed: " + error.message);
     } finally {
       setLoading(false);
     }
@@ -58,12 +59,18 @@ function Login() {
       try {
         const userData = await getUserData(user.uid);
 
-        if (!userData) return;
+        if (!userData) {
+          console.warn("User data not found for uid:", user.uid);
+          return;
+        }
 
-        if (userData.role === "admin") {
-          navigate("/admin", { replace: true });
-        } else if (userData.role === "customer") {
-          navigate("/customer", { replace: true });
+        // Get navigation path based on user role
+        const path = getNavigationPathByRole(userData.role);
+        
+        if (path) {
+          navigate(path, { replace: true });
+        } else {
+          console.error("Invalid user role:", userData.role);
         }
       } catch (error) {
         console.error("Error checking user role:", error);

@@ -1,0 +1,54 @@
+/* ============================================
+   GLOBAL APP STYLES
+   ============================================ */
+
+/* Loading State - Used by RoleRoute and StaffRoute */
+.loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  font-size: 1.2rem;
+  color: white;
+  font-weight: 600;
+}
+
+.access-denied {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  text-align: center;
+}
+
+.access-denied h2 {
+  font-size: 1.8rem;
+  margin: 0 0 1rem 0;
+}
+
+.access-denied p {
+  font-size: 1.1rem;
+  margin: 0;
+  max-width: 500px;
+}
+
+/* General Utility Classes */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+  width: 100%;
+}
+
+#root {
+  height: 100%;
+  width: 100%;
+}
