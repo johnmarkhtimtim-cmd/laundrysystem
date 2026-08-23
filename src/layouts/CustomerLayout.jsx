@@ -20,220 +20,214 @@ function CustomerLayout() {
     return user?.email?.charAt(0)?.toUpperCase() || "U";
   };
 
+  const navItems = [
+    {
+      path: "/customer",
+      label: "Dashboard",
+      icon: "▦",
+      end: true,
+    },
+    {
+      path: "/customer/booknow",
+      label: "Book Now",
+      icon: "+",
+    },
+    {
+      path: "/customer/mybookings",
+      label: "My Bookings",
+      icon: "◫",
+    },
+    {
+      path: "/customer/payments",
+      label: "Payments",
+      icon: "₱",
+    },
+    {
+      path: "/customer/notification",
+      label: "Notifications",
+      icon: "♢",
+      badge: 3,
+    },
+    {
+      path: "/customer/profile",
+      label: "Profile",
+      icon: "♙",
+    },
+  ];
+
   return (
     <div className="customer-layout">
 
-      {/* HEADER */}
-      <header className="customer-header">
+      {/* SIDEBAR */}
+      <aside className="sidebar">
 
-        <div className="brand-wrap">
+        {/* BRAND */}
+        <div className="sidebar-brand">
+
           <div className="brand-logo">
-            🧺
+            LM
           </div>
 
-          <div className="brand-info">
+          <div className="brand-text">
             <h2>LaundryMate</h2>
             <span>Customer Portal</span>
           </div>
+
         </div>
 
+        <div className="sidebar-divider"></div>
 
-        <div className="header-actions">
+        {/* NAVIGATION */}
+        <nav className="sidebar-nav">
 
-          {/* Notification */}
-          <button
-            className="notification-btn"
-            type="button"
-            onClick={() => navigate("/customer/notification")}
-          >
-            🔔
-            <span className="notification-badge">3</span>
-          </button>
+          <p className="nav-title">
+            CUSTOMER MENU
+          </p>
 
+          {navItems.map((item) => (
+            <NavLink
+              key={item.path}
+              to={item.path}
+              end={item.end}
+              className={({ isActive }) =>
+                `nav-link ${isActive ? "active" : ""}`
+              }
+            >
 
-          {/* User */}
-          <div className="customer-user">
+              <span className="nav-icon">
+                {item.icon}
+              </span>
 
-            <div className="user-avatar">
-              {getInitial()}
+              <span className="nav-label">
+                {item.label}
+              </span>
+
+              {item.badge && (
+                <span className="nav-badge">
+                  {item.badge}
+                </span>
+              )}
+
+            </NavLink>
+          ))}
+
+        </nav>
+
+        {/* SIDEBAR BOTTOM */}
+        <div className="sidebar-bottom">
+
+          <div className="help-card">
+
+            <div className="help-icon">
+              ?
             </div>
 
-            <div className="user-details">
+            <div>
               <strong>
-                {user?.email || "Customer"}
+                Need help?
               </strong>
 
               <span>
-                Customer
+                Contact laundry support
               </span>
             </div>
 
           </div>
 
+          <button
+            className="logout-nav-btn"
+            type="button"
+            onClick={handleLogout}
+          >
+            <span>
+              ↪
+            </span>
+
+            <span className="logout-text">
+              Logout
+            </span>
+          </button>
+
         </div>
 
-      </header>
+      </aside>
 
 
-      {/* BODY */}
-      <div className="customer-body">
+      {/* MAIN AREA */}
+      <div className="customer-main">
 
-        {/* SIDEBAR */}
-        <aside className="sidebar">
+        {/* HEADER */}
+        <header className="customer-header">
 
-         
+          <div className="header-left">
 
-
-          <nav className="sidebar-nav">
-
-            {/* Dashboard */}
-            <NavLink
-              to="/customer"
-              end
-              className={({ isActive }) =>
-                isActive
-                  ? "nav-link active"
-                  : "nav-link"
-              }
-            >
-              <span className="nav-icon">
-                🏠
+            <div>
+              <span className="header-label">
+                CUSTOMER PORTAL
               </span>
 
-              <span>
-                Dashboard
-              </span>
-            </NavLink>
-
-
-            {/* Book Now */}
-            <NavLink
-              to="/customer/booknow"
-              className={({ isActive }) =>
-                isActive
-                  ? "nav-link active"
-                  : "nav-link"
-              }
-            >
-              <span className="nav-icon">
-                ＋
-              </span>
-
-              <span>
-                Book Now
-              </span>
-            </NavLink>
-
-
-            {/* My Booking */}
-            <NavLink
-              to="/customer/mybookings"
-              className={({ isActive }) =>
-                isActive
-                  ? "nav-link active"
-                  : "nav-link"
-              }
-            >
-              <span className="nav-icon">
-                🧺
-              </span>
-
-              <span>
-                My Bookings
-              </span>
-            </NavLink>
-
-
-            {/* Payment */}
-            <NavLink
-              to="/customer/payments"
-              className={({ isActive }) =>
-                isActive
-                  ? "nav-link active"
-                  : "nav-link"
-              }
-            >
-              <span className="nav-icon">
-                ₱
-              </span>
-
-              <span>
-                Payments
-              </span>
-            </NavLink>
-
-
-            {/* Notifications */}
-            <NavLink
-              to="/customer/notification"
-              className={({ isActive }) =>
-                isActive
-                  ? "nav-link active"
-                  : "nav-link"
-              }
-            >
-              <span className="nav-icon">
-                🔔
-              </span>
-
-              <span>
-                Notifications
-              </span>
-
-              <span className="nav-badge">
-                3
-              </span>
-            </NavLink>
-
-
-            {/* My Profile */}
-            <NavLink
-              to="/customer/profile"
-              className={({ isActive }) =>
-                isActive
-                  ? "nav-link active"
-                  : "nav-link"
-              }
-            >
-              <span className="nav-icon">
-                👤
-              </span>
-
-              <span>
-                Profile
-              </span>
-            </NavLink>
-
-          </nav>
-
-
-          {/* LOGOUT */}
-          <div className="logout-container">
-
-            <button
-              className="logout-nav-btn"
-              type="button"
-              onClick={handleLogout}
-            >
-              <span className="nav-icon">
-                ⇥
-              </span>
-
-              <span>
-                Logout
-              </span>
-            </button>
+              <h1>
+                Welcome back
+              </h1>
+            </div>
 
           </div>
 
-        </aside>
+
+          <div className="header-right">
+
+            {/* Notification */}
+            <button
+              className="notification-btn"
+              type="button"
+              onClick={() =>
+                navigate("/customer/notification")
+              }
+            >
+              <span>
+                ♢
+              </span>
+
+              <i></i>
+            </button>
+
+
+            <div className="header-divider"></div>
+
+
+            {/* User */}
+            <div className="customer-user">
+
+              <div className="user-avatar">
+                {getInitial()}
+              </div>
+
+              <div className="user-info">
+
+                <strong>
+                  Customer
+                </strong>
+
+                <span>
+                  {user?.email || "Customer"}
+                </span>
+
+              </div>
+
+            </div>
+
+          </div>
+
+        </header>
 
 
         {/* PAGE CONTENT */}
         <main className="content">
+
           <div className="content-wrapper">
             <Outlet />
           </div>
+
         </main>
 
       </div>
