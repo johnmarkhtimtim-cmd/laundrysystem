@@ -1,11 +1,36 @@
+import { useState } from "react";
 import { Outlet, useNavigate, NavLink } from "react-router-dom";
-import { logout } from "../services/authService";
 import { useAuth } from "../context/AuthContext";
+import { logout } from "../services/authService";
+
+import {
+  Menu,
+  LayoutDashboard,
+  CalendarPlus,
+  ShoppingBag,
+  Bell,
+  User,
+  CreditCard,
+  LogOut,
+} from "lucide-react";
+
 import "../styles/CustomerLayout.css";
 
 function CustomerLayout() {
   const { user } = useAuth();
   const navigate = useNavigate();
+
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+
+  const toggleSidebar = () => {
+    setSidebarOpen((previous) => !previous);
+  };
+
+  const closeSidebarOnMobile = () => {
+    if (window.innerWidth <= 700) {
+      setSidebarOpen(false);
+    }
+  };
 
   const handleLogout = async () => {
     try {
@@ -16,218 +41,306 @@ function CustomerLayout() {
     }
   };
 
-  const getInitial = () => {
-    return user?.email?.charAt(0)?.toUpperCase() || "U";
-  };
-
-  const navItems = [
-    {
-      path: "/customer",
-      label: "Dashboard",
-      icon: "▦",
-      end: true,
-    },
-    {
-      path: "/customer/booknow",
-      label: "Book Now",
-      icon: "+",
-    },
-    {
-      path: "/customer/mybookings",
-      label: "My Bookings",
-      icon: "◫",
-    },
-    {
-      path: "/customer/payments",
-      label: "Payments",
-      icon: "₱",
-    },
-    {
-      path: "/customer/notification",
-      label: "Notifications",
-      icon: "♢",
-      badge: 3,
-    },
-    {
-      path: "/customer/profile",
-      label: "Profile",
-      icon: "♙",
-    },
-  ];
-
   return (
-    <div className="customer-layout">
+    <div
+      className={`customer-layout ${
+        sidebarOpen ? "sidebar-open" : "sidebar-closed"
+      }`}
+    >
+      {/* =====================================
+          HEADER
+      ===================================== */}
+      <header className="customer-header">
 
-      {/* SIDEBAR */}
-      <aside className="sidebar">
+        <div className="customer-header-left">
 
-        {/* BRAND */}
-        <div className="sidebar-brand">
+          <button
+            type="button"
+            className="sidebar-toggle"
+            onClick={toggleSidebar}
+            aria-label={sidebarOpen ? "Close sidebar" : "Open sidebar"}
+            title={sidebarOpen ? "Close sidebar" : "Open sidebar"}
+          >
+            <Menu size={22} />
+          </button>
 
-          <div className="brand-logo">
-            LM
-          </div>
-
-          <div className="brand-text">
-            <h2>LaundryMate</h2>
-            <span>Customer Portal</span>
+          <div className="customer-title">
+            <div>
+              <h2>LaundryMate</h2>
+              <span>Customer Portal</span>
+            </div>
           </div>
 
         </div>
 
-        <div className="sidebar-divider"></div>
+        {/* HEADER RIGHT */}
+        <div className="customer-header-right">
 
-        {/* NAVIGATION */}
-        <nav className="sidebar-nav">
+          <button
+            type="button"
+            className="notification-button"
+            title="Notifications"
+            onClick={() => navigate("/customer/notification")}
+          >
+            <Bell size={19} />
+            <span className="notification-dot"></span>
+          </button>
 
-          <p className="nav-title">
-            CUSTOMER MENU
-          </p>
+          <div className="header-divider"></div>
 
-          {navItems.map((item) => (
-            <NavLink
-              key={item.path}
-              to={item.path}
-              end={item.end}
-              className={({ isActive }) =>
-                `nav-link ${isActive ? "active" : ""}`
-              }
-            >
+          <div className="customer-user">
 
-              <span className="nav-icon">
-                {item.icon}
-              </span>
-
-              <span className="nav-label">
-                {item.label}
-              </span>
-
-              {item.badge && (
-                <span className="nav-badge">
-                  {item.badge}
-                </span>
-              )}
-
-            </NavLink>
-          ))}
-
-        </nav>
-
-        {/* SIDEBAR BOTTOM */}
-        <div className="sidebar-bottom">
-
-          <div className="help-card">
-
-            <div className="help-icon">
-              ?
+            <div className="user-avatar">
+              {user?.firstName?.charAt(0)?.toUpperCase() || "U"}
             </div>
 
-            <div>
+            <div className="user-info">
               <strong>
-                Need help?
+                {user?.firstName} {user?.lastName}
               </strong>
 
               <span>
-                Contact laundry support
+                Customer
               </span>
             </div>
 
           </div>
-
-          <button
-            className="logout-nav-btn"
-            type="button"
-            onClick={handleLogout}
-          >
-            <span>
-              ↪
-            </span>
-
-            <span className="logout-text">
-              Logout
-            </span>
-          </button>
 
         </div>
 
-      </aside>
+      </header>
 
 
-      {/* MAIN AREA */}
-      <div className="customer-main">
+      {/* =====================================
+          CUSTOMER BODY
+      ===================================== */}
+      <div className="customer-body">
 
-        {/* HEADER */}
-        <header className="customer-header">
+        {/* =====================================
+            SIDEBAR
+        ===================================== */}
+        <aside className="sidebar">
 
-          <div className="header-left">
+          {/* BRAND */}
+          <div className="sidebar-brand">
 
-            <div>
-              <span className="header-label">
-                CUSTOMER PORTAL
-              </span>
+            <div className="brand-logo">
+              LM
+            </div>
 
-              <h1>
-                Welcome back
-              </h1>
+            <div className="brand-text">
+              <h2>LaundryMate</h2>
+              <span>LAUNDRY BOOKING SYSTEM</span>
             </div>
 
           </div>
 
 
-          <div className="header-right">
+          {/* DIVIDER */}
+          <div className="sidebar-divider"></div>
 
-            {/* Notification */}
-            <button
-              className="notification-btn"
-              type="button"
-              onClick={() =>
-                navigate("/customer/notification")
+
+          {/* =====================================
+              MAIN
+          ===================================== */}
+          <div className="sidebar-section">
+
+            <div className="sidebar-section-title">
+              MAIN
+            </div>
+
+            <NavLink
+              to="/customer"
+              end
+              onClick={closeSidebarOnMobile}
+              className={({ isActive }) =>
+                isActive ? "nav-link active" : "nav-link"
               }
+              title="Dashboard"
             >
-              <span>
-                ♢
+              <span className="nav-icon">
+                <LayoutDashboard size={18} />
               </span>
 
-              <i></i>
+              <span className="nav-text">
+                Dashboard
+              </span>
+            </NavLink>
+
+          </div>
+
+
+          {/* =====================================
+              LAUNDRY
+          ===================================== */}
+          <div className="sidebar-section">
+
+            <div className="sidebar-section-title">
+              LAUNDRY
+            </div>
+
+            <NavLink
+              to="/customer/booknow"
+              onClick={closeSidebarOnMobile}
+              className={({ isActive }) =>
+                isActive ? "nav-link active" : "nav-link"
+              }
+              title="Book Now"
+            >
+              <span className="nav-icon">
+                <CalendarPlus size={18} />
+              </span>
+
+              <span className="nav-text">
+                Book Now
+              </span>
+            </NavLink>
+
+
+            <NavLink
+              to="/customer/mybookings"
+              onClick={closeSidebarOnMobile}
+              className={({ isActive }) =>
+                isActive ? "nav-link active" : "nav-link"
+              }
+              title="My Orders"
+            >
+              <span className="nav-icon">
+                <ShoppingBag size={18} />
+              </span>
+
+              <span className="nav-text">
+                My Bookings
+              </span>
+            </NavLink>
+
+          </div>
+
+
+          {/* =====================================
+              ACCOUNT
+          ===================================== */}
+          <div className="sidebar-section">
+
+            <div className="sidebar-section-title">
+              ACCOUNT
+            </div>
+
+            <NavLink
+              to="/customer/payments"
+              onClick={closeSidebarOnMobile}
+              className={({ isActive }) =>
+                isActive ? "nav-link active" : "nav-link"
+              }
+              title="Profile"
+            >
+              <span className="nav-icon">
+                <CreditCard size={18} />
+              </span>
+
+              <span className="nav-text">
+                Payments
+              </span>
+            </NavLink>
+
+
+            <NavLink
+              to="/customer/notification"
+              onClick={closeSidebarOnMobile}
+              className={({ isActive }) =>
+                isActive ? "nav-link active" : "nav-link"
+              }
+              title="Notifications"
+            >
+              <span className="nav-icon">
+                <Bell size={18} />
+              </span>
+
+              <span className="nav-text">
+                Notifications
+              </span>
+
+              <span className="nav-badge">
+                3
+              </span>
+            </NavLink>
+
+
+            <NavLink
+              to="/customer/profile"
+              onClick={closeSidebarOnMobile}
+              className={({ isActive }) =>
+                isActive ? "nav-link active" : "nav-link"
+              }
+              title="Profile"
+            >
+              <span className="nav-icon">
+                <User size={18} />
+              </span>
+
+              <span className="nav-text">
+                Profile
+              </span>
+            </NavLink>
+
+          </div>
+
+
+          {/* =====================================
+              SIDEBAR BOTTOM
+          ===================================== */}
+          <div className="sidebar-bottom">
+
+            <div className="help-card">
+
+              <div className="help-icon">
+                ?
+              </div>
+
+              <div>
+                <strong>Need help?</strong>
+                <span>Contact LaundryMate</span>
+              </div>
+
+            </div>
+
+
+            <button
+              type="button"
+              className="logout-nav-btn"
+              onClick={handleLogout}
+              title="Logout"
+            >
+              <LogOut size={17} />
+
+              <span className="logout-text">
+                Logout
+              </span>
             </button>
 
-
-            <div className="header-divider"></div>
-
-
-            {/* User */}
-            <div className="customer-user">
-
-              <div className="user-avatar">
-                {getInitial()}
-              </div>
-
-              <div className="user-info">
-
-                <strong>
-                  Customer
-                </strong>
-
-                <span>
-                  {user?.email || "Customer"}
-                </span>
-
-              </div>
-
-            </div>
-
           </div>
 
-        </header>
+        </aside>
 
 
-        {/* PAGE CONTENT */}
-        <main className="content">
+        {/* =====================================
+            MOBILE OVERLAY
+        ===================================== */}
+        {sidebarOpen && (
+          <div
+            className="sidebar-overlay"
+            onClick={toggleSidebar}
+          />
+        )}
 
-          <div className="content-wrapper">
+
+        {/* =====================================
+            MAIN CONTENT
+        ===================================== */}
+        <main className="customer-content">
+          <div className="customer-content-wrapper">
             <Outlet />
           </div>
-
         </main>
 
       </div>

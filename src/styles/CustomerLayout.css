@@ -22,8 +22,7 @@ body {
 .customer-layout {
   width: 100%;
   min-height: 100vh;
-
-  display: flex;
+  min-height: 100dvh;
 
   background: #f5f7fb;
   color: #172033;
@@ -40,60 +39,142 @@ body {
 
 
 /* =====================================
-   SIDEBAR
+   HEADER
 ===================================== */
 
-.customer-layout .sidebar {
-  position: fixed;
-
-  top: 0;
-  left: 0;
-  bottom: 0;
-
-  width: 250px;
-  height: 100vh;
-
-  background: #ffffff;
-
-  border-right: 1px solid #e8ebf2;
+.customer-layout .customer-header {
+  height: 70px;
 
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
 
-  padding: 22px 14px;
+  width: 100%;
 
-  z-index: 100;
+  padding: 0 25px;
 
-  overflow: hidden;
+  background: #ffffff;
+  border-bottom: 1px solid #e5e9f0;
+
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+
+  z-index: 1000;
+
+  box-sizing: border-box;
 }
 
 
 /* =====================================
-   BRAND
+   HEADER LEFT
 ===================================== */
 
-.customer-layout .sidebar-brand {
+.customer-layout .customer-header-left {
   display: flex;
   align-items: center;
 
-  gap: 11px;
+  gap: 15px;
 
-  padding: 4px 10px 18px;
-
-  flex-shrink: 0;
+  min-width: 0;
 }
 
-.customer-layout .brand-logo {
-  width: 42px;
-  height: 42px;
 
-  flex-shrink: 0;
+/* =====================================
+   SIDEBAR TOGGLE
+===================================== */
 
-  border-radius: 12px;
+.customer-layout .sidebar-toggle {
+  width: 40px;
+  height: 40px;
 
   display: flex;
   align-items: center;
   justify-content: center;
+
+  border: none;
+
+  background: transparent;
+  color: #4b5565;
+
+  border-radius: 8px;
+
+  cursor: pointer;
+
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease,
+    transform 0.15s ease;
+
+  flex-shrink: 0;
+}
+
+.customer-layout .sidebar-toggle:hover {
+  background-color: #edf4ff;
+  color: #1769ff;
+}
+
+.customer-layout .sidebar-toggle:active {
+  transform: scale(0.95);
+}
+
+
+/* =====================================
+   CUSTOMER TITLE
+===================================== */
+
+.customer-layout .customer-title {
+  display: flex;
+  align-items: center;
+
+  gap: 10px;
+
+  min-width: 0;
+}
+
+.customer-layout .customer-title h2 {
+  margin: 0;
+
+  font-size: 19px;
+  font-weight: 800;
+
+  color: #172033;
+
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.customer-layout .customer-title span {
+  display: block;
+
+  margin-top: 1px;
+
+  color: #9099a8;
+
+  font-size: 9px;
+  font-weight: 600;
+
+  white-space: nowrap;
+}
+
+
+/* =====================================
+   CUSTOMER LOGO
+===================================== */
+
+.customer-layout .customer-logo {
+  width: 40px;
+  height: 40px;
+
+  flex-shrink: 0;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 11px;
 
   background: linear-gradient(
     135deg,
@@ -103,11 +184,260 @@ body {
 
   color: #ffffff;
 
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 800;
 
   box-shadow:
-    0 7px 16px rgba(23, 105, 255, 0.2);
+    0 5px 14px rgba(23, 105, 255, 0.18);
+}
+
+
+/* =====================================
+   HEADER RIGHT
+===================================== */
+
+.customer-layout .customer-header-right {
+  display: flex;
+  align-items: center;
+
+  gap: 15px;
+
+  flex-shrink: 0;
+}
+
+
+/* =====================================
+   NOTIFICATION
+===================================== */
+
+.customer-layout .notification-button {
+  position: relative;
+
+  width: 40px;
+  height: 40px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border: 1px solid #e7ebf2;
+
+  background: #ffffff;
+
+  color: #596579;
+
+  border-radius: 9px;
+
+  cursor: pointer;
+
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease;
+}
+
+.customer-layout .notification-button:hover {
+  background: #f4f8ff;
+  border-color: #d9e5f7;
+  color: #1769ff;
+}
+
+.customer-layout .notification-dot {
+  position: absolute;
+
+  top: 7px;
+  right: 7px;
+
+  width: 8px;
+  height: 8px;
+
+  background: #ff5b61;
+
+  border: 2px solid #ffffff;
+
+  border-radius: 50%;
+}
+
+
+/* =====================================
+   HEADER DIVIDER
+===================================== */
+
+.customer-layout .header-divider {
+  width: 1px;
+  height: 30px;
+
+  background: #e7eaf0;
+
+  flex-shrink: 0;
+}
+
+
+/* =====================================
+   CUSTOMER USER
+===================================== */
+
+.customer-layout .customer-user {
+  display: flex;
+  align-items: center;
+
+  gap: 10px;
+
+  flex-shrink: 0;
+}
+
+
+/* =====================================
+   USER AVATAR
+===================================== */
+
+.customer-layout .user-avatar {
+  width: 40px;
+  height: 40px;
+
+  flex-shrink: 0;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 50%;
+
+  background: linear-gradient(
+    135deg,
+    #1769ff,
+    #68a0ff
+  );
+
+  color: #ffffff;
+
+  font-size: 13px;
+  font-weight: 800;
+
+  box-shadow:
+    0 5px 14px rgba(23, 105, 255, 0.18);
+}
+
+
+/* =====================================
+   USER INFO
+===================================== */
+
+.customer-layout .user-info {
+  min-width: 0;
+}
+
+.customer-layout .user-info strong {
+  display: block;
+
+  color: #273144;
+
+  font-size: 12px;
+  font-weight: 700;
+
+  white-space: nowrap;
+}
+
+.customer-layout .user-info span {
+  display: block;
+
+  margin-top: 2px;
+
+  color: #9099a8;
+
+  font-size: 10px;
+
+  white-space: nowrap;
+}
+
+
+/* =====================================
+   CUSTOMER BODY
+===================================== */
+
+.customer-layout .customer-body {
+  display: flex;
+
+  width: 100%;
+
+  min-height: calc(100vh - 70px);
+  min-height: calc(100dvh - 70px);
+
+  padding-top: 70px;
+}
+
+
+/* =====================================
+   SIDEBAR
+===================================== */
+
+.customer-layout .sidebar {
+  width: 250px;
+  min-width: 250px;
+
+  background: #ffffff;
+
+  border-right: 1px solid #e5e9f0;
+
+  padding: 20px 0;
+
+  overflow-y: auto;
+  overflow-x: hidden;
+
+  position: fixed;
+
+  top: 70px;
+  bottom: 0;
+  left: 0;
+
+  z-index: 900;
+
+  box-sizing: border-box;
+
+  transition:
+    width 0.25s ease,
+    min-width 0.25s ease,
+    transform 0.25s ease;
+}
+
+
+/* =====================================
+   SIDEBAR BRAND
+===================================== */
+
+.customer-layout .sidebar-brand {
+  display: flex;
+  align-items: center;
+
+  gap: 11px;
+
+  padding: 0 20px 20px;
+
+  min-width: 0;
+}
+
+.customer-layout .brand-logo {
+  width: 38px;
+  height: 38px;
+
+  flex-shrink: 0;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 10px;
+
+  background: linear-gradient(
+    135deg,
+    #1769ff,
+    #4c8dff
+  );
+
+  color: #ffffff;
+
+  font-size: 12px;
+  font-weight: 800;
 }
 
 .customer-layout .brand-text {
@@ -119,10 +449,8 @@ body {
 
   color: #172033;
 
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 800;
-
-  letter-spacing: -0.4px;
 
   white-space: nowrap;
 }
@@ -132,150 +460,163 @@ body {
 
   margin-top: 2px;
 
-  color: #8a94a6;
+  color: #929baa;
 
-  font-size: 10px;
+  font-size: 8px;
   font-weight: 600;
+
+  white-space: nowrap;
 }
 
 
 /* =====================================
-   DIVIDER
+   SIDEBAR DIVIDER
 ===================================== */
 
 .customer-layout .sidebar-divider {
-  width: calc(100% - 16px);
-
   height: 1px;
 
-  flex-shrink: 0;
+  margin: 0 18px 20px;
 
   background: #edf0f5;
-
-  margin: 2px 8px 20px;
 }
 
 
 /* =====================================
-   NAVIGATION
+   SIDEBAR SECTIONS
 ===================================== */
 
-.customer-layout .sidebar-nav {
-  flex: 1;
-
-  min-height: 0;
-
-  overflow-y: auto;
-  overflow-x: hidden;
-
-  scrollbar-width: none;
+.customer-layout .sidebar-section {
+  margin-bottom: 22px;
 }
 
-.customer-layout .sidebar-nav::-webkit-scrollbar {
-  display: none;
-}
 
-.customer-layout .nav-title {
-  margin: 0 12px 9px;
+/* =====================================
+   SECTION TITLES
+===================================== */
+
+.customer-layout .sidebar-section-title {
+  padding: 0 20px 8px;
 
   color: #a0a8b7;
 
   font-size: 10px;
   font-weight: 800;
 
-  letter-spacing: 1px;
+  letter-spacing: 0.08em;
+
+  white-space: nowrap;
+  overflow: hidden;
+
+  transition:
+    opacity 0.2s ease;
 }
 
-.customer-layout .nav-link {
-  position: relative;
 
+/* =====================================
+   NAVIGATION LINKS
+===================================== */
+
+.customer-layout .nav-link {
   display: flex;
   align-items: center;
 
-  gap: 12px;
+  gap: 13px;
 
-  width: 100%;
-  height: 45px;
+  margin: 2px 10px;
 
-  padding: 0 12px;
+  padding: 11px 20px;
 
-  margin-bottom: 4px;
-
-  border-radius: 10px;
-
-  color: #697386;
+  border-radius: 9px;
 
   text-decoration: none;
+
+  color: #697386;
 
   font-size: 13px;
   font-weight: 600;
 
+  white-space: nowrap;
+  overflow: hidden;
+
   transition:
-    background 0.2s ease,
+    background-color 0.2s ease,
     color 0.2s ease,
+    padding 0.25s ease,
     transform 0.2s ease;
 }
 
+
+/* =====================================
+   NAVIGATION ICON
+===================================== */
+
+.customer-layout .nav-icon {
+  width: 20px;
+  min-width: 20px;
+
+  height: 20px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  color: currentColor;
+
+  flex-shrink: 0;
+}
+
+.customer-layout .nav-icon svg {
+  width: 18px;
+  height: 18px;
+
+  stroke-width: 2;
+}
+
+
+/* =====================================
+   NAVIGATION TEXT
+===================================== */
+
+.customer-layout .nav-text {
+  overflow: hidden;
+
+  text-overflow: ellipsis;
+
+  white-space: nowrap;
+
+  transition:
+    opacity 0.15s ease;
+}
+
+
+/* =====================================
+   NAVIGATION HOVER
+===================================== */
+
 .customer-layout .nav-link:hover {
-  background: #f4f7fc;
+  background-color: #f1f6ff;
 
   color: #1769ff;
 
   transform: translateX(2px);
 }
 
+
+/* =====================================
+   ACTIVE NAVIGATION
+===================================== */
+
 .customer-layout .nav-link.active {
-  background: #edf4ff;
+  background-color: #edf4ff;
 
   color: #1769ff;
 
   font-weight: 700;
 }
 
-.customer-layout .nav-link.active::before {
-  content: "";
-
-  position: absolute;
-
-  left: -14px;
-
-  width: 4px;
-  height: 24px;
-
-  border-radius: 0 5px 5px 0;
-
-  background: #1769ff;
-}
-
-
-/* =====================================
-   NAV ICON
-===================================== */
-
-.customer-layout .nav-icon {
-  width: 23px;
-  height: 23px;
-
-  flex-shrink: 0;
-
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  border-radius: 7px;
-
-  background: #f5f7fa;
-
-  color: #7c8799;
-
-  font-size: 14px;
-  font-weight: 700;
-
-  transition: 0.2s ease;
-}
-
-.customer-layout .nav-link.active .nav-icon {
-  background: #dceaff;
+.customer-layout .nav-link.active:hover {
+  background-color: #edf4ff;
 
   color: #1769ff;
 }
@@ -293,11 +634,11 @@ body {
 
   padding: 0 6px;
 
-  border-radius: 20px;
-
   display: flex;
   align-items: center;
   justify-content: center;
+
+  border-radius: 20px;
 
   background: #ff5b61;
 
@@ -313,11 +654,9 @@ body {
 ===================================== */
 
 .customer-layout .sidebar-bottom {
-  flex-shrink: 0;
-
   margin-top: auto;
 
-  padding-top: 12px;
+  padding: 10px 10px 0;
 }
 
 
@@ -326,8 +665,6 @@ body {
 ===================================== */
 
 .customer-layout .help-card {
-  width: 100%;
-
   display: flex;
   align-items: center;
 
@@ -335,11 +672,11 @@ body {
 
   padding: 11px;
 
-  margin: 8px 0 10px;
+  margin-bottom: 10px;
 
   border: 1px solid #edf0f5;
 
-  border-radius: 11px;
+  border-radius: 10px;
 
   background: #fafbfc;
 
@@ -352,25 +689,26 @@ body {
 
   flex-shrink: 0;
 
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
   border-radius: 50%;
 
   background: #e9f2ff;
 
   color: #1769ff;
 
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
+  font-size: 12px;
   font-weight: 800;
 }
 
 .customer-layout .help-card strong {
   display: block;
 
-  font-size: 11px;
-
   color: #30394b;
+
+  font-size: 11px;
 
   white-space: nowrap;
 }
@@ -380,9 +718,9 @@ body {
 
   margin-top: 2px;
 
-  font-size: 9px;
-
   color: #929baa;
+
+  font-size: 9px;
 
   white-space: nowrap;
 }
@@ -394,11 +732,11 @@ body {
 
 .customer-layout .logout-nav-btn {
   width: 100%;
-  height: 43px;
+  height: 42px;
 
-  border: 0;
+  border: none;
 
-  border-radius: 9px;
+  border-radius: 8px;
 
   background: #fff1f1;
 
@@ -416,8 +754,8 @@ body {
   gap: 8px;
 
   transition:
-    background 0.2s ease,
-    transform 0.2s ease;
+    background-color 0.2s ease,
+    transform 0.15s ease;
 }
 
 .customer-layout .logout-nav-btn:hover {
@@ -426,344 +764,163 @@ body {
   transform: translateY(-1px);
 }
 
-.customer-layout .logout-nav-btn > span:first-child {
-  font-size: 16px;
+.customer-layout .logout-nav-btn:active {
+  transform: scale(0.98);
 }
 
 
 /* =====================================
-   MAIN
+   CLOSED SIDEBAR
 ===================================== */
 
-.customer-layout .customer-main {
-  width: calc(100% - 250px);
-
-  min-width: 0;
-
-  min-height: 100vh;
-
-  margin-left: 250px;
-
-  display: flex;
-  flex-direction: column;
-
-  overflow-x: hidden;
+.sidebar-closed .sidebar {
+  width: 72px;
+  min-width: 72px;
 }
 
 
 /* =====================================
-   HEADER
+   CENTER BRAND WHEN CLOSED
 ===================================== */
 
-.customer-layout .customer-header {
-  width: 100%;
-  height: 76px;
-
-  flex-shrink: 0;
-
-  padding: 0 30px;
-
-  background: #ffffff;
-
-  border-bottom: 1px solid #e8ebf2;
-
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-
-  position: sticky;
-
-  top: 0;
-
-  z-index: 50;
-}
-
-
-/* =====================================
-   HEADER LEFT
-===================================== */
-
-.customer-layout .header-left {
-  min-width: 0;
-
-  display: flex;
-  align-items: center;
-}
-
-.customer-layout .header-label {
-  color: #9aa3b2;
-
-  font-size: 9px;
-
-  font-weight: 800;
-
-  letter-spacing: 1.1px;
-}
-
-.customer-layout .customer-header h1 {
-  margin: 3px 0 0;
-
-  color: #172033;
-
-  font-size: 20px;
-
-  line-height: 1.2;
-
-  font-weight: 750;
-
-  letter-spacing: -0.5px;
-}
-
-
-/* =====================================
-   HEADER RIGHT
-===================================== */
-
-.customer-layout .header-right {
-  display: flex;
-  align-items: center;
-
-  gap: 15px;
-
-  flex-shrink: 0;
-}
-
-
-/* =====================================
-   NOTIFICATION
-===================================== */
-
-.customer-layout .notification-btn {
-  position: relative;
-
-  width: 39px;
-  height: 39px;
-
-  flex-shrink: 0;
-
-  border: 1px solid #e9edf3;
-
-  background: #ffffff;
-
-  border-radius: 9px;
-
-  color: #596579;
-
-  cursor: pointer;
-
-  font-size: 17px;
-
-  transition:
-    background 0.2s ease,
-    border-color 0.2s ease;
-}
-
-.customer-layout .notification-btn:hover {
-  background: #f5f8fc;
-
-  border-color: #dce4ef;
-}
-
-.customer-layout .notification-btn i {
-  position: absolute;
-
-  top: 7px;
-  right: 7px;
-
-  width: 7px;
-  height: 7px;
-
-  background: #ff5b61;
-
-  border: 2px solid #ffffff;
-
-  border-radius: 50%;
-}
-
-
-/* =====================================
-   HEADER DIVIDER
-===================================== */
-
-.customer-layout .header-divider {
-  width: 1px;
-  height: 32px;
-
-  flex-shrink: 0;
-
-  background: #e7eaf0;
-}
-
-
-/* =====================================
-   USER
-===================================== */
-
-.customer-layout .customer-user {
-  display: flex;
-  align-items: center;
-
-  gap: 10px;
-
-  min-width: 0;
-}
-
-.customer-layout .user-avatar {
-  width: 40px;
-  height: 40px;
-
-  flex-shrink: 0;
-
-  border-radius: 50%;
-
-  background: linear-gradient(
-    135deg,
-    #1769ff,
-    #68a0ff
-  );
-
-  color: #ffffff;
-
-  display: flex;
-  align-items: center;
+.sidebar-closed .sidebar-brand {
   justify-content: center;
 
-  font-size: 14px;
-  font-weight: 800;
-
-  box-shadow:
-    0 5px 14px rgba(23, 105, 255, 0.18);
+  padding-left: 0;
+  padding-right: 0;
 }
 
-.customer-layout .user-info {
-  min-width: 0;
-}
-
-.customer-layout .user-info strong {
-  display: block;
-
-  font-size: 12px;
-
-  color: #273144;
-
-  white-space: nowrap;
-}
-
-.customer-layout .user-info span {
-  display: block;
-
-  max-width: 180px;
-
-  overflow: hidden;
-
-  text-overflow: ellipsis;
-
-  white-space: nowrap;
-
-  color: #9099a8;
-
-  font-size: 10px;
-
-  margin-top: 2px;
+.sidebar-closed .brand-text,
+.sidebar-closed .sidebar-divider,
+.sidebar-closed .sidebar-section-title,
+.sidebar-closed .help-card,
+.sidebar-closed .logout-text {
+  display: none;
 }
 
 
 /* =====================================
-   CONTENT
+   CLOSED SIDEBAR NAVIGATION
 ===================================== */
 
-.customer-layout .content {
-  width: 100%;
+.sidebar-closed .nav-link {
+  justify-content: center;
 
+  padding-left: 10px;
+  padding-right: 10px;
+
+  gap: 0;
+}
+
+.sidebar-closed .nav-text {
+  display: none;
+}
+
+.sidebar-closed .nav-badge {
+  position: absolute;
+
+  top: 3px;
+  right: 3px;
+
+  min-width: 15px;
+  height: 15px;
+
+  padding: 0;
+
+  font-size: 8px;
+}
+
+
+/* =====================================
+   MAIN CONTENT
+===================================== */
+
+.customer-layout .customer-content {
   flex: 1;
 
   min-width: 0;
 
-  min-height: calc(100vh - 76px);
+  margin-left: 250px;
 
-  padding: 28px 30px 40px;
+  padding: 30px;
+
+  background-color: #f5f7fb;
+
+  min-height: calc(100vh - 70px);
+  min-height: calc(100dvh - 70px);
+
+  box-sizing: border-box;
 
   overflow-x: hidden;
+
+  transition:
+    margin-left 0.25s ease;
 }
 
 
-/*
-   IMPORTANT:
-   Full available width.
-   Do not use a fixed 1200px/1500px
-   dashboard width here.
-*/
+/* =====================================
+   CONTENT WRAPPER
+===================================== */
 
-.customer-layout .content-wrapper {
+.customer-layout .customer-content-wrapper {
   width: 100%;
 
-  max-width: none;
+  max-width: 1400px;
 
-  min-width: 0;
-
-  margin: 0;
-}
-
-
-/* =====================================
-   DASHBOARD WIDTH FIX
-===================================== */
-
-.customer-layout .content-wrapper > * {
-  max-width: 100%;
+  margin: 0 auto;
 
   min-width: 0;
 }
 
 
-/* Prevent children from causing
-   horizontal overflow */
+/* =====================================
+   CLOSED CONTENT
+===================================== */
 
-.customer-layout .content-wrapper img,
-.customer-layout .content-wrapper video,
-.customer-layout .content-wrapper iframe {
+.sidebar-closed .customer-content {
+  margin-left: 72px;
+}
+
+
+/* =====================================
+   CONTENT CHILDREN
+===================================== */
+
+.customer-layout .customer-content-wrapper > * {
   max-width: 100%;
+  min-width: 0;
 }
 
 
 /* =====================================
-   LARGE DESKTOP
+   SIDEBAR SCROLLBAR
 ===================================== */
 
-@media (min-width: 1400px) {
+.customer-layout .sidebar::-webkit-scrollbar {
+  width: 6px;
+}
 
-  .customer-layout .content {
-    padding-left: 32px;
-    padding-right: 32px;
-  }
+.customer-layout .sidebar::-webkit-scrollbar-track {
+  background: transparent;
+}
 
+.customer-layout .sidebar::-webkit-scrollbar-thumb {
+  background-color: #d7dce5;
+
+  border-radius: 10px;
+}
+
+.customer-layout .sidebar::-webkit-scrollbar-thumb:hover {
+  background-color: #b9c1ce;
 }
 
 
 /* =====================================
-   LAPTOP
+   MOBILE OVERLAY
 ===================================== */
 
-@media (max-width: 1100px) {
-
-  .customer-layout .sidebar {
-    width: 230px;
-  }
-
-  .customer-layout .customer-main {
-    width: calc(100% - 230px);
-
-    margin-left: 230px;
-  }
-
-  .customer-layout .customer-header {
-    padding: 0 24px;
-  }
-
-  .customer-layout .content {
-    padding: 24px 24px 35px;
-  }
-
+.sidebar-overlay {
+  display: none;
 }
 
 
@@ -771,90 +928,22 @@ body {
    TABLET
 ===================================== */
 
-@media (max-width: 750px) {
+@media (max-width: 900px) {
 
-  .customer-layout .sidebar {
-    width: 72px;
-
-    padding: 20px 9px;
-  }
-
-  .customer-layout .sidebar-brand {
-    justify-content: center;
-
-    padding: 4px 0 18px;
-  }
-
-  .customer-layout .brand-text,
-  .customer-layout .sidebar-divider,
-  .customer-layout .nav-title,
-  .customer-layout .nav-label,
-  .customer-layout .help-card,
-  .customer-layout .logout-text {
-    display: none;
-  }
-
-  .customer-layout .nav-link {
-    justify-content: center;
-
-    padding: 0;
-  }
-
-  .customer-layout .nav-icon {
-    width: 38px;
-    height: 38px;
-  }
-
-  .customer-layout .nav-badge {
-    position: absolute;
-
-    top: 2px;
-    right: 3px;
-
-    min-width: 15px;
-    height: 15px;
-
-    padding: 0;
-
-    font-size: 8px;
-  }
-
-  .customer-layout .nav-link.active::before {
-    left: -9px;
-  }
-
-  .customer-layout .logout-nav-btn {
-    font-size: 0;
-  }
-
-  .customer-layout .logout-nav-btn > span:first-child {
-    font-size: 18px;
-  }
-
-  .customer-layout .customer-main {
-    width: calc(100% - 72px);
-
-    margin-left: 72px;
-  }
-
-  .customer-layout .customer-header {
-    height: 70px;
-
-    padding: 0 18px;
-  }
-
-  .customer-layout .customer-header h1 {
+  .customer-layout .customer-title h2 {
     font-size: 17px;
-  }
-
-  .customer-layout .content {
-    min-height: calc(100vh - 70px);
-
-    padding: 20px 18px 30px;
   }
 
   .customer-layout .user-info {
     display: none;
+  }
+
+  .customer-layout .header-divider {
+    display: none;
+  }
+
+  .customer-layout .customer-content {
+    padding: 24px;
   }
 }
 
@@ -863,50 +952,173 @@ body {
    MOBILE
 ===================================== */
 
-@media (max-width: 480px) {
-
-  .customer-layout .sidebar {
-    width: 62px;
-
-    padding: 18px 7px;
-  }
-
-  .customer-layout .customer-main {
-    width: calc(100% - 62px);
-
-    margin-left: 62px;
-  }
+@media (max-width: 700px) {
 
   .customer-layout .customer-header {
-    height: 64px;
+    height: 65px;
 
-    padding: 0 13px;
+    padding: 0 15px;
   }
 
-  .customer-layout .customer-header h1 {
+  .customer-layout .customer-body {
+    min-height: calc(100vh - 65px);
+    min-height: calc(100dvh - 65px);
+
+    padding-top: 65px;
+  }
+
+
+  /* MOBILE SIDEBAR */
+
+  .customer-layout .sidebar {
+    top: 65px;
+
+    width: 250px;
+    min-width: 250px;
+
+    transform: translateX(0);
+
+    box-shadow:
+      4px 0 15px rgba(0, 0, 0, 0.1);
+
+    z-index: 1100;
+  }
+
+
+  /* CLOSED MOBILE SIDEBAR */
+
+  .sidebar-closed .sidebar {
+    width: 250px;
+    min-width: 250px;
+
+    transform: translateX(-100%);
+  }
+
+
+  /* MOBILE CONTENT */
+
+  .customer-layout .customer-content,
+  .sidebar-closed .customer-content {
+    width: 100%;
+
+    margin-left: 0;
+
+    padding: 20px 16px;
+
+    min-height: calc(100vh - 65px);
+    min-height: calc(100dvh - 65px);
+  }
+
+
+  /* MOBILE OVERLAY */
+
+  .sidebar-open .sidebar-overlay {
+    display: block;
+
+    position: fixed;
+
+    top: 65px;
+    left: 0;
+    right: 0;
+    bottom: 0;
+
+    background-color: rgba(15, 23, 42, 0.4);
+
+    z-index: 1000;
+  }
+
+
+  /* MOBILE HEADER */
+
+  .customer-layout .customer-title h2 {
     font-size: 15px;
   }
 
-  .customer-layout .header-label {
+  .customer-layout .customer-title span {
     font-size: 8px;
   }
 
-  .customer-layout .notification-btn {
-    display: none;
-  }
-
-  .customer-layout .header-divider {
-    display: none;
-  }
-
-  .customer-layout .user-avatar {
+  .customer-layout .customer-logo {
     width: 36px;
     height: 36px;
   }
 
-  .customer-layout .content {
-    min-height: calc(100vh - 64px);
+  .customer-layout .customer-user {
+    display: none;
+  }
 
-    padding: 16px 13px 25px;
+  .customer-layout .notification-button {
+    width: 36px;
+    height: 36px;
+  }
+}
+
+
+/* =====================================
+   SMALL MOBILE
+===================================== */
+
+@media (max-width: 450px) {
+
+  .customer-layout .customer-header {
+    padding: 0 10px;
+  }
+
+  .customer-layout .customer-header-left {
+    gap: 8px;
+  }
+
+  .customer-layout .customer-title {
+    gap: 7px;
+  }
+
+  .customer-layout .customer-title h2 {
+    font-size: 13px;
+  }
+
+  .customer-layout .customer-logo {
+    width: 32px;
+    height: 32px;
+  }
+
+  .customer-layout .sidebar-toggle {
+    width: 36px;
+    height: 36px;
+  }
+
+  .customer-layout .customer-content,
+  .sidebar-closed .customer-content {
+    padding: 16px 12px;
+  }
+}
+
+
+/* =====================================
+   ACCESSIBILITY
+===================================== */
+
+.nav-link:focus-visible,
+.sidebar-toggle:focus-visible,
+.logout-nav-btn:focus-visible,
+.notification-button:focus-visible {
+  outline: 2px solid #1769ff;
+
+  outline-offset: 2px;
+}
+
+
+/* =====================================
+   REDUCED MOTION
+===================================== */
+
+@media (prefers-reduced-motion: reduce) {
+
+  .sidebar,
+  .customer-content,
+  .nav-link,
+  .sidebar-toggle,
+  .logout-nav-btn,
+  .notification-button {
+    transition: none;
   }
 }
