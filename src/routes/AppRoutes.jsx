@@ -1,13 +1,18 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Login from "../pages/Login";
-import AdminDashboard from "../pages/Admin/AdminDashboard";
-import AdminLayout from "../layouts/AdminLayout";
+import AdminPortalLayout from "../layouts/AdminLayout";
 import RoleRoute from "./RoleRoute";
-import Booking from "../pages/Admin/Booking";
-import StaffManagement from "../pages/Admin/StaffManagement";
-import Payment from "../pages/Admin/Payment";
-import User from "../pages/Admin/User";
+import AdminDashboard from "../pages/Admin/AdminDashboard";
+import Customers from "../pages/Admin/Customers";
+import Services from "../pages/Admin/Services";
+import Pricing from "../pages/Admin/Pricing";
+import Staff from "../pages/Admin/Staff";
+import PaymentsAdmin from "../pages/Admin/Payments";
+import PickupDelivery from "../pages/Admin/PickupDelivery";
 import Reports from "../pages/Admin/Reports";
+import Notifications from "../pages/Admin/Notifications";
+import Settings from "../pages/Admin/Settings";
+import AdminProfile from "../pages/Admin/AdminProfile";
 import CustomerLayout from "../layouts/CustomerLayout";
 import CustomerDashboard from "../pages/Customer/CustomerDashboard";
 import BookNow from "../pages/Customer/BookNow";
@@ -26,7 +31,6 @@ import LaundryProcessing from "../pages/Staff/LaundryProcessing";
 import StaffPayments from "../pages/Staff/Payments";
 import StaffNotifications from "../pages/Staff/Notifications";
 import StaffProfile from "../pages/Staff/Profile";
-
 function AppRoutes() {
   return (
     <BrowserRouter>
@@ -36,18 +40,22 @@ function AppRoutes() {
           path="/admin"
           element={
             <RoleRoute allowedRole="admin">
-              <AdminLayout />
+              <AdminPortalLayout />
             </RoleRoute>
           }
         >
           <Route index element={<AdminDashboard />} />
-          <Route path="booking" element={<Booking />} />
-          <Route path="staff-management" element={<StaffManagement />} />
-          <Route path="payment" element={<Payment />} />
-          <Route path="user" element={<User />} />
+          <Route path="customers" element={<Customers />} />
+          <Route path="services" element={<Services />} />
+          <Route path="pricing" element={<Pricing />} />
+          <Route path="staff" element={<Staff />} />
+          <Route path="payments" element={<PaymentsAdmin />} />
+          <Route path="pickup-delivery" element={<PickupDelivery />} />
           <Route path="reports" element={<Reports />} />
+          <Route path="notifications" element={<Notifications />} />
+          <Route path="settings" element={<Settings />} />
+          <Route path="profile" element={<AdminProfile />} />
         </Route>
-
         <Route
           path="/customer"
           element={
@@ -63,7 +71,6 @@ function AppRoutes() {
           <Route path="notification" element={<Notification />} />
           <Route path="profile" element={<Profile />} />
         </Route>
-
         <Route
           path="/staff"
           element={
@@ -86,5 +93,4 @@ function AppRoutes() {
     </BrowserRouter>
   );
 }
-
 export default AppRoutes;

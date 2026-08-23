@@ -1,0 +1,1 @@
+import AdminPageHeader from "../../components/admin/AdminPageHeader"; import AdminDataTable from "../../components/admin/AdminDataTable"; import { adminData } from "../../data/adminData"; export default function Staff(){const config=adminData.staff;return <><AdminPageHeader {...config}/><AdminDataTable config={config}/></>}
