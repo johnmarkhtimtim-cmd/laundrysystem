@@ -200,11 +200,11 @@ function CustomerDashboard() {
             <div>
 
               <p className="panel-eyebrow">
-                ORDERS
+               Transaction
               </p>
 
               <h3>
-                Recent orders
+                Recent Transactions
               </h3>
 
               <p className="panel-description">
