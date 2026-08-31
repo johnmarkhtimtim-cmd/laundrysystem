@@ -2,7 +2,7 @@ import { useState } from "react";
 import "../../styles/BookNow.css";
 
 function BookNow() {
-  const [service, setService] = useState("");
+  const [services, setServices] = useState([]);
   const [schedule, setSchedule] = useState("");
   const [time, setTime] = useState("");
   const [pickup, setPickup] = useState("Pickup");
@@ -14,10 +14,10 @@ function BookNow() {
   const [landmark, setLandmark] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [showSuccess, setShowSuccess] = useState(false);
-
   // ================================
   // SERVICE PRICES
   // ================================
+
   const prices = {
     "Wash & Fold": 80,
     "Dry Cleaning": 150,
@@ -26,27 +26,61 @@ function BookNow() {
   };
 
   // ================================
-  // CALCULATIONS
+  // AUTOMATIC PRICE CALCULATION
   // ================================
-  const price = service ? prices[service] : 0;
 
-  const laundryTotal =
-    weight && price
-      ? price * Number(weight)
-      : 0;
+  const laundryTotal = services.reduce(
+  (total, serviceName) => {
 
-  const PICKUP_FEE = 30;
-  const DELIVERY_FEE = 20;
+    const price = prices[serviceName] || 0;
+
+    return total + price * (Number(weight) || 0);
+
+  },
+  0
+);
+
+const minimumServicePrice = services.reduce(
+  (total, serviceName) => {
+    return total + (prices[serviceName] || 0);
+  },
+  0
+);
+
+  // ================================
+  // TOGGLE SERVICES
+  // ================================
+
+  const toggleService = (serviceName) => {
+    setServices((currentServices) =>
+      currentServices.includes(serviceName)
+        ? currentServices.filter((item) => item !== serviceName)
+        : [...currentServices, serviceName],
+    );
+  };
+
+  // ================================
+  // PICKUP / DELIVERY FEE
+  // ================================
+
+  const PICKUP_DELIVERY_FEE = 30;
+  const PICKUP_ONLY_FEE = 20;
 
   const deliveryFee =
-    pickup === "Pickup"
-      ? PICKUP_FEE
-      : pickup === "Delivery"
-      ? DELIVERY_FEE
-      : 0;
+    pickup === "Pickup & Delivery"
+      ? PICKUP_DELIVERY_FEE
+      : pickup === "Pickup Only"
+        ? PICKUP_ONLY_FEE
+        : 0;
 
-  const estimatedTotal =
-    laundryTotal + deliveryFee;
+  // ================================
+// ESTIMATED TOTAL
+// ================================
+
+const estimatedTotal =
+  weight && Number(weight) > 0
+    ? laundryTotal + deliveryFee
+    : minimumServicePrice + deliveryFee;
 
   // ================================
   // SUBMIT BOOKING
@@ -55,7 +89,7 @@ function BookNow() {
     e.preventDefault();
 
     if (
-      !service ||
+      services.length === 0 ||
       !schedule ||
       !time ||
       !weight ||
@@ -65,8 +99,9 @@ function BookNow() {
       !province
     ) {
       setErrorMessage(
-        "Please complete all required fields."
+        "Please select at least one service and complete all required fields.",
       );
+
       return;
     }
 
@@ -76,7 +111,6 @@ function BookNow() {
 
   return (
     <div className="booknow-page">
-
       {/* ================================
           ERROR MESSAGE
       ================================= */}
@@ -94,92 +128,63 @@ function BookNow() {
 
       {showSuccess && (
         <div className="success-overlay">
-
           <div className="success-modal">
+            <div className="success-icon">✓</div>
 
-            <div className="success-icon">
-              ✓
-            </div>
-
-            <h2>
-              Booking Submitted!
-            </h2>
+            <h2>Booking Submitted!</h2>
 
             <p className="success-message">
               Your laundry booking has been successfully received.
             </p>
 
             <div className="success-details">
-
               <div>
                 <span>Service</span>
-                <strong>
-                  {service}
-                </strong>
+                <strong>{service}</strong>
               </div>
 
               <div>
                 <span>Pickup / Delivery</span>
-                <strong>
-                  {pickup}
-                </strong>
+                <strong>{pickup}</strong>
               </div>
 
               <div>
                 <span>Schedule</span>
-                <strong>
-                  {schedule}
-                </strong>
+                <strong>{schedule}</strong>
               </div>
 
               <div>
                 <span>Pickup Time</span>
-                <strong>
-                  {time}
-                </strong>
+                <strong>{time}</strong>
               </div>
 
               <div>
                 <span>Weight</span>
-                <strong>
-                  {weight} kg
-                </strong>
+                <strong>{weight} kg</strong>
               </div>
 
               <div>
                 <span>Laundry Subtotal</span>
-                <strong>
-                  ₱{laundryTotal.toFixed(2)}
-                </strong>
+                <strong>₱{laundryTotal.toFixed(2)}</strong>
               </div>
 
               <div>
                 <span>
-                  {pickup === "Pickup"
-                    ? "Pickup Fee"
-                    : "Delivery Fee"}
+                  {pickup === "Pickup" ? "Pickup Fee" : "Delivery Fee"}
                 </span>
 
-                <strong>
-                  ₱{deliveryFee.toFixed(2)}
-                </strong>
+                <strong>₱{deliveryFee.toFixed(2)}</strong>
               </div>
 
               <div>
                 <span>Estimated Total</span>
 
-                <strong>
-                  ₱{estimatedTotal.toFixed(2)}
-                </strong>
+                <strong>₱{estimatedTotal.toFixed(2)}</strong>
               </div>
-
             </div>
 
             <div className="success-location">
-
-              <span>
-                Pickup Location
-              </span>
+              <span>Pickup Location</span>
 
               <p>
                 {address}, {barangay}, {city}, {province}
@@ -187,13 +192,9 @@ function BookNow() {
 
               {landmark && (
                 <p>
-                  <strong>
-                    Landmark:
-                  </strong>{" "}
-                  {landmark}
+                  <strong>Landmark:</strong> {landmark}
                 </p>
               )}
-
             </div>
 
             <button
@@ -203,7 +204,6 @@ function BookNow() {
             >
               Done
             </button>
-
           </div>
         </div>
       )}
@@ -213,238 +213,104 @@ function BookNow() {
       ================================= */}
 
       <div className="booknow-header">
-
         <div>
+          <p className="booknow-eyebrow">LAUNDRYMATE</p>
 
-          <p className="booknow-eyebrow">
-            LAUNDRYMATE
-          </p>
+          <h1>Book a Laundry Service</h1>
 
-          <h1>
-            Book a Laundry Service
-          </h1>
-
-          <p>
-            Schedule your laundry service quickly and conveniently.
-          </p>
-
+          <p>Schedule your laundry service quickly and conveniently.</p>
         </div>
 
         <div className="booking-icon"></div>
-
       </div>
 
       {/* ================================
           BOOKING FORM
       ================================= */}
 
-      <form
-        className="booking-layout"
-        onSubmit={handleSubmit}
-      >
-
+      <form className="booking-layout" onSubmit={handleSubmit}>
         {/* ================================
             LEFT SIDE
         ================================= */}
 
         <div className="booking-main">
-
           {/* ================================
               STEP 1
           ================================= */}
 
           <section className="booking-card">
-
             <div className="section-title">
-
-              <div className="step-number">
-                1
-              </div>
+              <div className="step-number">1</div>
 
               <div>
-                <h2>
-                  Choose a service
-                </h2>
+                <h2>Choose your services</h2>
 
-                <p>
-                  Select the laundry service you need.
-                </p>
+                <p>Select one or more laundry services you need.</p>
               </div>
-
             </div>
 
-            <div className="service-options">
+            <div className="service-selection">
+              {[
+                {
+                  name: "Wash & Fold",
+                  icon: "🧺",
+                  description: "Fresh, clean, and neatly folded",
+                  price: 80,
+                },
+                {
+                  name: "Dry Cleaning",
+                  icon: "👔",
+                  description: "Professional garment cleaning",
+                  price: 150,
+                },
+                {
+                  name: "Ironing",
+                  icon: "👕",
+                  description: "Neatly pressed and wrinkle-free",
+                  price: 60,
+                },
+                {
+                  name: "Bedding Care",
+                  icon: "🛏️",
+                  description: "Deep cleaning for bedding",
+                  price: 200,
+                },
+              ].map((item) => {
+                const isSelected = services.includes(item.name);
 
-              {/* WASH & FOLD */}
+                return (
+                  <label
+                    key={item.name}
+                    className={`service-card ${isSelected ? "selected" : ""}`}
+                  >
+                    <input
+                      type="checkbox"
+                      value={item.name}
+                      checked={isSelected}
+                      onChange={() => toggleService(item.name)}
+                    />
 
-              <label
-                className={
-                  service === "Wash & Fold"
-                    ? "service-option selected"
-                    : "service-option"
-                }
-              >
+                    <div className="service-check">{isSelected ? "✓" : ""}</div>
 
-                <input
-                  type="radio"
-                  name="service"
-                  value="Wash & Fold"
-                  checked={service === "Wash & Fold"}
-                  onChange={(e) =>
-                    setService(e.target.value)
-                  }
-                />
+                    <div className="service-icon">{item.icon}</div>
 
-                <span className="option-icon">
-                  🧺
-                </span>
+                    <div className="service-info">
+                      <strong>{item.name}</strong>
 
-                <span className="option-content">
+                      <small>{item.description}</small>
+                    </div>
 
-                  <strong>
-                    Wash & Fold
-                  </strong>
-
-                  <small>
-                    Fresh, clean, and neatly folded
-                  </small>
-
-                </span>
-
-                <span className="option-price">
-                  ₱80/kg
-                </span>
-
-              </label>
-
-              {/* DRY CLEANING */}
-
-              <label
-                className={
-                  service === "Dry Cleaning"
-                    ? "service-option selected"
-                    : "service-option"
-                }
-              >
-
-                <input
-                  type="radio"
-                  name="service"
-                  value="Dry Cleaning"
-                  checked={service === "Dry Cleaning"}
-                  onChange={(e) =>
-                    setService(e.target.value)
-                  }
-                />
-
-                <span className="option-icon">
-                  👔
-                </span>
-
-                <span className="option-content">
-
-                  <strong>
-                    Dry Cleaning
-                  </strong>
-
-                  <small>
-                    Professional garment cleaning
-                  </small>
-
-                </span>
-
-                <span className="option-price">
-                  ₱150/kg
-                </span>
-
-              </label>
-
-              {/* IRONING */}
-
-              <label
-                className={
-                  service === "Ironing"
-                    ? "service-option selected"
-                    : "service-option"
-                }
-              >
-
-                <input
-                  type="radio"
-                  name="service"
-                  value="Ironing"
-                  checked={service === "Ironing"}
-                  onChange={(e) =>
-                    setService(e.target.value)
-                  }
-                />
-
-                <span className="option-icon">
-                  👕
-                </span>
-
-                <span className="option-content">
-
-                  <strong>
-                    Ironing
-                  </strong>
-
-                  <small>
-                    Neatly pressed and wrinkle-free
-                  </small>
-
-                </span>
-
-                <span className="option-price">
-                  ₱60/kg
-                </span>
-
-              </label>
-
-              {/* BEDDING CARE */}
-
-              <label
-                className={
-                  service === "Bedding Care"
-                    ? "service-option selected"
-                    : "service-option"
-                }
-              >
-
-                <input
-                  type="radio"
-                  name="service"
-                  value="Bedding Care"
-                  checked={service === "Bedding Care"}
-                  onChange={(e) =>
-                    setService(e.target.value)
-                  }
-                />
-
-                <span className="option-icon">
-                  🛏️
-                </span>
-
-                <span className="option-content">
-
-                  <strong>
-                    Bedding Care
-                  </strong>
-
-                  <small>
-                    Deep cleaning for bedding
-                  </small>
-
-                </span>
-
-                <span className="option-price">
-                  ₱200/kg
-                </span>
-
-              </label>
-
+                    <div className="service-price">₱{item.price}/kg</div>
+                  </label>
+                );
+              })}
             </div>
 
+            <div className="service-helper">
+              <span>✓</span>
+
+              <p>You can select multiple services for the same booking.</p>
+            </div>
           </section>
 
           {/* ================================
@@ -452,140 +318,82 @@ function BookNow() {
           ================================= */}
 
           <section className="booking-card">
-
             <div className="section-title">
-
-              <div className="step-number">
-                2
-              </div>
+              <div className="step-number">2</div>
 
               <div>
+                <h2>Pickup & schedule</h2>
 
-                <h2>
-                  Pickup & schedule
-                </h2>
-
-                <p>
-                  Choose how and when we collect your laundry.
-                </p>
-
+                <p>Choose how and when we collect your laundry.</p>
               </div>
-
             </div>
 
             <div className="form-group">
-
-              <label>
-                Service type
-              </label>
+              <label>Service type</label>
 
               <div className="pickup-options">
-
                 <button
                   type="button"
                   className={
-                    pickup === "Pickup"
+                    pickup === "Pickup & Delivery"
                       ? "pickup-option active"
                       : "pickup-option"
                   }
-                  onClick={() =>
-                    setPickup("Pickup")
-                  }
+                  onClick={() => setPickup("Pickup & Delivery")}
                 >
                   🚚
-
-                  <span>
-                    Pickup
-                  </span>
-
+                  <span>Pickup & Delivery</span>
                 </button>
 
                 <button
                   type="button"
                   className={
-                    pickup === "Delivery"
+                    pickup === "Pickup Only"
                       ? "pickup-option active"
                       : "pickup-option"
                   }
-                  onClick={() =>
-                    setPickup("Delivery")
-                  }
+                  onClick={() => setPickup("Pickup Only")}
                 >
                   🏪
-
-                  <span>
-                    Delivery
-                  </span>
-
+                  <span>Pickup Only</span>
                 </button>
-
               </div>
-
             </div>
 
             <div className="form-row">
-
               <div className="form-group">
-
-                <label htmlFor="schedule">
-                  Pickup date
-                </label>
+                <label htmlFor="schedule">Pickup date</label>
 
                 <input
                   id="schedule"
                   type="date"
                   value={schedule}
-                  onChange={(e) =>
-                    setSchedule(e.target.value)
-                  }
+                  onChange={(e) => setSchedule(e.target.value)}
                 />
-
               </div>
 
               <div className="form-group">
-
-                <label htmlFor="time">
-                  Pickup time
-                </label>
+                <label htmlFor="time">Pickup time</label>
 
                 <select
                   id="time"
                   value={time}
-                  onChange={(e) =>
-                    setTime(e.target.value)
-                  }
+                  onChange={(e) => setTime(e.target.value)}
                 >
+                  <option value="">Select time</option>
 
-                  <option value="">
-                    Select time
-                  </option>
+                  <option value="9:00 AM">9:00 AM</option>
 
-                  <option value="9:00 AM">
-                    9:00 AM
-                  </option>
+                  <option value="11:00 AM">11:00 AM</option>
 
-                  <option value="11:00 AM">
-                    11:00 AM
-                  </option>
+                  <option value="1:00 PM">1:00 PM</option>
 
-                  <option value="1:00 PM">
-                    1:00 PM
-                  </option>
+                  <option value="3:30 PM">3:30 PM</option>
 
-                  <option value="3:30 PM">
-                    3:30 PM
-                  </option>
-
-                  <option value="5:00 PM">
-                    5:00 PM
-                  </option>
-
+                  <option value="5:00 PM">5:00 PM</option>
                 </select>
-
               </div>
-
             </div>
-
           </section>
 
           {/* ================================
@@ -593,373 +401,284 @@ function BookNow() {
           ================================= */}
 
           <section className="booking-card">
-
             <div className="section-title">
-
-              <div className="step-number">
-                3
-              </div>
+              <div className="step-number">3</div>
 
               <div>
+                <h2>Laundry Location</h2>
 
-                <h2>
-                  Laundry Location
-                </h2>
-
-                <p>
-                  Tell us where we can pick up and deliver your laundry.
-                </p>
-
+                <p>Tell us where we can pick up and deliver your laundry.</p>
               </div>
-
             </div>
 
             <div className="form-group">
-
-              <label htmlFor="address">
-                Complete Address
-              </label>
+              <label htmlFor="address">Complete Address</label>
 
               <input
                 id="address"
                 type="text"
                 placeholder="House/Building No., Street"
                 value={address}
-                onChange={(e) =>
-                  setAddress(e.target.value)
-                }
+                onChange={(e) => setAddress(e.target.value)}
               />
-
             </div>
 
             <div className="form-row">
-
               <div className="form-group">
-
-                <label htmlFor="barangay">
-                  Barangay
-                </label>
+                <label htmlFor="barangay">Barangay</label>
 
                 <input
                   id="barangay"
                   type="text"
                   placeholder="Enter barangay"
                   value={barangay}
-                  onChange={(e) =>
-                    setBarangay(e.target.value)
-                  }
+                  onChange={(e) => setBarangay(e.target.value)}
                 />
-
               </div>
 
               <div className="form-group">
-
-                <label htmlFor="city">
-                  City / Municipality
-                </label>
+                <label htmlFor="city">City / Municipality</label>
 
                 <input
                   id="city"
                   type="text"
                   placeholder="Enter city or municipality"
                   value={city}
-                  onChange={(e) =>
-                    setCity(e.target.value)
-                  }
+                  onChange={(e) => setCity(e.target.value)}
                 />
-
               </div>
-
             </div>
 
             <div className="form-group">
-
-              <label htmlFor="province">
-                Province
-              </label>
+              <label htmlFor="province">Province</label>
 
               <input
                 id="province"
                 type="text"
                 placeholder="Enter province"
                 value={province}
-                onChange={(e) =>
-                  setProvince(e.target.value)
-                }
+                onChange={(e) => setProvince(e.target.value)}
               />
-
             </div>
 
             <div className="form-group">
-
-              <label htmlFor="landmark">
-                Landmark / Pickup Instructions
-              </label>
+              <label htmlFor="landmark">Landmark / Pickup Instructions</label>
 
               <textarea
                 id="landmark"
                 rows="4"
                 placeholder="Example: Near the barangay hall, blue gate beside the sari-sari store..."
                 value={landmark}
-                onChange={(e) =>
-                  setLandmark(e.target.value)
-                }
+                onChange={(e) => setLandmark(e.target.value)}
               />
-
             </div>
-
           </section>
-
-          {/* ================================
-              STEP 4
-          ================================= */}
-
-          <section className="booking-card">
-
-            <div className="section-title">
-
-              <div className="step-number">
-                4
-              </div>
-
-              <div>
-
-                <h2>
-                  Laundry Details
-                </h2>
-
-                <p>
-                  Provide the estimated weight of your laundry.
-                </p>
-
-              </div>
-
-            </div>
-
-            <div className="form-group">
-
-              <label htmlFor="weight">
-                Estimated Laundry Weight (kg)
-              </label>
-
-              <input
-                id="weight"
-                type="number"
-                min="1"
-                step="0.5"
-                placeholder="Enter estimated weight"
-                value={weight}
-                onChange={(e) =>
-                  setWeight(e.target.value)
-                }
-              />
-
-            </div>
-
-          </section>
-
         </div>
 
         {/* ================================
             RIGHT SUMMARY
         ================================= */}
 
-        <aside className="booking-summary">
+        {/* =====================================
+    CLEAN BOOKING SUMMARY
+===================================== */}
 
-          <div className="summary-header">
+<aside className="booking-summary">
 
-            <h2>
-              Booking Summary
-            </h2>
+  <div className="summary-header">
+    <div>
+      <h3>Booking Summary</h3>
+      <p>Review your selected services and estimated cost.</p>
+    </div>
+  </div>
 
-            <span>
-              Preview
-            </span>
 
-          </div>
+  {/* SELECTED SERVICES */}
+  <div className="summary-services">
 
-          {/* SERVICE */}
+    <div className="summary-section-label">
+      Selected Services
+    </div>
 
-          <div className="summary-service">
+    {services.length === 0 ? (
 
-            <div className="summary-service-icon">
-              🧺
-            </div>
+      <div className="empty-services">
+        <span>🧺</span>
+        <p>No services selected</p>
+      </div>
 
-            <div>
+    ) : (
 
-              <span>
-                Selected service
-              </span>
+      <div className="summary-service-list">
 
-              <strong>
-                {service || "No service selected"}
+        {services.map((serviceName) => {
+
+          const price = prices[serviceName] || 0;
+
+          const serviceTotal =
+            Number(weight) > 0
+              ? price * Number(weight)
+              : price;
+
+          return (
+            <div
+              className="summary-service-row"
+              key={serviceName}
+            >
+
+              <div className="summary-service-left">
+
+                <div className="summary-service-icon">
+                  🧺
+                </div>
+
+                <div>
+                  <strong>
+                    {serviceName}
+                  </strong>
+
+                  <span>
+                    ₱{price}/kg
+                  </span>
+                </div>
+
+              </div>
+
+              <strong className="summary-service-amount">
+                ₱{serviceTotal.toFixed(2)}
               </strong>
 
             </div>
+          );
 
-          </div>
+        })}
 
-          {/* DETAILS */}
+      </div>
 
-          <div className="summary-details">
+    )}
 
+  </div>
+
+
+  {/* PRICE BREAKDOWN */}
+
+  <div className="summary-breakdown">
+
+    <div className="summary-line">
+
+      <span>
+        Laundry
+        {weight ? ` (${weight} kg)` : ""}
+      </span>
+
+      <strong>
+        ₱
+        {weight
+          ? laundryTotal.toFixed(2)
+          : minimumServicePrice.toFixed(2)}
+      </strong>
+
+    </div>
+          
             <div>
+              <span>Service type</span>
 
-              <span>
-                Service type
-              </span>
-
-              <strong>
-                {pickup}
-              </strong>
-
+              <strong>{pickup}</strong>
             </div>
 
             <div>
+              <span>Pickup date</span>
 
-              <span>
-                Pickup date
-              </span>
-
-              <strong>
-                {schedule || "Not selected"}
-              </strong>
-
+              <strong>{schedule || "Not selected"}</strong>
             </div>
 
             <div>
+              <span>Pickup time</span>
 
-              <span>
-                Pickup time
-              </span>
-
-              <strong>
-                {time || "Not selected"}
-              </strong>
-
+              <strong>{time || "Not selected"}</strong>
             </div>
 
             <div>
-
-              <span>
-                Pickup Location
-              </span>
+              <span>Pickup Location</span>
 
               <strong>
                 {address
                   ? `${address}, ${barangay}, ${city}, ${province}`
                   : "Not provided"}
               </strong>
-
             </div>
 
             <div>
+              <span>Landmark</span>
 
-              <span>
-                Landmark
-              </span>
-
-              <strong>
-                {landmark || "None"}
-              </strong>
-
+              <strong>{landmark || "None"}</strong>
             </div>
 
             <div>
+              <span>Estimated weight</span>
 
-              <span>
-                Estimated weight
-              </span>
-
-              <strong>
-                {weight
-                  ? `${weight} kg`
-                  : "Not provided"}
-              </strong>
-
+              <strong>{weight ? `${weight} kg` : "Not provided"}</strong>
             </div>
 
-            {/* LAUNDRY SUBTOTAL */}
+    <div className="summary-line">
 
-            <div>
+      <span>
+        {pickup === "Pickup & Delivery"
+          ? "Pickup & Delivery"
+          : "Pickup Only"}
+      </span>
 
-              <span>
-                Laundry Subtotal
-              </span>
+      <strong>
+        ₱{deliveryFee.toFixed(2)}
+      </strong>
 
-              <strong>
-                ₱{laundryTotal.toFixed(2)}
-              </strong>
+    </div>
 
-            </div>
+  </div>
 
-            {/* PICKUP / DELIVERY FEE */}
 
-            <div>
+  {/* TOTAL */}
 
-              <span>
-                {pickup === "Pickup"
-                  ? "Pickup Fee"
-                  : "Delivery Fee"}
-              </span>
+  <div className="summary-total-box">
 
-              <strong>
-                ₱{deliveryFee.toFixed(2)}
-              </strong>
+    <div>
+      <span>
+        Estimated Total
+      </span>
 
-            </div>
+      <small>
+        {weight
+          ? "Based on your selected weight"
+          : "Minimum estimated price"}
+      </small>
+    </div>
 
-            {/* TOTAL */}
+    <strong>
+      ₱{estimatedTotal.toFixed(2)}
+    </strong>
 
-            <div className="summary-total-row">
+  </div>
 
-              <span>
-                Estimated Total
-              </span>
-
-              <strong className="summary-total">
-                ₱{estimatedTotal.toFixed(2)}
-              </strong>
-
-            </div>
-
-          </div>
 
           {/* NOTE */}
 
           <div className="summary-note">
-
-            <span>
-              ✓
-            </span>
+            <span>✓</span>
 
             <p>
-              Final price may vary depending on
-              the actual laundry weight and
+              Final price may vary depending on the actual laundry weight and
               selected service.
             </p>
-
           </div>
 
           {/* CONFIRM */}
 
-          <button
-            type="submit"
-            className="confirm-btn"
-          >
+          <button type="submit" className="confirm-btn">
             Confirm Booking
-
-            <span>
-              →
-            </span>
-
+            <span>→</span>
           </button>
-
         </aside>
-
       </form>
-
     </div>
   );
 }
