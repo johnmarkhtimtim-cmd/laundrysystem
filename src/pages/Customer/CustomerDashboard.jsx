@@ -1,4 +1,5 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
 import "../../styles/CustomerDashboard.css";
 
 const stats = [
@@ -8,38 +9,23 @@ const stats = [
     change: "+2 this week",
     tone: "blue",
   },
-  {
-    label: "Laundry spent",
-    value: "₱186",
-    change: "Last 30 days",
-    tone: "green",
-  },
-  {
-    label: "Membership",
-    value: "Gold",
-    change: "VIP perks active",
-    tone: "purple",
-  },
-  {
-    label: "Next pickup",
-    value: "Today",
-    change: "3:30 PM",
-    tone: "orange",
-  },
 ];
 
 const recentOrders = [
   {
+    id: "LM-1001",
     name: "Premium Wash & Fold",
     status: "In progress",
     timing: "Pickup 3:30 PM",
   },
   {
+    id: "LM-1002",
     name: "Bedding Refresh",
     status: "Ready for pickup",
     timing: "Pickup tomorrow",
   },
   {
+    id: "LM-1003",
     name: "Dry Cleaning",
     status: "Scheduled",
     timing: "Pickup Friday",
@@ -50,56 +36,115 @@ const services = [
   {
     title: "Wash & Fold",
     description: "Fast, hygienic, and neatly packed.",
+    icon: "🧺",
   },
   {
     title: "Dry Cleaning",
     description: "Delicate garments handled with care.",
+    icon: "👔",
   },
   {
     title: "Ironing",
     description: "Crisp finish for work essentials.",
+    icon: "✨",
   },
   {
     title: "Bedding Care",
     description: "Deep clean for comfort and freshness.",
+    icon: "🛏️",
   },
 ];
 
 function CustomerDashboard() {
+  const navigate = useNavigate();
+
+  // =====================================
+  // BOOK SERVICE
+  // =====================================
+
+  const handleBookService = () => {
+    navigate("/customer/booknow");
+  };
+
+  // =====================================
+  // VIEW ORDERS
+  // =====================================
+
+  const handleViewOrders = () => {
+    navigate("/customer/mybookings");
+  };
+
+  // =====================================
+  // OPEN ORDER
+  // =====================================
+
+  const handleOrderClick = (order) => {
+    navigate(`/customer/booknow${order.id}`);
+  };
+
+  // =====================================
+  // SELECT SERVICE
+  // =====================================
+
+  const handleServiceClick = (service) => {
+    navigate(
+      `/customer/booknow?service=${encodeURIComponent(service.title)}`
+    );
+  };
+
   return (
     <div className="customer-dashboard">
 
-      {/* Dashboard Hero */}
+      {/* =====================================
+          HERO
+      ===================================== */}
+
       <section className="dashboard-hero">
+
         <div className="hero-content">
 
           <div className="welcome-icon">
             👋
           </div>
 
-          <div>
-            <p className="eyebrow">CUSTOMER DASHBOARD</p>
+          <div className="hero-text">
 
-            <h1>Welcome back!</h1>
+            <p className="eyebrow">
+              CUSTOMER DASHBOARD
+            </p>
+
+            <h1>
+              Welcome back!
+            </h1>
 
             <p className="hero-description">
               Keep your laundry fresh, organized, and effortless.
             </p>
+
           </div>
 
         </div>
 
-        <button className="primary-btn">
+        <button
+          type="button"
+          className="primary-btn"
+          onClick={handleBookService}
+        >
           <span>＋</span>
-          Book a service
+          <span>Book a service</span>
         </button>
+
       </section>
 
 
-      {/* Statistics */}
+      {/* =====================================
+          STATISTICS
+      ===================================== */}
+
       <section className="stats-grid">
 
         {stats.map((stat) => (
+
           <div
             key={stat.label}
             className={`stat-card ${stat.tone}`}
@@ -107,44 +152,53 @@ function CustomerDashboard() {
 
             <div className="stat-top">
 
-              <span className="stat-label">
-                {stat.label}
-              </span>
+              <div>
+                <span className="stat-label">
+                  {stat.label}
+                </span>
+              </div>
 
               <div className="stat-icon">
-
-                {stat.tone === "blue" && "🧺"}
-                {stat.tone === "green" && "₱"}
-                {stat.tone === "purple" && "★"}
-                {stat.tone === "orange" && "⏱"}
-
+                🧺
               </div>
 
             </div>
 
-            <strong className="stat-value">
-              {stat.value}
-            </strong>
+            <div className="stat-bottom">
 
-            <span className="stat-change">
-              {stat.change}
-            </span>
+              <strong className="stat-value">
+                {stat.value}
+              </strong>
+
+              <span className="stat-change">
+                {stat.change}
+              </span>
+
+            </div>
 
           </div>
+
         ))}
 
       </section>
 
 
-      {/* Main Dashboard */}
+      {/* =====================================
+          MAIN DASHBOARD
+      ===================================== */}
+
       <section className="dashboard-grid">
 
-        {/* Recent Orders */}
+        {/* =====================================
+            RECENT ORDERS
+        ===================================== */}
+
         <div className="panel panel-large">
 
           <div className="panel-header">
 
             <div>
+
               <p className="panel-eyebrow">
                 ORDERS
               </p>
@@ -152,10 +206,20 @@ function CustomerDashboard() {
               <h3>
                 Recent orders
               </h3>
+
+              <p className="panel-description">
+                Track your latest laundry bookings.
+              </p>
+
             </div>
 
-            <button className="text-btn">
-              View all →
+            <button
+              type="button"
+              className="text-btn"
+              onClick={handleViewOrders}
+            >
+              View all
+              <span>→</span>
             </button>
 
           </div>
@@ -169,20 +233,27 @@ function CustomerDashboard() {
 
               if (order.status === "In progress") {
                 statusClass = "in-progress";
-              } else if (order.status === "Ready for pickup") {
+              }
+
+              if (order.status === "Ready for pickup") {
                 statusClass = "ready-for-pickup";
-              } else if (order.status === "Scheduled") {
+              }
+
+              if (order.status === "Scheduled") {
                 statusClass = "scheduled";
               }
 
               return (
-                <div
-                  key={order.name}
+
+                <button
+                  key={order.id}
+                  type="button"
                   className="order-item"
+                  onClick={() => handleOrderClick(order)}
                 >
 
                   <div className="order-number">
-                    0{index + 1}
+                    {String(index + 1).padStart(2, "0")}
                   </div>
 
                   <div className="order-info">
@@ -201,19 +272,17 @@ function CustomerDashboard() {
                     className={`status-pill ${statusClass}`}
                   >
                     <span className="status-dot"></span>
-
                     {order.status}
                   </span>
 
-                  <button
-                    className="order-arrow"
-                    type="button"
-                  >
+                  <span className="order-arrow">
                     →
-                  </button>
+                  </span>
 
-                </div>
+                </button>
+
               );
+
             })}
 
           </div>
@@ -221,12 +290,16 @@ function CustomerDashboard() {
         </div>
 
 
-        {/* Quick Services */}
+        {/* =====================================
+            QUICK SERVICES
+        ===================================== */}
+
         <div className="panel panel-side">
 
           <div className="panel-header">
 
             <div>
+
               <p className="panel-eyebrow">
                 SERVICES
               </p>
@@ -234,6 +307,11 @@ function CustomerDashboard() {
               <h3>
                 Quick services
               </h3>
+
+              <p className="panel-description">
+                Choose a service to start your booking.
+              </p>
+
             </div>
 
           </div>
@@ -241,51 +319,38 @@ function CustomerDashboard() {
 
           <div className="service-list">
 
-            {services.map((service, index) => {
+            {services.map((service) => (
 
-              let icon = "🧺";
+              <button
+                key={service.title}
+                type="button"
+                className="service-item"
+                onClick={() => handleServiceClick(service)}
+              >
 
-              if (index === 1) {
-                icon = "👔";
-              }
+                <div className="service-icon">
+                  {service.icon}
+                </div>
 
-              if (index === 2) {
-                icon = "✨";
-              }
+                <div className="service-content">
 
-              if (index === 3) {
-                icon = "🛏️";
-              }
+                  <h4>
+                    {service.title}
+                  </h4>
 
-              return (
-                <div
-                  key={service.title}
-                  className="service-item"
-                >
-
-                  <div className="service-icon">
-                    {icon}
-                  </div>
-
-                  <div className="service-content">
-
-                    <h4>
-                      {service.title}
-                    </h4>
-
-                    <p>
-                      {service.description}
-                    </p>
-
-                  </div>
-
-                  <span className="service-arrow">
-                    →
-                  </span>
+                  <p>
+                    {service.description}
+                  </p>
 
                 </div>
-              );
-            })}
+
+                <span className="service-arrow">
+                  →
+                </span>
+
+              </button>
+
+            ))}
 
           </div>
 
@@ -293,164 +358,6 @@ function CustomerDashboard() {
 
       </section>
 
-
-      {/* Bottom Grid */}
-      <section className="bottom-grid">
-
-        {/* Pickup Summary */}
-        <div className="panel">
-
-          <div className="panel-header">
-
-            <div>
-              <p className="panel-eyebrow">
-                PICKUP
-              </p>
-
-              <h3>
-                Pickup summary
-              </h3>
-            </div>
-
-            <span className="mini-tag">
-              This week
-            </span>
-
-          </div>
-
-
-          <div className="summary-box">
-
-            <div className="summary-item">
-
-              <div className="summary-icon completed">
-                ✓
-              </div>
-
-              <div>
-                <span className="summary-label">
-                  Completed
-                </span>
-
-                <strong>
-                  12 items
-                </strong>
-              </div>
-
-            </div>
-
-
-            <div className="summary-item">
-
-              <div className="summary-icon remaining">
-                ◷
-              </div>
-
-              <div>
-                <span className="summary-label">
-                  Remaining
-                </span>
-
-                <strong>
-                  07 items
-                </strong>
-              </div>
-
-            </div>
-
-          </div>
-
-
-          <div className="progress-container">
-
-            <div className="progress-header">
-
-              <span>
-                Weekly progress
-              </span>
-
-              <strong>
-                63%
-              </strong>
-
-            </div>
-
-            <div className="progress-bar">
-              <div className="progress-fill"></div>
-            </div>
-
-          </div>
-
-        </div>
-
-
-        {/* Customer Perks */}
-        <div className="panel perks-panel">
-
-          <div className="panel-header">
-
-            <div>
-              <p className="panel-eyebrow">
-                MEMBERSHIP
-              </p>
-
-              <h3>
-                Customer perks
-              </h3>
-            </div>
-
-            <span className="gold-badge">
-              ★ GOLD
-            </span>
-
-          </div>
-
-
-          <ul className="perk-list">
-
-            <li>
-              <span className="perk-check">
-                ✓
-              </span>
-
-              <span>
-                Free pickup on orders above ₱2,000
-              </span>
-            </li>
-
-            <li>
-              <span className="perk-check">
-                ✓
-              </span>
-
-              <span>
-                10% discount on your next subscription
-              </span>
-            </li>
-
-            <li>
-              <span className="perk-check">
-                ✓
-              </span>
-
-              <span>
-                Priority scheduling for premium cleaning
-              </span>
-            </li>
-
-          </ul>
-
-
-          <button
-            className="secondary-btn"
-            type="button"
-          >
-            View membership benefits →
-          </button>
-
-        </div>
-
-      </section>
 
     </div>
   );
