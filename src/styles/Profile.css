@@ -1,262 +1,178 @@
 /* =========================================
-   LAUNDRYMATE - MY PROFILE
+   PROFILE PAGE
 ========================================= */
 
 .profile-page {
-  width: 100%;
-  max-width: 1400px;
-  margin: 0 auto;
+  min-height: 100vh;
+  padding: 32px;
+  background: #f5f7fb;
+  color: #172033;
+  font-family: "Inter", "Poppins", Arial, sans-serif;
+  box-sizing: border-box;
 }
 
 
 /* =========================================
-   PAGE HEADER
+   HEADER
 ========================================= */
 
-.profile-page-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-
+.profile-header {
   margin-bottom: 24px;
 }
 
-.profile-eyebrow {
-  margin: 0 0 5px;
-
-  color: #2563eb;
-
-  font-size: 10px;
-  font-weight: 800;
-
-  letter-spacing: 1.5px;
-}
-
-.profile-page-header h1 {
+.profile-header h1 {
   margin: 0;
-
-  color: #172033;
-
   font-size: 28px;
-  font-weight: 800;
+  font-weight: 700;
+  color: #172033;
 }
 
-.profile-page-header p:last-child {
-  margin: 6px 0 0;
-
-  color: #8992a2;
-
-  font-size: 13px;
-}
-
-.profile-header-icon {
-  width: 55px;
-  height: 55px;
-
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  border-radius: 15px;
-
-  background: #eff6ff;
-
-  font-size: 23px;
+.profile-header p {
+  margin: 7px 0 0;
+  color: #667085;
+  font-size: 14px;
 }
 
 
 /* =========================================
-   PROFILE OVERVIEW
+   COMMON CARD
 ========================================= */
 
-.profile-overview {
+.profile-card,
+.password-card {
+  background: #ffffff;
+  border: 1px solid #e7ebf2;
+  border-radius: 18px;
+  box-shadow: 0 4px 16px rgba(16, 24, 40, 0.04);
+}
+
+
+/* =========================================
+   PROFILE TOP
+========================================= */
+
+.profile-top {
   display: flex;
   align-items: center;
-
-  gap: 16px;
-
-  padding: 20px 23px;
-
-  margin-bottom: 20px;
-
-  background: #ffffff;
-
-  border: 1px solid #e7ebf2;
-
-  border-radius: 18px;
-
-  box-shadow:
-    0 5px 18px
-    rgba(15, 23, 42, 0.04);
+  gap: 18px;
+  padding: 25px;
+  border-bottom: 1px solid #edf0f5;
 }
 
 .profile-avatar {
-  width: 65px;
-  height: 65px;
+  width: 72px;
+  height: 72px;
+  flex-shrink: 0;
 
   display: flex;
   align-items: center;
   justify-content: center;
 
-  flex-shrink: 0;
-
-  border-radius: 18px;
-
-  background:
-    linear-gradient(
-      135deg,
-      #2563eb,
-      #1d4ed8
-    );
+  border-radius: 50%;
+  background: linear-gradient(
+    135deg,
+    #2563eb,
+    #1d4ed8
+  );
 
   color: #ffffff;
+  font-size: 23px;
+  font-weight: 700;
 
-  font-size: 20px;
-  font-weight: 800;
-
-  box-shadow:
-    0 7px 15px
-    rgba(37, 99, 235, 0.2);
+  box-shadow: 0 8px 20px rgba(37, 99, 235, 0.22);
 }
 
-.profile-overview-info {
+.profile-user {
   flex: 1;
 }
 
-.profile-overview-info h2 {
-  margin: 0;
-
-  color: #273247;
-
-  font-size: 16px;
+.profile-user h2 {
+  margin: 0 0 6px;
+  font-size: 20px;
+  font-weight: 700;
 }
 
-.profile-overview-info p {
-  margin: 4px 0 8px;
+.profile-user p {
+  display: flex;
+  align-items: center;
+  gap: 7px;
 
-  color: #929baa;
+  margin: 0 0 9px;
 
-  font-size: 10px;
+  color: #667085;
+  font-size: 13px;
 }
 
-.member-badge {
-  display: inline-block;
+.customer-badge {
+  display: inline-flex;
+  align-items: center;
 
-  padding: 5px 9px;
+  padding: 5px 10px;
 
   border-radius: 20px;
 
-  background: #fff7ed;
+  background: #eff6ff;
+  color: #2563eb;
 
-  color: #c2410c;
-
-  font-size: 8px;
-  font-weight: 750;
+  font-size: 11px;
+  font-weight: 600;
 }
 
-.account-status {
+
+/* =========================================
+   EDIT BUTTON
+========================================= */
+
+.edit-profile-btn {
   display: flex;
   align-items: center;
+  gap: 8px;
 
-  gap: 9px;
-
-  padding: 10px 13px;
-
-  border-radius: 11px;
-
-  background: #f8fafc;
-}
-
-.status-dot {
-  width: 8px;
-  height: 8px;
-
-  border-radius: 50%;
-
-  background: #10b981;
-
-  box-shadow:
-    0 0 0 4px
-    rgba(16, 185, 129, 0.1);
-}
-
-.account-status strong {
-  display: block;
-
-  color: #374151;
-
-  font-size: 9px;
-}
-
-.account-status p {
-  margin: 3px 0 0;
-
-  color: #929baa;
-
-  font-size: 8px;
-}
-
-
-/* =========================================
-   PROFILE GRID
-========================================= */
-
-.profile-grid {
-  display: grid;
-
-  grid-template-columns:
-    minmax(0, 1.2fr)
-    minmax(300px, 0.8fr);
-
-  gap: 20px;
-}
-
-
-/* =========================================
-   PROFILE CARD
-========================================= */
-
-.profile-card {
-  padding: 23px;
-
+  border: 1px solid #d9e1ee;
   background: #ffffff;
 
-  border: 1px solid #e7ebf2;
+  padding: 10px 15px;
+  border-radius: 9px;
 
-  border-radius: 18px;
+  color: #344054;
+  font-size: 13px;
+  font-weight: 600;
 
-  box-shadow:
-    0 5px 18px
-    rgba(15, 23, 42, 0.04);
+  cursor: pointer;
+  transition: 0.2s ease;
 }
 
-.profile-card-header {
+.edit-profile-btn:hover {
+  border-color: #2563eb;
+  color: #2563eb;
+  background: #f8fbff;
+}
+
+
+/* =========================================
+   FORM
+========================================= */
+
+.profile-form {
+  padding: 25px;
+}
+
+
+/* =========================================
+   SECTION TITLE
+========================================= */
+
+.section-title {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
 
   margin-bottom: 20px;
 }
 
-.profile-card-header h2 {
-  margin: 0;
-
-  color: #273247;
-
-  font-size: 15px;
-}
-
-.profile-card-header p {
-  margin: 5px 0 0;
-
-  color: #929baa;
-
-  font-size: 9px;
-}
-
-.card-icon {
-  width: 35px;
-  height: 35px;
+.section-icon {
+  width: 38px;
+  height: 38px;
 
   display: flex;
   align-items: center;
@@ -265,406 +181,250 @@
   border-radius: 10px;
 
   background: #eff6ff;
+  color: #2563eb;
+}
+
+.section-title h3 {
+  margin: 0;
 
   font-size: 15px;
+  font-weight: 700;
+  color: #172033;
+}
+
+.section-title p {
+  margin: 3px 0 0;
+
+  font-size: 12px;
+  color: #98a2b3;
+}
+
+.address-title {
+  margin-top: 30px;
 }
 
 
 /* =========================================
-   FORM
+   FORM GRID
 ========================================= */
 
-.form-row {
+.form-grid {
   display: grid;
-
-  grid-template-columns: 1fr 1fr;
-
-  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
 }
 
+
+/* =========================================
+   FORM GROUP
+========================================= */
+
 .form-group {
-  margin-bottom: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
 }
 
 .form-group label {
-  display: block;
-
-  margin-bottom: 6px;
-
-  color: #374151;
-
-  font-size: 9px;
-  font-weight: 700;
-}
-
-.form-group input,
-.form-group textarea {
-  width: 100%;
-
-  padding: 10px 11px;
-
-  border: 1px solid #dce2ea;
-
-  border-radius: 9px;
-
-  outline: none;
-
-  background: #ffffff;
-
-  color: #374151;
-
-  font-family: inherit;
-
-  font-size: 10px;
-
-  transition: 0.2s;
-
-  resize: vertical;
-}
-
-.form-group input:focus,
-.form-group textarea:focus {
-  border-color: #2563eb;
-
-  box-shadow:
-    0 0 0 3px
-    rgba(37, 99, 235, 0.08);
-}
-
-.form-group input::placeholder,
-.form-group textarea::placeholder {
-  color: #b0b7c3;
+  font-size: 12px;
+  font-weight: 600;
+  color: #344054;
 }
 
 
 /* =========================================
-   FORM BUTTONS
+   INPUT
 ========================================= */
 
-.form-actions {
+.input-wrapper {
+  height: 45px;
+
   display: flex;
+  align-items: center;
+  gap: 10px;
 
+  padding: 0 13px;
+
+  border: 1px solid #dfe4ec;
+  border-radius: 9px;
+
+  background: #ffffff;
+
+  transition: 0.2s ease;
+}
+
+.input-wrapper svg {
+  flex-shrink: 0;
+  color: #98a2b3;
+}
+
+.input-wrapper:focus-within {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.08);
+}
+
+.input-wrapper input {
+  width: 100%;
+  height: 100%;
+
+  border: none;
+  outline: none;
+
+  background: transparent;
+
+  color: #172033;
+  font-size: 13px;
+}
+
+.input-wrapper input::placeholder {
+  color: #a4acb9;
+}
+
+.input-wrapper input:disabled {
+  cursor: default;
+  color: #667085;
+}
+
+
+/* =========================================
+   PROFILE ACTIONS
+========================================= */
+
+.profile-actions {
+  display: flex;
   justify-content: flex-end;
+  gap: 10px;
 
-  gap: 9px;
+  margin-top: 25px;
+  padding-top: 20px;
 
-  margin-top: 6px;
+  border-top: 1px solid #edf0f5;
 }
 
 .cancel-btn,
 .save-btn {
-  padding: 9px 14px;
-
-  border-radius: 8px;
-
-  font-family: inherit;
-
-  font-size: 9px;
-  font-weight: 700;
-
-  cursor: pointer;
-}
-
-.cancel-btn {
-  border: 1px solid #dfe4eb;
-
-  background: #ffffff;
-
-  color: #667085;
-}
-
-.save-btn {
-  border: none;
-
-  background: #2563eb;
-
-  color: #ffffff;
-
-  box-shadow:
-    0 5px 12px
-    rgba(37, 99, 235, 0.18);
-}
-
-
-/* =========================================
-   ACCOUNT INFORMATION
-========================================= */
-
-.account-info-list {
-  display: flex;
-  flex-direction: column;
-
-  gap: 13px;
-}
-
-.account-info-item {
-  display: flex;
-  align-items: center;
-
-  gap: 10px;
-
-  padding-bottom: 13px;
-
-  border-bottom: 1px solid #eef1f5;
-}
-
-.info-icon {
-  width: 34px;
-  height: 34px;
-
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 8px;
+
+  height: 42px;
+  padding: 0 17px;
 
   border-radius: 9px;
 
   font-size: 13px;
+  font-weight: 600;
+
+  cursor: pointer;
+  transition: 0.2s ease;
 }
 
-.info-icon.blue {
-  background: #eff6ff;
+.cancel-btn {
+  border: 1px solid #dfe4ec;
+  background: #ffffff;
+  color: #475467;
 }
 
-.info-icon.green {
-  background: #ecfdf5;
-}
-
-.info-icon.purple {
-  background: #f5f3ff;
-}
-
-.info-icon.orange {
-  background: #fff7ed;
-}
-
-.account-info-item span {
-  display: block;
-
-  color: #929baa;
-
-  font-size: 8px;
-}
-
-.account-info-item strong {
-  display: block;
-
-  margin-top: 3px;
-
-  color: #374151;
-
-  font-size: 9px;
-}
-
-
-/* =========================================
-   MINI STATS
-========================================= */
-
-.profile-mini-stats {
-  display: grid;
-
-  grid-template-columns:
-    repeat(3, 1fr);
-
-  gap: 8px;
-
-  margin-top: 17px;
-}
-
-.profile-mini-stats div {
-  padding: 11px 7px;
-
-  border-radius: 9px;
-
+.cancel-btn:hover {
   background: #f8fafc;
-
-  text-align: center;
 }
 
-.profile-mini-stats strong {
-  display: block;
-
-  color: #2563eb;
-
-  font-size: 14px;
+.save-btn {
+  border: none;
+  background: #2563eb;
+  color: #ffffff;
 }
 
-.profile-mini-stats span {
-  display: block;
-
-  margin-top: 3px;
-
-  color: #929baa;
-
-  font-size: 7px;
+.save-btn:hover {
+  background: #1d4ed8;
 }
 
 
 /* =========================================
-   PASSWORD
+   PASSWORD CARD
 ========================================= */
 
 .password-card {
-  margin-top: 0;
+  margin-top: 20px;
+  padding: 25px;
 }
 
-.password-tip {
+.password-icon {
+  background: #f0fdf4;
+  color: #16a34a;
+}
+
+.password-form {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  align-items: end;
+}
+
+
+/* =========================================
+   PASSWORD INPUT
+========================================= */
+
+.password-wrapper {
+  position: relative;
+}
+
+.password-wrapper input {
+  padding-right: 30px;
+}
+
+.password-toggle {
   display: flex;
+  align-items: center;
+  justify-content: center;
 
-  gap: 8px;
-
-  padding: 10px;
-
-  margin-top: -2px;
-  margin-bottom: 15px;
-
-  border-radius: 9px;
-
-  background: #f8fafc;
-}
-
-.password-tip span {
-  font-size: 12px;
-}
-
-.password-tip p {
-  margin: 0;
-
-  color: #7b8494;
-
-  font-size: 8px;
-
-  line-height: 1.5;
-}
-
-.password-btn {
-  width: 100%;
-
-  padding: 11px;
+  position: absolute;
+  right: 10px;
 
   border: none;
+  background: transparent;
 
+  color: #98a2b3;
+
+  cursor: pointer;
+}
+
+.password-toggle:hover {
+  color: #2563eb;
+}
+
+
+/* =========================================
+   CHANGE PASSWORD BUTTON
+========================================= */
+
+.change-password-btn {
+  height: 45px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+
+  padding: 0 18px;
+
+  border: none;
   border-radius: 9px;
 
   background: #172033;
-
   color: #ffffff;
 
-  font-family: inherit;
-
-  font-size: 9px;
-  font-weight: 700;
+  font-size: 13px;
+  font-weight: 600;
 
   cursor: pointer;
+  transition: 0.2s ease;
 }
 
-
-/* =========================================
-   PREFERENCES
-========================================= */
-
-.preference-list {
-  display: flex;
-  flex-direction: column;
-
-  gap: 15px;
-}
-
-.preference-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-
-  gap: 15px;
-
-  padding-bottom: 15px;
-
-  border-bottom: 1px solid #eef1f5;
-}
-
-.preference-item strong {
-  display: block;
-
-  color: #374151;
-
-  font-size: 9px;
-}
-
-.preference-item span {
-  display: block;
-
-  margin-top: 4px;
-
-  color: #929baa;
-
-  font-size: 8px;
-}
-
-
-/* =========================================
-   TOGGLE SWITCH
-========================================= */
-
-.switch {
-  position: relative;
-
-  display: inline-block;
-
-  width: 38px;
-  height: 21px;
-
-  flex-shrink: 0;
-}
-
-.switch input {
-  width: 0;
-  height: 0;
-
-  opacity: 0;
-}
-
-.slider {
-  position: absolute;
-
-  inset: 0;
-
-  border-radius: 20px;
-
-  background: #dce2e9;
-
-  cursor: pointer;
-
-  transition: 0.25s;
-}
-
-.slider::before {
-  content: "";
-
-  position: absolute;
-
-  width: 15px;
-  height: 15px;
-
-  left: 3px;
-  top: 3px;
-
-  border-radius: 50%;
-
-  background: #ffffff;
-
-  box-shadow:
-    0 2px 4px
-    rgba(0, 0, 0, 0.15);
-
-  transition: 0.25s;
-}
-
-.switch input:checked + .slider {
-  background: #2563eb;
-}
-
-.switch input:checked + .slider::before {
-  transform: translateX(17px);
+.change-password-btn:hover {
+  background: #101828;
 }
 
 
@@ -672,62 +432,84 @@
    RESPONSIVE
 ========================================= */
 
-@media (max-width: 950px) {
+@media (max-width: 900px) {
 
-  .profile-grid {
-    grid-template-columns: 1fr;
+  .password-form {
+    grid-template-columns: 1fr 1fr;
   }
 
+  .change-password-btn {
+    grid-column: span 2;
+  }
 }
 
 
-@media (max-width: 650px) {
+@media (max-width: 700px) {
 
-  .profile-page-header h1 {
-    font-size: 23px;
+  .profile-page {
+    padding: 20px 16px;
   }
 
-  .profile-overview {
+  .profile-top {
     align-items: flex-start;
-
     flex-wrap: wrap;
   }
 
-  .account-status {
+  .profile-user {
+    min-width: 200px;
+  }
+
+  .edit-profile-btn {
     width: 100%;
+    justify-content: center;
   }
 
-  .profile-card {
-    padding: 17px;
+  .form-grid {
+    grid-template-columns: 1fr;
   }
 
+  .password-form {
+    grid-template-columns: 1fr;
+  }
+
+  .change-password-btn {
+    grid-column: auto;
+  }
 }
 
 
 @media (max-width: 480px) {
 
-  .form-row {
-    grid-template-columns: 1fr;
+  .profile-page {
+    padding: 16px 12px;
   }
 
-  .profile-overview {
-    padding: 16px;
+  .profile-header h1 {
+    font-size: 24px;
+  }
+
+  .profile-card,
+  .password-card {
+    border-radius: 14px;
+  }
+
+  .profile-top,
+  .profile-form,
+  .password-card {
+    padding: 18px;
   }
 
   .profile-avatar {
-    width: 55px;
-    height: 55px;
+    width: 60px;
+    height: 60px;
+    font-size: 20px;
+  }
 
-    border-radius: 15px;
-
+  .profile-user h2 {
     font-size: 17px;
   }
 
-  .profile-overview-info h2 {
-    font-size: 14px;
-  }
-
-  .form-actions {
+  .profile-actions {
     flex-direction: column-reverse;
   }
 
@@ -735,5 +517,4 @@
   .save-btn {
     width: 100%;
   }
-
 }

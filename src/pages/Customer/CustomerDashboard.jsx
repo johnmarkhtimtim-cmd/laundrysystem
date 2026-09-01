@@ -4,7 +4,7 @@ import "../../styles/CustomerDashboard.css";
 
 const stats = [
   {
-    label: "Active orders",
+    label: "Active Services ",
     value: "04",
     change: "+2 this week",
     tone: "blue",
@@ -207,9 +207,7 @@ function CustomerDashboard() {
                 Recent Transactions
               </h3>
 
-              <p className="panel-description">
-                Track your latest laundry bookings.
-              </p>
+              
 
             </div>
 
@@ -308,9 +306,7 @@ function CustomerDashboard() {
                 Quick services
               </h3>
 
-              <p className="panel-description">
-                Choose a service to start your booking.
-              </p>
+              
 
             </div>
 

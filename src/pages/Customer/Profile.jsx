@@ -1,271 +1,325 @@
 import { useState } from "react";
+import {
+  User,
+  Mail,
+  Phone,
+  MapPin,
+  Lock,
+  Eye,
+  EyeOff,
+  Edit3,
+  Save,
+  X,
+} from "lucide-react";
+
 import "../../styles/Profile.css";
 
-function MyProfile() {
+function Profile() {
+  const [isEditing, setIsEditing] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+
   const [profile, setProfile] = useState({
     firstName: "John Mark",
     lastName: "Timtim",
     email: "johnmark@email.com",
     phone: "0912 345 6789",
-    address: "Laguna, Philippines",
+    address: "San Antonio",
+    barangay: "San Antonio",
+    city: "Santa Rosa",
+    province: "Laguna",
   });
 
-  const [passwords, setPasswords] = useState({
-    current: "",
+  const [formData, setFormData] = useState(profile);
+
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: "",
     newPassword: "",
-    confirm: "",
+    confirmPassword: "",
   });
 
-  const handleProfileChange = (e) => {
-    const { name, value } = e.target;
-
-    setProfile({
-      ...profile,
-      [name]: value,
+  const handleChange = (e) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value,
     });
   };
 
   const handlePasswordChange = (e) => {
-    const { name, value } = e.target;
-
-    setPasswords({
-      ...passwords,
-      [name]: value,
+    setPasswordData({
+      ...passwordData,
+      [e.target.name]: e.target.value,
     });
   };
 
-  const handleProfileSubmit = (e) => {
-    e.preventDefault();
-
-    alert("Profile information updated successfully!");
+  const handleEdit = () => {
+    setFormData(profile);
+    setIsEditing(true);
   };
 
-  const handlePasswordSubmit = (e) => {
+  const handleCancel = () => {
+    setFormData(profile);
+    setIsEditing(false);
+  };
+
+  const handleSave = (e) => {
     e.preventDefault();
 
-    if (passwords.newPassword !== passwords.confirm) {
+    setProfile(formData);
+    setIsEditing(false);
+
+    alert("Profile updated successfully!");
+  };
+
+  const handleChangePassword = (e) => {
+    e.preventDefault();
+
+    if (
+      !passwordData.currentPassword ||
+      !passwordData.newPassword ||
+      !passwordData.confirmPassword
+    ) {
+      alert("Please complete all password fields.");
+      return;
+    }
+
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
       alert("New passwords do not match.");
       return;
     }
 
-    if (!passwords.newPassword) {
-      alert("Please enter a new password.");
-      return;
-    }
+    alert("Password changed successfully!");
 
-    alert("Password updated successfully!");
-
-    setPasswords({
-      current: "",
+    setPasswordData({
+      currentPassword: "",
       newPassword: "",
-      confirm: "",
+      confirmPassword: "",
     });
   };
 
+  const getInitials = () => {
+    return `${profile.firstName.charAt(0)}${profile.lastName.charAt(0)}`;
+  };
+
   return (
-    <div className="profile-page">
+    <main className="profile-page">
 
-      {/* =========================================
-          PAGE HEADER
-      ========================================= */}
+     
 
-      <div className="profile-page-header">
+      {/* PROFILE CARD */}
+      <section className="profile-card">
 
-        <div>
-          <p className="profile-eyebrow">
-            LAUNDRYMATE
-          </p>
+        {/* PROFILE TOP */}
+        <div className="profile-top">
 
-          <h1>
-            My Profile
-          </h1>
+          <div className="profile-avatar">
+            {getInitials()}
+          </div>
 
-          <p>
-            Manage your account details and preferences.
-          </p>
-        </div>
-
-        <div className="profile-header-icon">
-          👤
-        </div>
-
-      </div>
-
-
-      {/* =========================================
-          PROFILE OVERVIEW
-      ========================================= */}
-
-      <section className="profile-overview">
-
-        <div className="profile-avatar">
-          {profile.firstName.charAt(0)}
-          {profile.lastName.charAt(0)}
-        </div>
-
-        <div className="profile-overview-info">
-
-          <h2>
-            {profile.firstName} {profile.lastName}
-          </h2>
-
-          <p>
-            {profile.email}
-          </p>
-
-          <span className="member-badge">
-            ⭐ Gold Member
-          </span>
-
-        </div>
-
-        <div className="account-status">
-
-          <span className="status-dot"></span>
-
-          <div>
-            <strong>
-              Account Active
-            </strong>
+          <div className="profile-user">
+            <h2>
+              {profile.firstName} {profile.lastName}
+            </h2>
 
             <p>
-              Member since 2026
+              <Mail size={15} />
+              {profile.email}
             </p>
+
+            <span className="customer-badge">
+              Customer
+            </span>
           </div>
 
+          {!isEditing && (
+            <button
+              className="edit-profile-btn"
+              onClick={handleEdit}
+            >
+              <Edit3 size={17} />
+              Edit Profile
+            </button>
+          )}
         </div>
 
-      </section>
+        {/* PROFILE FORM */}
+        <form
+          className="profile-form"
+          onSubmit={handleSave}
+        >
 
-
-      {/* =========================================
-          MAIN PROFILE GRID
-      ========================================= */}
-
-      <div className="profile-grid">
-
-        {/* =====================================
-            PERSONAL INFORMATION
-        ===================================== */}
-
-        <section className="profile-card">
-
-          <div className="profile-card-header">
-
-            <div>
-              <h2>
-                Personal Information
-              </h2>
-
-              <p>
-                Update your basic account information.
-              </p>
+          <div className="section-title">
+            <div className="section-icon">
+              <User size={18} />
             </div>
 
-            <span className="card-icon">
-              👤
-            </span>
-
+            <div>
+              <h3>Personal Information</h3>
+              <p>Your basic account information</p>
+            </div>
           </div>
 
+          <div className="form-grid">
 
-          <form onSubmit={handleProfileSubmit}>
+            {/* FIRST NAME */}
+            <div className="form-group">
+              <label>First Name</label>
 
-            <div className="form-row">
-
-              <div className="form-group">
-
-                <label>
-                  First Name
-                </label>
+              <div className="input-wrapper">
+                <User size={17} />
 
                 <input
                   type="text"
                   name="firstName"
-                  value={profile.firstName}
-                  onChange={handleProfileChange}
-                  placeholder="Enter first name"
+                  value={formData.firstName}
+                  onChange={handleChange}
+                  disabled={!isEditing}
                 />
-
               </div>
+            </div>
 
+            {/* LAST NAME */}
+            <div className="form-group">
+              <label>Last Name</label>
 
-              <div className="form-group">
-
-                <label>
-                  Last Name
-                </label>
+              <div className="input-wrapper">
+                <User size={17} />
 
                 <input
                   type="text"
                   name="lastName"
-                  value={profile.lastName}
-                  onChange={handleProfileChange}
-                  placeholder="Enter last name"
+                  value={formData.lastName}
+                  onChange={handleChange}
+                  disabled={!isEditing}
                 />
-
               </div>
-
             </div>
 
+            {/* EMAIL */}
+            <div className="form-group">
+              <label>Email Address</label>
+
+              <div className="input-wrapper">
+                <Mail size={17} />
+
+                <input
+                  type="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  disabled={!isEditing}
+                />
+              </div>
+            </div>
+
+            {/* PHONE */}
+            <div className="form-group">
+              <label>Phone Number</label>
+
+              <div className="input-wrapper">
+                <Phone size={17} />
+
+                <input
+                  type="text"
+                  name="phone"
+                  value={formData.phone}
+                  onChange={handleChange}
+                  disabled={!isEditing}
+                />
+              </div>
+            </div>
+
+          </div>
+
+          {/* ADDRESS */}
+          <div className="section-title address-title">
+            <div className="section-icon">
+              <MapPin size={18} />
+            </div>
+
+            <div>
+              <h3>Address Information</h3>
+              <p>Your pickup and delivery address</p>
+            </div>
+          </div>
+
+          <div className="form-grid">
 
             <div className="form-group">
+              <label>Address</label>
 
-              <label>
-                Email Address
-              </label>
+              <div className="input-wrapper">
+                <MapPin size={17} />
 
-              <input
-                type="email"
-                name="email"
-                value={profile.email}
-                onChange={handleProfileChange}
-                placeholder="Enter email address"
-              />
-
+                <input
+                  type="text"
+                  name="address"
+                  value={formData.address}
+                  onChange={handleChange}
+                  disabled={!isEditing}
+                />
+              </div>
             </div>
-
 
             <div className="form-group">
+              <label>Barangay</label>
 
-              <label>
-                Phone Number
-              </label>
+              <div className="input-wrapper">
+                <MapPin size={17} />
 
-              <input
-                type="tel"
-                name="phone"
-                value={profile.phone}
-                onChange={handleProfileChange}
-                placeholder="Enter phone number"
-              />
-
+                <input
+                  type="text"
+                  name="barangay"
+                  value={formData.barangay}
+                  onChange={handleChange}
+                  disabled={!isEditing}
+                />
+              </div>
             </div>
-
 
             <div className="form-group">
+              <label>City / Municipality</label>
 
-              <label>
-                Address
-              </label>
+              <div className="input-wrapper">
+                <MapPin size={17} />
 
-              <textarea
-                name="address"
-                value={profile.address}
-                onChange={handleProfileChange}
-                placeholder="Enter your address"
-                rows="3"
-              />
-
+                <input
+                  type="text"
+                  name="city"
+                  value={formData.city}
+                  onChange={handleChange}
+                  disabled={!isEditing}
+                />
+              </div>
             </div>
 
+            <div className="form-group">
+              <label>Province</label>
 
-            <div className="form-actions">
+              <div className="input-wrapper">
+                <MapPin size={17} />
+
+                <input
+                  type="text"
+                  name="province"
+                  value={formData.province}
+                  onChange={handleChange}
+                  disabled={!isEditing}
+                />
+              </div>
+            </div>
+
+          </div>
+
+          {/* SAVE BUTTONS */}
+          {isEditing && (
+            <div className="profile-actions">
 
               <button
                 type="button"
                 className="cancel-btn"
+                onClick={handleCancel}
               >
+                <X size={17} />
                 Cancel
               </button>
 
@@ -273,374 +327,115 @@ function MyProfile() {
                 type="submit"
                 className="save-btn"
               >
+                <Save size={17} />
                 Save Changes
               </button>
 
             </div>
+          )}
 
-          </form>
+        </form>
+      </section>
 
-        </section>
+      {/* CHANGE PASSWORD */}
+      <section className="password-card">
 
-
-        {/* =====================================
-            ACCOUNT INFORMATION
-        ===================================== */}
-
-        <section className="profile-card account-card">
-
-          <div className="profile-card-header">
-
-            <div>
-              <h2>
-                Account Details
-              </h2>
-
-              <p>
-                Your LaundryMate account information.
-              </p>
-            </div>
-
-            <span className="card-icon">
-              ⚙
-            </span>
-
+        <div className="section-title">
+          <div className="section-icon password-icon">
+            <Lock size={18} />
           </div>
 
-
-          <div className="account-info-list">
-
-            <div className="account-info-item">
-
-              <div className="info-icon blue">
-                ✉
-              </div>
-
-              <div>
-                <span>
-                  Email
-                </span>
-
-                <strong>
-                  {profile.email}
-                </strong>
-              </div>
-
-            </div>
-
-
-            <div className="account-info-item">
-
-              <div className="info-icon green">
-                ☎
-              </div>
-
-              <div>
-                <span>
-                  Phone
-                </span>
-
-                <strong>
-                  {profile.phone}
-                </strong>
-              </div>
-
-            </div>
-
-
-            <div className="account-info-item">
-
-              <div className="info-icon purple">
-                ⭐
-              </div>
-
-              <div>
-                <span>
-                  Membership
-                </span>
-
-                <strong>
-                  Gold Member
-                </strong>
-              </div>
-
-            </div>
-
-
-            <div className="account-info-item">
-
-              <div className="info-icon orange">
-                📅
-              </div>
-
-              <div>
-                <span>
-                  Member Since
-                </span>
-
-                <strong>
-                  August 2026
-                </strong>
-              </div>
-
-            </div>
-
+          <div>
+            <h3>Change Password</h3>
+            <p>Keep your account secure with a strong password.</p>
           </div>
+        </div>
 
+        <form
+          className="password-form"
+          onSubmit={handleChangePassword}
+        >
 
-          {/* ACCOUNT STATS */}
+          {/* CURRENT PASSWORD */}
+          <div className="form-group">
+            <label>Current Password</label>
 
-          <div className="profile-mini-stats">
+            <div className="input-wrapper password-wrapper">
 
-            <div>
-              <strong>
-                12
-              </strong>
-
-              <span>
-                Completed
-              </span>
-            </div>
-
-            <div>
-              <strong>
-                4
-              </strong>
-
-              <span>
-                Active
-              </span>
-            </div>
-
-            <div>
-              <strong>
-                ₱1,300
-              </strong>
-
-              <span>
-                Total Spent
-              </span>
-            </div>
-
-          </div>
-
-        </section>
-
-
-        {/* =====================================
-            PASSWORD
-        ===================================== */}
-
-        <section className="profile-card password-card">
-
-          <div className="profile-card-header">
-
-            <div>
-              <h2>
-                Change Password
-              </h2>
-
-              <p>
-                Keep your account secure.
-              </p>
-            </div>
-
-            <span className="card-icon">
-              🔒
-            </span>
-
-          </div>
-
-
-          <form onSubmit={handlePasswordSubmit}>
-
-            <div className="form-group">
-
-              <label>
-                Current Password
-              </label>
+              <Lock size={17} />
 
               <input
-                type="password"
-                name="current"
-                value={passwords.current}
+                type={showPassword ? "text" : "password"}
+                name="currentPassword"
+                value={passwordData.currentPassword}
                 onChange={handlePasswordChange}
                 placeholder="Enter current password"
               />
 
+              <button
+                type="button"
+                className="password-toggle"
+                onClick={() =>
+                  setShowPassword(!showPassword)
+                }
+              >
+                {showPassword ? (
+                  <EyeOff size={18} />
+                ) : (
+                  <Eye size={18} />
+                )}
+              </button>
+
             </div>
+          </div>
 
+          {/* NEW PASSWORD */}
+          <div className="form-group">
+            <label>New Password</label>
 
-            <div className="form-group">
-
-              <label>
-                New Password
-              </label>
+            <div className="input-wrapper">
+              <Lock size={17} />
 
               <input
                 type="password"
                 name="newPassword"
-                value={passwords.newPassword}
+                value={passwordData.newPassword}
                 onChange={handlePasswordChange}
                 placeholder="Enter new password"
               />
-
             </div>
+          </div>
 
+          {/* CONFIRM PASSWORD */}
+          <div className="form-group">
+            <label>Confirm New Password</label>
 
-            <div className="form-group">
-
-              <label>
-                Confirm New Password
-              </label>
+            <div className="input-wrapper">
+              <Lock size={17} />
 
               <input
                 type="password"
-                name="confirm"
-                value={passwords.confirm}
+                name="confirmPassword"
+                value={passwordData.confirmPassword}
                 onChange={handlePasswordChange}
                 placeholder="Confirm new password"
               />
-
             </div>
-
-
-            <div className="password-tip">
-              <span>
-                💡
-              </span>
-
-              <p>
-                Use at least 8 characters with a
-                combination of letters and numbers.
-              </p>
-            </div>
-
-
-            <button
-              type="submit"
-              className="password-btn"
-            >
-              Update Password
-            </button>
-
-          </form>
-
-        </section>
-
-
-        {/* =====================================
-            ACCOUNT PREFERENCES
-        ===================================== */}
-
-        <section className="profile-card preferences-card">
-
-          <div className="profile-card-header">
-
-            <div>
-              <h2>
-                Account Preferences
-              </h2>
-
-              <p>
-                Manage your LaundryMate notifications.
-              </p>
-            </div>
-
-            <span className="card-icon">
-              🔔
-            </span>
-
           </div>
 
+          <button
+            type="submit"
+            className="change-password-btn"
+          >
+            <Lock size={17} />
+            Update Password
+          </button>
 
-          <div className="preference-list">
+        </form>
+      </section>
 
-            <div className="preference-item">
-
-              <div>
-                <strong>
-                  Booking Updates
-                </strong>
-
-                <span>
-                  Receive updates about your bookings.
-                </span>
-              </div>
-
-              <label className="switch">
-
-                <input
-                  type="checkbox"
-                  defaultChecked
-                />
-
-                <span className="slider"></span>
-
-              </label>
-
-            </div>
-
-
-            <div className="preference-item">
-
-              <div>
-                <strong>
-                  Payment Notifications
-                </strong>
-
-                <span>
-                  Get notified about payment updates.
-                </span>
-              </div>
-
-              <label className="switch">
-
-                <input
-                  type="checkbox"
-                  defaultChecked
-                />
-
-                <span className="slider"></span>
-
-              </label>
-
-            </div>
-
-
-            <div className="preference-item">
-
-              <div>
-                <strong>
-                  Pickup Reminders
-                </strong>
-
-                <span>
-                  Receive reminders before pickup.
-                </span>
-              </div>
-
-              <label className="switch">
-
-                <input
-                  type="checkbox"
-                  defaultChecked
-                />
-
-                <span className="slider"></span>
-
-              </label>
-
-            </div>
-
-          </div>
-
-        </section>
-
-      </div>
-
-    </div>
+    </main>
   );
 }
 
-export default MyProfile;
+export default Profile;

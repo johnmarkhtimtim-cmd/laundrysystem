@@ -1,63 +1,219 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import "../../styles/Payments.css";
 
 function Payment() {
   const [paymentMethod, setPaymentMethod] = useState("Online Payment");
+  const [booking, setBooking] = useState(null);
+  const [payments, setPayments] = useState([]);
 
-  const [booking] = useState({
-    id: "LM-2026-001",
-    service: "Wash & Fold",
-    date: "August 16, 2026",
-    weight: "5 kg",
-    amount: 400,
-  });
+  // =====================================
+  // LOAD BOOKINGS + PAYMENTS AUTOMATICALLY
+  // =====================================
 
-  const [payments] = useState([
-    {
-      id: "PAY-001",
-      booking: "LM-2026-001",
-      service: "Wash & Fold",
-      date: "August 16, 2026",
-      amount: "₱400",
-      method: "Online Payment",
-      status: "Paid",
-    },
-    {
-      id: "PAY-002",
-      booking: "LM-2026-002",
-      service: "Bedding Care",
-      date: "August 14, 2026",
-      amount: "₱600",
-      method: "Cash",
-      status: "Paid",
-    },
-    {
-      id: "PAY-003",
-      booking: "LM-2026-003",
-      service: "Dry Cleaning",
-      date: "August 18, 2026",
-      amount: "₱300",
-      method: "Cash",
-      status: "Pending",
-    },
-  ]);
+  useEffect(() => {
+    const loadPaymentData = () => {
+      try {
+        const savedBookings = JSON.parse(
+          localStorage.getItem("laundrymateBookings") || "[]"
+        );
+
+        const savedPayments = JSON.parse(
+          localStorage.getItem("laundrymatePayments") || "[]"
+        );
+
+        // Latest booking
+        if (savedBookings.length > 0) {
+          const latestBooking =
+            savedBookings[savedBookings.length - 1];
+
+          setBooking(latestBooking);
+        }
+
+        // Convert saved payment records to history format
+        const paymentHistory = savedPayments.map((payment) => ({
+          id: `PAY-${payment.bookingId}`,
+          booking: payment.bookingId,
+
+          service:
+            payment.services?.length > 0
+              ? payment.services.join(", ")
+              : "Laundry Service",
+
+          date: payment.createdAt
+            ? new Date(payment.createdAt).toLocaleDateString(
+                "en-US",
+                {
+                  month: "long",
+                  day: "numeric",
+                  year: "numeric",
+                }
+              )
+            : "—",
+
+          amount: Number(payment.totalAmount || 0),
+
+          method:
+            payment.paymentMethod === "Cash"
+              ? "Cash"
+              : "Online Payment",
+
+          status:
+            payment.paymentStatus === "Paid"
+              ? "Paid"
+              : "Pending",
+        }));
+
+        setPayments(paymentHistory);
+      } catch (error) {
+        console.error("Unable to load payment data:", error);
+      }
+    };
+
+    loadPaymentData();
+
+    // Automatically refresh when another component updates localStorage
+    window.addEventListener("storage", loadPaymentData);
+
+    return () => {
+      window.removeEventListener("storage", loadPaymentData);
+    };
+  }, []);
+
+  // =====================================
+  // PAYMENT STATISTICS
+  // =====================================
+
+  const totalSpent = payments.reduce(
+    (total, payment) => total + Number(payment.amount || 0),
+    0
+  );
+
+  const paidAmount = payments
+    .filter((payment) => payment.status === "Paid")
+    .reduce(
+      (total, payment) => total + Number(payment.amount || 0),
+      0
+    );
+
+  const pendingAmount = payments
+    .filter((payment) => payment.status === "Pending")
+    .reduce(
+      (total, payment) => total + Number(payment.amount || 0),
+      0
+    );
+
+  // =====================================
+  // CURRENT BOOKING VALUES
+  // =====================================
+
+  const bookingTotal = Number(
+    booking?.estimatedTotal || 0
+  );
+
+  const laundrySubtotal = Number(
+    booking?.laundrySubtotal || 0
+  );
+
+  const deliveryFee = Number(
+    booking?.deliveryFee || 0
+  );
+
+  const services = booking?.services || [];
+
+  // =====================================
+  // PAYMENT
+  // =====================================
 
   const handlePayment = (e) => {
     e.preventDefault();
 
+    if (!booking) {
+      alert("Please confirm a booking first.");
+      return;
+    }
+
+    const amount = Number(booking.estimatedTotal || 0);
+
     if (paymentMethod === "Online Payment") {
-      alert("Proceeding to online payment...");
+      alert(
+        `Proceeding to online payment for ₱${amount.toFixed(2)}...`
+      );
     } else {
       alert(
-        "Cash payment selected. Please pay upon pickup or delivery."
+        `Cash payment selected. Please prepare ₱${amount.toFixed(
+          2
+        )} upon pickup or delivery.`
       );
     }
   };
 
+  // =====================================
+  // NO BOOKING
+  // =====================================
+
+  if (!booking) {
+    return (
+      <div className="payment-page">
+
+        <div className="payment-page-header">
+          <div>
+            <p className="payment-eyebrow">
+              LAUNDRYMATE
+            </p>
+
+            <h1>Payments</h1>
+
+            <p>
+              Manage your laundry payments securely and
+              conveniently.
+            </p>
+          </div>
+
+          <div className="payment-header-icon">
+            ₱
+          </div>
+        </div>
+
+        <div className="payment-card">
+          <div
+            style={{
+              padding: "50px 20px",
+              textAlign: "center",
+            }}
+          >
+            <div
+              style={{
+                fontSize: "48px",
+                marginBottom: "15px",
+              }}
+            >
+              🧺
+            </div>
+
+            <h2>No Confirmed Booking</h2>
+
+            <p>
+              Confirm a laundry booking first to view your
+              payment summary.
+            </p>
+          </div>
+        </div>
+
+      </div>
+    );
+  }
+
+  // =====================================
+  // RENDER
+  // =====================================
+
   return (
     <div className="payment-page">
 
-      {/* HEADER */}
+      {/* =====================================
+          HEADER
+      ===================================== */}
+
       <div className="payment-page-header">
 
         <div>
@@ -65,12 +221,11 @@ function Payment() {
             LAUNDRYMATE
           </p>
 
-          <h1>
-            Payments
-          </h1>
+          <h1>Payments</h1>
 
           <p>
-            Manage your laundry payments securely and conveniently.
+            Manage your laundry payments securely and
+            conveniently.
           </p>
         </div>
 
@@ -80,100 +235,86 @@ function Payment() {
 
       </div>
 
+      {/* =====================================
+          PAYMENT STATISTICS
+      ===================================== */}
 
-      {/* PAYMENT STATISTICS */}
       <div className="payment-stat-grid">
 
         <div className="payment-stat-card">
-
           <div className="payment-stat-icon blue">
             ₱
           </div>
 
           <div>
-            <span>
-              Total Spent
-            </span>
+            <span>Total Spent</span>
 
             <strong>
-              ₱1,300
+              ₱{totalSpent.toLocaleString()}
             </strong>
           </div>
-
         </div>
 
-
         <div className="payment-stat-card">
-
           <div className="payment-stat-icon green">
             ✓
           </div>
 
           <div>
-            <span>
-              Paid
-            </span>
+            <span>Paid</span>
 
             <strong>
-              ₱1,000
+              ₱{paidAmount.toLocaleString()}
             </strong>
           </div>
-
         </div>
 
-
         <div className="payment-stat-card">
-
           <div className="payment-stat-icon orange">
             ◷
           </div>
 
           <div>
-            <span>
-              Pending
-            </span>
+            <span>Pending</span>
 
             <strong>
-              ₱300
+              ₱{pendingAmount.toLocaleString()}
             </strong>
           </div>
-
         </div>
 
-
         <div className="payment-stat-card">
-
           <div className="payment-stat-icon purple">
             #
           </div>
 
           <div>
-            <span>
-              Transactions
-            </span>
+            <span>Transactions</span>
 
             <strong>
-              3
+              {payments.length}
             </strong>
           </div>
-
         </div>
 
       </div>
 
+      {/* =====================================
+          MAIN PAYMENT AREA
+      ===================================== */}
 
-      {/* MAIN PAYMENT AREA */}
       <div className="payment-main-grid">
 
-        {/* PAYMENT FORM */}
+        {/* =====================================
+            PAYMENT FORM
+        ===================================== */}
+
         <div className="payment-card">
 
           <div className="payment-card-header">
 
             <div>
-              <h2>
-                Make a Payment
-              </h2>
+              <h2>Make a Payment</h2>
 
               <p>
                 Complete your current laundry payment.
@@ -186,8 +327,8 @@ function Payment() {
 
           </div>
 
+          {/* CURRENT BOOKING */}
 
-          {/* BOOKING */}
           <div className="payment-booking">
 
             <div className="payment-booking-icon">
@@ -201,37 +342,38 @@ function Payment() {
               </span>
 
               <strong>
-                {booking.service}
+                {services.join(", ")}
               </strong>
 
               <small>
-                {booking.date} • {booking.weight}
+                {booking.schedule} • {booking.time} •{" "}
+                {booking.weight} kg
               </small>
 
             </div>
 
             <strong className="booking-price">
-              ₱{booking.amount.toLocaleString()}
+              ₱{bookingTotal.toLocaleString()}
             </strong>
 
           </div>
 
+          {/* =====================================
+              PAYMENT METHOD
+          ===================================== */}
 
-          {/* PAYMENT METHOD */}
           <div className="payment-section">
 
-            <h3>
-              Payment Method
-            </h3>
+            <h3>Payment Method</h3>
 
             <p>
               Choose how you want to pay.
             </p>
 
-
             <div className="payment-methods">
 
               {/* ONLINE */}
+
               <button
                 type="button"
                 className={
@@ -243,15 +385,12 @@ function Payment() {
                   setPaymentMethod("Online Payment")
                 }
               >
-
                 <div className="method-icon online">
                   💳
                 </div>
 
                 <div>
-                  <strong>
-                    Online Payment
-                  </strong>
+                  <strong>Online Payment</strong>
 
                   <span>
                     Pay using card or e-wallet
@@ -259,13 +398,13 @@ function Payment() {
                 </div>
 
                 <div className="method-radio">
-                  {paymentMethod === "Online Payment" && "✓"}
+                  {paymentMethod === "Online Payment" &&
+                    "✓"}
                 </div>
-
               </button>
 
-
               {/* CASH */}
+
               <button
                 type="button"
                 className={
@@ -277,15 +416,12 @@ function Payment() {
                   setPaymentMethod("Cash")
                 }
               >
-
                 <div className="method-icon cash">
                   💵
                 </div>
 
                 <div>
-                  <strong>
-                    Cash
-                  </strong>
+                  <strong>Cash</strong>
 
                   <span>
                     Pay upon pickup or delivery
@@ -295,25 +431,23 @@ function Payment() {
                 <div className="method-radio">
                   {paymentMethod === "Cash" && "✓"}
                 </div>
-
               </button>
 
             </div>
 
           </div>
 
+          {/* =====================================
+              ONLINE PAYMENT
+          ===================================== */}
 
-          {/* ONLINE PAYMENT DETAILS */}
           {paymentMethod === "Online Payment" && (
-
             <div className="online-payment-box">
 
               <div className="online-payment-header">
 
                 <div>
-                  <strong>
-                    Online Payment
-                  </strong>
+                  <strong>Online Payment</strong>
 
                   <span>
                     Secure payment processing
@@ -321,12 +455,10 @@ function Payment() {
                 </div>
 
                 <div className="payment-logos">
-                  VISA
-                  <span>GCash</span>
+                  VISA <span>GCash</span>
                 </div>
 
               </div>
-
 
               <div className="card-input">
 
@@ -340,7 +472,6 @@ function Payment() {
                 />
 
               </div>
-
 
               <div className="payment-form-row">
 
@@ -356,7 +487,6 @@ function Payment() {
                   />
 
                 </div>
-
 
                 <div className="card-input">
 
@@ -374,13 +504,13 @@ function Payment() {
               </div>
 
             </div>
-
           )}
 
+          {/* =====================================
+              CASH
+          ===================================== */}
 
-          {/* CASH INFORMATION */}
           {paymentMethod === "Cash" && (
-
             <div className="cash-payment-box">
 
               <div className="cash-icon">
@@ -388,57 +518,56 @@ function Payment() {
               </div>
 
               <div>
-                <strong>
-                  Cash Payment
-                </strong>
+
+                <strong>Cash Payment</strong>
 
                 <p>
-                  Please prepare the exact amount of
-                  <strong> ₱{booking.amount}</strong>.
-                  Payment can be made when your laundry
+                  Please prepare the exact amount of{" "}
+                  <strong>
+                    ₱{bookingTotal.toFixed(2)}
+                  </strong>
+                  . Payment can be made when your laundry
                   is picked up or delivered.
                 </p>
+
               </div>
 
             </div>
-
           )}
 
+          {/* =====================================
+              PAY BUTTON
+          ===================================== */}
 
-          {/* PAY BUTTON */}
           <button
+            type="button"
             className="pay-button"
             onClick={handlePayment}
           >
-
             {paymentMethod === "Online Payment"
-              ? "Pay ₱400 Now"
+              ? `Pay ₱${bookingTotal.toLocaleString()} Now`
               : "Confirm Cash Payment"}
 
-            <span>
-              →
-            </span>
-
+            <span>→</span>
           </button>
 
         </div>
 
+        {/* =====================================
+            AUTOMATIC PAYMENT SUMMARY
+        ===================================== */}
 
-        {/* PAYMENT SUMMARY */}
         <aside className="payment-summary">
 
           <div className="summary-title">
 
-            <h2>
-              Payment Summary
-            </h2>
+            <h2>Payment Summary</h2>
 
-            <span>
-              Current
-            </span>
+            <span>Current</span>
 
           </div>
 
+          {/* SERVICES */}
 
           <div className="summary-service">
 
@@ -447,82 +576,105 @@ function Payment() {
             </div>
 
             <div>
-              <span>
-                Service
-              </span>
+
+              <span>Services</span>
 
               <strong>
-                {booking.service}
+                {services.join(", ")}
               </strong>
+
             </div>
 
           </div>
 
+          {/* SUMMARY ITEMS */}
 
           <div className="summary-items">
 
             <div>
-              <span>
-                Booking ID
-              </span>
+              <span>Booking ID</span>
+              <strong>{booking.id}</strong>
+            </div>
+
+            <div>
+              <span>Laundry Weight</span>
 
               <strong>
-                {booking.id}
+                {booking.weight} kg
               </strong>
             </div>
 
-
             <div>
-              <span>
-                Laundry Weight
-              </span>
+              <span>Laundry Subtotal</span>
 
               <strong>
-                {booking.weight}
+                ₱{laundrySubtotal.toFixed(2)}
               </strong>
             </div>
 
-
             <div>
               <span>
-                Service Fee
+                {booking.pickupType ===
+                "Pickup & Delivery"
+                  ? "Pickup & Delivery Fee"
+                  : "Pickup Fee"}
               </span>
 
               <strong>
-                ₱{booking.amount}
+                ₱{deliveryFee.toFixed(2)}
+              </strong>
+            </div>
+
+            <div>
+              <span>Pickup Date</span>
+
+              <strong>
+                {booking.schedule}
+              </strong>
+            </div>
+
+            <div>
+              <span>Pickup Time</span>
+
+              <strong>
+                {booking.time}
+              </strong>
+            </div>
+
+            <div>
+              <span>Payment Status</span>
+
+              <strong className="pending-text">
+                Pending
               </strong>
             </div>
 
           </div>
 
+          {/* TOTAL */}
 
           <div className="summary-total">
 
-            <span>
-              Total Amount
-            </span>
+            <span>Total Amount</span>
 
             <strong>
-              ₱{booking.amount.toLocaleString()}
+              ₱{bookingTotal.toFixed(2)}
             </strong>
 
           </div>
 
-
           <div className="secure-payment">
 
-            <span>
-              🔒
-            </span>
+            <span>🔒</span>
 
             <div>
-              <strong>
-                Secure Payment
-              </strong>
+
+              <strong>Secure Payment</strong>
 
               <p>
                 Your payment information is protected.
               </p>
+
             </div>
 
           </div>
@@ -531,16 +683,16 @@ function Payment() {
 
       </div>
 
+      {/* =====================================
+          PAYMENT HISTORY
+      ===================================== */}
 
-      {/* PAYMENT HISTORY */}
       <section className="payment-history">
 
         <div className="history-header">
 
           <div>
-            <h2>
-              Payment History
-            </h2>
+            <h2>Payment History</h2>
 
             <p>
               View your previous laundry transactions.
@@ -556,95 +708,100 @@ function Payment() {
 
         </div>
 
-
         <div className="payment-table-wrapper">
 
           <table className="payment-table">
 
             <thead>
               <tr>
-                <th>
-                  Transaction
-                </th>
-
-                <th>
-                  Service
-                </th>
-
-                <th>
-                  Date
-                </th>
-
-                <th>
-                  Method
-                </th>
-
-                <th>
-                  Amount
-                </th>
-
-                <th>
-                  Status
-                </th>
+                <th>Transaction</th>
+                <th>Service</th>
+                <th>Date</th>
+                <th>Method</th>
+                <th>Amount</th>
+                <th>Status</th>
               </tr>
             </thead>
 
-
             <tbody>
 
-              {payments.map((payment) => (
+              {payments.length === 0 ? (
 
-                <tr key={payment.id}>
-
-                  <td>
-                    <strong>
-                      {payment.id}
-                    </strong>
-
-                    <span>
-                      {payment.booking}
-                    </span>
+                <tr>
+                  <td
+                    colSpan="6"
+                    style={{
+                      textAlign: "center",
+                      padding: "30px",
+                    }}
+                  >
+                    No payment transactions yet.
                   </td>
-
-                  <td>
-                    {payment.service}
-                  </td>
-
-                  <td>
-                    {payment.date}
-                  </td>
-
-                  <td>
-                    <span className="method-label">
-                      {payment.method === "Cash"
-                        ? "💵 Cash"
-                        : "💳 Online"}
-                    </span>
-                  </td>
-
-                  <td>
-                    <strong className="table-amount">
-                      {payment.amount}
-                    </strong>
-                  </td>
-
-                  <td>
-
-                    <span
-                      className={
-                        payment.status === "Paid"
-                          ? "payment-status paid"
-                          : "payment-status pending"
-                      }
-                    >
-                      ● {payment.status}
-                    </span>
-
-                  </td>
-
                 </tr>
 
-              ))}
+              ) : (
+
+                payments.map((payment) => (
+
+                  <tr key={payment.id}>
+
+                    <td>
+                      <strong>
+                        {payment.id}
+                      </strong>
+
+                      <span>
+                        {payment.booking}
+                      </span>
+                    </td>
+
+                    <td>
+                      {payment.service}
+                    </td>
+
+                    <td>
+                      {payment.date}
+                    </td>
+
+                    <td>
+
+                      <span className="method-label">
+                        {payment.method === "Cash"
+                          ? "💵 Cash"
+                          : "💳 Online"}
+                      </span>
+
+                    </td>
+
+                    <td>
+
+                      <strong className="table-amount">
+                        ₱{Number(
+                          payment.amount
+                        ).toLocaleString()}
+                      </strong>
+
+                    </td>
+
+                    <td>
+
+                      <span
+                        className={
+                          payment.status === "Paid"
+                            ? "payment-status paid"
+                            : "payment-status pending"
+                        }
+                      >
+                        ● {payment.status}
+                      </span>
+
+                    </td>
+
+                  </tr>
+
+                ))
+
+              )}
 
             </tbody>
 
