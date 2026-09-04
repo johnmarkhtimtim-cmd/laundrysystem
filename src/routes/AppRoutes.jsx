@@ -3,7 +3,7 @@ import Login from "../pages/Login";
 import AdminPortalLayout from "../layouts/AdminLayout";
 import RoleRoute from "./RoleRoute";
 import AdminDashboard from "../pages/Admin/AdminDashboard";
-import Customers from "../pages/Admin/Customers";
+import AdminCustomers from "../pages/Admin/AdminCustomers";
 import Services from "../pages/Admin/Services";
 import Pricing from "../pages/Admin/Pricing";
 import Staff from "../pages/Admin/Staff";
@@ -45,7 +45,7 @@ function AppRoutes() {
           }
         >
           <Route index element={<AdminDashboard />} />
-          <Route path="customers" element={<Customers />} />
+          <Route path="customers" element={<AdminCustomers />} />
           <Route path="services" element={<Services />} />
           <Route path="pricing" element={<Pricing />} />
           <Route path="staff" element={<Staff />} />

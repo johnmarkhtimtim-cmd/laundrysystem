@@ -13,6 +13,7 @@ import {
   Sparkles,
   Tags,
   Truck,
+  Users,
   UserRoundCog,
   UserRound,
   X,
@@ -31,7 +32,7 @@ const nav = [
     "Business management",
     [
       ["Services", "/admin/services", Sparkles],
-      ["Pricing", "/admin/pricing", Tags],
+      ["Customers", "/admin/customers", Users],
       ["Staff", "/admin/staff", UserRoundCog],
     ],
   ],
@@ -42,7 +43,7 @@ const nav = [
       ["Pickup & Delivery", "/admin/pickup-delivery", Truck],
     ],
   ],
-  ["Analytics", [["Reports", "/admin/reports", ChartNoAxesCombined]]],
+  ["Analytics", [["SalesReport", "/admin/reports", ChartNoAxesCombined]]],
   ["Communication", [["Notifications", "/admin/notifications", Bell]]],
   ["System", [["Settings", "/admin/settings", Settings]]],
 ];
