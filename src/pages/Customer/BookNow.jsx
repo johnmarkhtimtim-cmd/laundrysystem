@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   MapContainer,
   TileLayer,
@@ -91,6 +92,8 @@ function LocationMarker({
 
 function BookNow() {
 
+  const navigate = useNavigate();
+
   // =====================================
   // BOOKING STATES
   // =====================================
@@ -177,8 +180,7 @@ function BookNow() {
   const [showSuccess, setShowSuccess] =
     useState(false);
 
-  const [bookingId, setBookingId] =
-    useState("");
+  const [bookingId] = useState("");
 
   // =====================================
   // TODAY
@@ -853,11 +855,7 @@ function BookNow() {
         )
       );
 
-      setBookingId(
-        newBookingId
-      );
-
-      setShowSuccess(true);
+      navigate("/customer/payments");
 
     } catch (error) {
 
@@ -1413,24 +1411,20 @@ function BookNow() {
                     Select time
                   </option>
 
-                  <option value="9:00 AM">
-                    9:00 AM
+                  <option value="8:00 - 10:00 AM">
+                    8:00 - 10:00 AM
                   </option>
 
-                  <option value="11:00 AM">
-                    11:00 AM
+                  <option value="10:00 - 12:00 PM">
+                    10:00 - 12:00 PM
                   </option>
 
-                  <option value="1:00 PM">
-                    1:00 PM
+                  <option value="1:00 - 3:00 PM">
+                    1:00 - 3:00 PM
                   </option>
 
-                  <option value="3:30 PM">
-                    3:30 PM
-                  </option>
-
-                  <option value="5:00 PM">
-                    5:00 PM
+                  <option value="3:00 - 5:00 PM">
+                    3:00 - 5:00 PM
                   </option>
 
                 </select>
@@ -1478,155 +1472,8 @@ function BookNow() {
             </div>
 
           </section>
-
-          {/* =====================================
-              STEP 3
-          ===================================== */}
-
-          <section className="booking-card">
-
-            <div className="section-title">
-
-              <div className="step-number">
-                3
-              </div>
-
-              <div>
-
-                <h2>
-                  Laundry Address
-                </h2>
-
-                <p>
-                  Enter your pickup address.
-                  You can confirm the exact
-                  location in Step 4.
-                </p>
-
-              </div>
-
-            </div>
-
-            <div className="form-group">
-
-              <label htmlFor="address">
-                Complete Address
-              </label>
-
-              <input
-                id="address"
-                type="text"
-                placeholder="House/Building No., Street"
-                value={address}
-                onChange={(e) => {
-
-                  setAddress(
-                    e.target.value
-                  );
-
-                  clearError();
-                }}
-              />
-
-            </div>
-
-            <div className="form-row">
-
-              <div className="form-group">
-
-                <label htmlFor="barangay">
-                  Barangay
-                </label>
-
-                <input
-                  id="barangay"
-                  type="text"
-                  placeholder="Enter barangay"
-                  value={barangay}
-                  onChange={(e) => {
-
-                    setBarangay(
-                      e.target.value
-                    );
-
-                    clearError();
-                  }}
-                />
-
-              </div>
-
-              <div className="form-group">
-
-                <label htmlFor="city">
-                  City / Municipality
-                </label>
-
-                <input
-                  id="city"
-                  type="text"
-                  placeholder="Enter city or municipality"
-                  value={city}
-                  onChange={(e) => {
-
-                    setCity(
-                      e.target.value
-                    );
-
-                    clearError();
-                  }}
-                />
-
-              </div>
-
-            </div>
-
-            <div className="form-group">
-
-              <label htmlFor="province">
-                Province
-              </label>
-
-              <input
-                id="province"
-                type="text"
-                placeholder="Enter province"
-                value={province}
-                onChange={(e) => {
-
-                  setProvince(
-                    e.target.value
-                  );
-
-                  clearError();
-                }}
-              />
-
-            </div>
-
-            <div className="form-group">
-
-              <label htmlFor="landmark">
-                Landmark / Pickup Instructions
-              </label>
-
-              <textarea
-                id="landmark"
-                rows="4"
-                placeholder="Example: Near the barangay hall, blue gate beside the sari-sari store..."
-                value={landmark}
-                onChange={(e) =>
-                  setLandmark(
-                    e.target.value
-                  )
-                }
-              />
-
-            </div>
-
-          </section>
-
-          {/* =====================================
-              STEP 4 - GPS LOCATION
+                  {/* =====================================
+              STEP 3 - GPS LOCATION
           ===================================== */}
 
           <section className="booking-card map-booking-card">
@@ -1634,7 +1481,7 @@ function BookNow() {
             <div className="section-title">
 
               <div className="step-number">
-                4
+                3
               </div>
 
               <div>
@@ -1915,6 +1762,153 @@ function BookNow() {
             </div>
 
           </section>
+          {/* =====================================
+              STEP 4
+          ===================================== */}
+
+          <section className="booking-card">
+
+            <div className="section-title">
+
+              <div className="step-number">
+                4
+              </div>
+
+              <div>
+
+                <h2>
+                  Laundry Address
+                </h2>
+
+                <p>
+                  Enter your pickup address.
+                  You can confirm the exact
+                  location in Step 4.
+                </p>
+
+              </div>
+
+            </div>
+
+            <div className="form-group">
+
+              <label htmlFor="address">
+                Complete Address
+              </label>
+
+              <input
+                id="address"
+                type="text"
+                placeholder="House/Building No., Street"
+                value={address}
+                onChange={(e) => {
+
+                  setAddress(
+                    e.target.value
+                  );
+
+                  clearError();
+                }}
+              />
+
+            </div>
+
+            <div className="form-row">
+
+              <div className="form-group">
+
+                <label htmlFor="barangay">
+                  Barangay
+                </label>
+
+                <input
+                  id="barangay"
+                  type="text"
+                  placeholder="Enter barangay"
+                  value={barangay}
+                  onChange={(e) => {
+
+                    setBarangay(
+                      e.target.value
+                    );
+
+                    clearError();
+                  }}
+                />
+
+              </div>
+
+              <div className="form-group">
+
+                <label htmlFor="city">
+                  City / Municipality
+                </label>
+
+                <input
+                  id="city"
+                  type="text"
+                  placeholder="Enter city or municipality"
+                  value={city}
+                  onChange={(e) => {
+
+                    setCity(
+                      e.target.value
+                    );
+
+                    clearError();
+                  }}
+                />
+
+              </div>
+
+            </div>
+
+            <div className="form-group">
+
+              <label htmlFor="province">
+                Province
+              </label>
+
+              <input
+                id="province"
+                type="text"
+                placeholder="Enter province"
+                value={province}
+                onChange={(e) => {
+
+                  setProvince(
+                    e.target.value
+                  );
+
+                  clearError();
+                }}
+              />
+
+            </div>
+
+            <div className="form-group">
+
+              <label htmlFor="landmark">
+                Landmark / Pickup Instructions
+              </label>
+
+              <textarea
+                id="landmark"
+                rows="4"
+                placeholder="Example: Near the barangay hall, blue gate beside the sari-sari store..."
+                value={landmark}
+                onChange={(e) =>
+                  setLandmark(
+                    e.target.value
+                  )
+                }
+              />
+
+            </div>
+
+          </section>
+
+          
 
         </div>
 
