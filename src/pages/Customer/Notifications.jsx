@@ -1,100 +1,369 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import "../../styles/Notifications.css";
 
 function Notification() {
   const [filter, setFilter] = useState("All");
+  const [notifications, setNotifications] = useState([]);
 
-  const [notifications, setNotifications] = useState([
-    {
-      id: 1,
-      type: "booking",
-      title: "Booking Confirmed",
-      message:
-        "Your Wash & Fold booking has been successfully confirmed.",
-      time: "10 minutes ago",
-      date: "Today",
-      booking: "LM-2026-001",
-      unread: true,
-    },
-    {
-      id: 2,
-      type: "payment",
-      title: "Payment Successful",
-      message:
-        "Your payment of ₱400 for booking LM-2026-001 has been received.",
-      time: "20 minutes ago",
-      date: "Today",
-      booking: "LM-2026-001",
-      unread: true,
-    },
-    {
-      id: 3,
-      type: "progress",
-      title: "Laundry In Progress",
-      message:
-        "Your laundry is currently being washed and processed by our staff.",
-      time: "1 hour ago",
-      date: "Today",
-      booking: "LM-2026-001",
-      unread: true,
-    },
-    {
-      id: 4,
-      type: "pickup",
-      title: "Pickup Reminder",
-      message:
-        "Your laundry is scheduled for pickup today at 3:30 PM.",
-      time: "3 hours ago",
-      date: "Today",
-      booking: "LM-2026-001",
-      unread: false,
-    },
-    {
-      id: 5,
-      type: "booking",
-      title: "Booking Completed",
-      message:
-        "Your Bedding Care booking has been completed successfully.",
-      time: "Yesterday",
-      date: "Yesterday",
-      booking: "LM-2026-002",
-      unread: false,
-    },
-    {
-      id: 6,
-      type: "payment",
-      title: "Payment Pending",
-      message:
-        "Cash payment of ₱300 is still pending for your Dry Cleaning booking.",
-      time: "Yesterday",
-      date: "Yesterday",
-      booking: "LM-2026-003",
-      unread: false,
-    },
-  ]);
+  // =========================================
+  // LOAD NOTIFICATIONS
+  // =========================================
+
+  const loadNotifications = () => {
+    try {
+      const bookings = JSON.parse(
+        localStorage.getItem("laundrymateBookings") || "[]"
+      );
+
+      const payments = JSON.parse(
+        localStorage.getItem("laundrymatePayments") || "[]"
+      );
+
+      const savedReadStatus = JSON.parse(
+        localStorage.getItem("laundrymateNotificationRead") || "{}"
+      );
+
+      const generatedNotifications = [];
+
+      // =========================================
+      // BOOKING NOTIFICATIONS
+      // =========================================
+
+      bookings.forEach((booking, index) => {
+        const bookingId =
+          booking.bookingId ||
+          booking.id ||
+          `LM-${String(index + 1).padStart(3, "0")}`;
+
+        const services =
+          booking.services ||
+          booking.service ||
+          "Laundry Service";
+
+        const bookingStatus =
+          booking.status ||
+          booking.bookingStatus ||
+          "Pending";
+
+        const createdAt =
+          booking.createdAt ||
+          booking.date ||
+          new Date().toISOString();
+
+        const notificationId = `booking-${bookingId}`;
+
+        let title = "Booking Submitted";
+        let message = `Your ${services} booking has been successfully submitted.`;
+
+        // -----------------------------------------
+        // BOOKING STATUS
+        // -----------------------------------------
+
+        if (
+          bookingStatus.toLowerCase() === "confirmed" ||
+          bookingStatus.toLowerCase() === "approved"
+        ) {
+          title = "Booking Confirmed";
+          message = `Your ${services} booking has been successfully confirmed.`;
+        }
+
+        if (
+          bookingStatus.toLowerCase() === "processing" ||
+          bookingStatus.toLowerCase() === "in progress"
+        ) {
+          title = "Laundry In Progress";
+          message = `Your laundry is currently being processed by our staff.`;
+        }
+
+        if (
+          bookingStatus.toLowerCase() === "ready" ||
+          bookingStatus.toLowerCase() === "ready for pickup"
+        ) {
+          title = "Laundry Ready";
+          message = `Your laundry is ready for pickup.`;
+        }
+
+        if (
+          bookingStatus.toLowerCase() === "completed"
+        ) {
+          title = "Booking Completed";
+          message = `Your ${services} booking has been completed successfully.`;
+        }
+
+        if (
+          bookingStatus.toLowerCase() === "cancelled" ||
+          bookingStatus.toLowerCase() === "canceled"
+        ) {
+          title = "Booking Cancelled";
+          message = `Your booking ${bookingId} has been cancelled.`;
+        }
+
+        generatedNotifications.push({
+          id: notificationId,
+          type:
+            bookingStatus.toLowerCase() === "processing" ||
+            bookingStatus.toLowerCase() === "in progress"
+              ? "progress"
+              : "booking",
+          title,
+          message,
+          time: formatRelativeTime(createdAt),
+          date: formatDate(createdAt),
+          booking: bookingId,
+          createdAt,
+          unread: savedReadStatus[notificationId] !== true,
+        });
+
+        // =========================================
+        // PICKUP NOTIFICATION
+        // =========================================
+
+        const pickupDate =
+          booking.pickup_date ||
+          booking.pickupDate ||
+          booking.schedule ||
+          "";
+
+        const pickupTime =
+          booking.time ||
+          "";
+
+        if (pickupDate || pickupTime) {
+          const pickupNotificationId = `pickup-${bookingId}`;
+
+          generatedNotifications.push({
+            id: pickupNotificationId,
+            type: "pickup",
+            title: "Pickup Schedule",
+            message: pickupTime
+              ? `Your laundry is scheduled for pickup at ${pickupTime}.`
+              : `Your laundry is scheduled for pickup on ${pickupDate}.`,
+            time: formatRelativeTime(
+              booking.updatedAt || booking.createdAt
+            ),
+            date: formatDate(
+              booking.updatedAt || booking.createdAt
+            ),
+            booking: bookingId,
+            createdAt:
+              booking.updatedAt ||
+              booking.createdAt ||
+              new Date().toISOString(),
+            unread: savedReadStatus[pickupNotificationId] !== true,
+          });
+        }
+      });
+
+      // =========================================
+      // PAYMENT NOTIFICATIONS
+      // =========================================
+
+      payments.forEach((payment, index) => {
+        const paymentId =
+          payment.paymentId ||
+          payment.id ||
+          `PAY-${String(index + 1).padStart(3, "0")}`;
+
+        const bookingId =
+          payment.bookingId ||
+          payment.booking ||
+          "N/A";
+
+        const amount =
+          Number(
+            payment.totalAmount ||
+              payment.amount ||
+              0
+          );
+
+        const paymentStatus =
+          payment.paymentStatus ||
+          payment.status ||
+          "Pending";
+
+        const createdAt =
+          payment.createdAt ||
+          new Date().toISOString();
+
+        const notificationId = `payment-${paymentId}`;
+
+        let title = "Payment Pending";
+        let message = `Your payment of ${formatCurrency(
+          amount
+        )} for booking ${bookingId} is pending.`;
+
+        if (
+          paymentStatus.toLowerCase() === "paid" ||
+          paymentStatus.toLowerCase() === "successful" ||
+          paymentStatus.toLowerCase() === "verified"
+        ) {
+          title = "Payment Successful";
+
+          message = `Your payment of ${formatCurrency(
+            amount
+          )} for booking ${bookingId} has been received.`;
+        }
+
+        if (
+          paymentStatus.toLowerCase() === "rejected" ||
+          paymentStatus.toLowerCase() === "failed"
+        ) {
+          title = "Payment Failed";
+
+          message = `Your payment for booking ${bookingId} could not be processed.`;
+        }
+
+        generatedNotifications.push({
+          id: notificationId,
+          type: "payment",
+          title,
+          message,
+          time: formatRelativeTime(createdAt),
+          date: formatDate(createdAt),
+          booking: bookingId,
+          createdAt,
+          unread: savedReadStatus[notificationId] !== true,
+        });
+      });
+
+      // =========================================
+      // SORT NEWEST FIRST
+      // =========================================
+
+      generatedNotifications.sort(
+        (a, b) =>
+          new Date(b.createdAt || 0) -
+          new Date(a.createdAt || 0)
+      );
+
+      setNotifications(generatedNotifications);
+    } catch (error) {
+      console.error(
+        "Failed to load notifications:",
+        error
+      );
+
+      setNotifications([]);
+    }
+  };
+
+  // =========================================
+  // INITIAL LOAD + AUTO UPDATE
+  // =========================================
+
+  useEffect(() => {
+    loadNotifications();
+
+    const handleUpdate = () => {
+      loadNotifications();
+    };
+
+    window.addEventListener(
+      "laundrymateBookingUpdated",
+      handleUpdate
+    );
+
+    window.addEventListener(
+      "laundrymatePaymentUpdated",
+      handleUpdate
+    );
+
+    window.addEventListener(
+      "storage",
+      handleUpdate
+    );
+
+    return () => {
+      window.removeEventListener(
+        "laundrymateBookingUpdated",
+        handleUpdate
+      );
+
+      window.removeEventListener(
+        "laundrymatePaymentUpdated",
+        handleUpdate
+      );
+
+      window.removeEventListener(
+        "storage",
+        handleUpdate
+      );
+    };
+  }, []);
+
+  // =========================================
+  // UNREAD COUNT
+  // =========================================
 
   const unreadCount = notifications.filter(
     (notification) => notification.unread
   ).length;
 
-  const filteredNotifications =
-    filter === "All"
-      ? notifications
-      : notifications.filter(
-          (notification) => notification.type === filter
-        );
+  // =========================================
+  // FILTER
+  // =========================================
+
+  const filteredNotifications = useMemo(() => {
+    if (filter === "All") {
+      return notifications;
+    }
+
+    return notifications.filter(
+      (notification) =>
+        notification.type === filter
+    );
+  }, [filter, notifications]);
+
+  // =========================================
+  // MARK AS READ
+  // =========================================
 
   const markAsRead = (id) => {
+    const savedReadStatus = JSON.parse(
+      localStorage.getItem(
+        "laundrymateNotificationRead"
+      ) || "{}"
+    );
+
+    savedReadStatus[id] = true;
+
+    localStorage.setItem(
+      "laundrymateNotificationRead",
+      JSON.stringify(savedReadStatus)
+    );
+
     setNotifications((current) =>
       current.map((notification) =>
         notification.id === id
-          ? { ...notification, unread: false }
+          ? {
+              ...notification,
+              unread: false,
+            }
           : notification
       )
     );
   };
 
+  // =========================================
+  // MARK ALL AS READ
+  // =========================================
+
   const markAllAsRead = () => {
+    const savedReadStatus = JSON.parse(
+      localStorage.getItem(
+        "laundrymateNotificationRead"
+      ) || "{}"
+    );
+
+    notifications.forEach((notification) => {
+      savedReadStatus[notification.id] = true;
+    });
+
+    localStorage.setItem(
+      "laundrymateNotificationRead",
+      JSON.stringify(savedReadStatus)
+    );
+
     setNotifications((current) =>
       current.map((notification) => ({
         ...notification,
@@ -103,16 +372,24 @@ function Notification() {
     );
   };
 
+  // =========================================
+  // ICON
+  // =========================================
+
   const getIcon = (type) => {
     switch (type) {
       case "booking":
         return "✓";
+
       case "payment":
         return "₱";
+
       case "progress":
         return "◷";
+
       case "pickup":
         return "⌂";
+
       default:
         return "!";
     }
@@ -127,7 +404,8 @@ function Notification() {
 
       <div className="notification-header">
 
-        <div>
+        <div className="notification-header-content">
+
           <p className="notification-eyebrow">
             LAUNDRYMATE
           </p>
@@ -137,19 +415,26 @@ function Notification() {
           </h1>
 
           <p>
-            Stay updated with your bookings and payments.
+            Stay updated with your bookings,
+            payments, and laundry status.
           </p>
+
         </div>
 
         <div className="notification-header-icon">
           🔔
+
+          {unreadCount > 0 && (
+            <span className="header-unread-count">
+              {unreadCount}
+            </span>
+          )}
         </div>
 
       </div>
 
-
       {/* =========================================
-          NOTIFICATION SUMMARY
+          STATISTICS
       ========================================= */}
 
       <div className="notification-stats">
@@ -172,7 +457,6 @@ function Notification() {
 
         </div>
 
-
         <div className="notification-stat-card">
 
           <div className="notification-stat-icon orange">
@@ -191,7 +475,6 @@ function Notification() {
 
         </div>
 
-
         <div className="notification-stat-card">
 
           <div className="notification-stat-icon green">
@@ -206,14 +489,14 @@ function Notification() {
             <strong>
               {
                 notifications.filter(
-                  (item) => item.type === "booking"
+                  (item) =>
+                    item.type === "booking"
                 ).length
               }
             </strong>
           </div>
 
         </div>
-
 
         <div className="notification-stat-card">
 
@@ -229,7 +512,8 @@ function Notification() {
             <strong>
               {
                 notifications.filter(
-                  (item) => item.type === "payment"
+                  (item) =>
+                    item.type === "payment"
                 ).length
               }
             </strong>
@@ -238,7 +522,6 @@ function Notification() {
         </div>
 
       </div>
-
 
       {/* =========================================
           NOTIFICATION PANEL
@@ -249,7 +532,6 @@ function Notification() {
         <div className="notification-panel-header">
 
           <div>
-
             <h2>
               Recent Notifications
             </h2>
@@ -257,31 +539,40 @@ function Notification() {
             <p>
               Updates about your LaundryMate account.
             </p>
-
           </div>
 
-          <button
-            className="mark-all-btn"
-            onClick={markAllAsRead}
-          >
-            Mark all as read
-          </button>
+          {unreadCount > 0 && (
+            <button
+              className="mark-all-btn"
+              onClick={markAllAsRead}
+              type="button"
+            >
+              Mark all as read
+            </button>
+          )}
 
         </div>
 
-
-        {/* FILTERS */}
+        {/* =========================================
+            FILTERS
+        ========================================= */}
 
         <div className="notification-filters">
 
           <button
-            className={filter === "All" ? "filter active" : "filter"}
+            type="button"
+            className={
+              filter === "All"
+                ? "filter active"
+                : "filter"
+            }
             onClick={() => setFilter("All")}
           >
             All
           </button>
 
           <button
+            type="button"
             className={
               filter === "booking"
                 ? "filter active"
@@ -293,6 +584,7 @@ function Notification() {
           </button>
 
           <button
+            type="button"
             className={
               filter === "payment"
                 ? "filter active"
@@ -304,6 +596,7 @@ function Notification() {
           </button>
 
           <button
+            type="button"
             className={
               filter === "progress"
                 ? "filter active"
@@ -315,6 +608,7 @@ function Notification() {
           </button>
 
           <button
+            type="button"
             className={
               filter === "pickup"
                 ? "filter active"
@@ -327,8 +621,9 @@ function Notification() {
 
         </div>
 
-
-        {/* NOTIFICATION LIST */}
+        {/* =========================================
+            NOTIFICATION LIST
+        ========================================= */}
 
         <div className="notification-list">
 
@@ -336,7 +631,7 @@ function Notification() {
 
             <div className="empty-notifications">
 
-              <div>
+              <div className="empty-notification-icon">
                 🔔
               </div>
 
@@ -352,86 +647,86 @@ function Notification() {
 
           ) : (
 
-            filteredNotifications.map((notification) => (
-
-              <div
-                key={notification.id}
-                className={
-                  notification.unread
-                    ? "notification-item unread"
-                    : "notification-item"
-                }
-                onClick={() =>
-                  markAsRead(notification.id)
-                }
-              >
-
-                {/* ICON */}
+            filteredNotifications.map(
+              (notification) => (
 
                 <div
-                  className={`notification-icon ${notification.type}`}
+                  key={notification.id}
+                  className={
+                    notification.unread
+                      ? "notification-item unread"
+                      : "notification-item"
+                  }
+                  onClick={() =>
+                    markAsRead(notification.id)
+                  }
                 >
-                  {getIcon(notification.type)}
-                </div>
 
+                  {/* ICON */}
 
-                {/* CONTENT */}
-
-                <div className="notification-content">
-
-                  <div className="notification-title-row">
-
-                    <h3>
-                      {notification.title}
-                    </h3>
-
-                    {notification.unread && (
-                      <span className="new-badge">
-                        NEW
-                      </span>
+                  <div
+                    className={`notification-icon ${notification.type}`}
+                  >
+                    {getIcon(
+                      notification.type
                     )}
+                  </div>
+
+                  {/* CONTENT */}
+
+                  <div className="notification-content">
+
+                    <div className="notification-title-row">
+
+                      <h3>
+                        {notification.title}
+                      </h3>
+
+                      {notification.unread && (
+                        <span className="new-badge">
+                          NEW
+                        </span>
+                      )}
+
+                    </div>
+
+                    <p>
+                      {notification.message}
+                    </p>
+
+                    <div className="notification-meta">
+
+                      <span>
+                        {notification.time}
+                      </span>
+
+                      <span className="meta-dot">
+                        •
+                      </span>
+
+                      <span>
+                        Booking #
+                        {notification.booking}
+                      </span>
+
+                    </div>
 
                   </div>
 
-                  <p>
-                    {notification.message}
-                  </p>
+                  {/* UNREAD DOT */}
 
-                  <div className="notification-meta">
-
-                    <span>
-                      {notification.time}
-                    </span>
-
-                    <span>
-                      •
-                    </span>
-
-                    <span>
-                      Booking #{notification.booking}
-                    </span>
-
-                  </div>
+                  {notification.unread && (
+                    <span className="unread-dot" />
+                  )}
 
                 </div>
-
-
-                {/* STATUS */}
-
-                {notification.unread && (
-                  <span className="unread-dot"></span>
-                )}
-
-              </div>
-
-            ))
-
+              )
+            )
           )}
 
         </div>
 
       </section>
-
 
       {/* =========================================
           NOTIFICATION SETTINGS
@@ -450,8 +745,8 @@ function Notification() {
           </h3>
 
           <p>
-            Manage which LaundryMate updates you want
-            to receive.
+            Manage which LaundryMate updates
+            you want to receive.
           </p>
 
         </div>
@@ -468,6 +763,110 @@ function Notification() {
 
     </div>
   );
+}
+
+// =========================================
+// FORMAT CURRENCY
+// =========================================
+
+function formatCurrency(amount) {
+  return new Intl.NumberFormat(
+    "en-PH",
+    {
+      style: "currency",
+      currency: "PHP",
+      minimumFractionDigits: 2,
+    }
+  ).format(Number(amount) || 0);
+}
+
+// =========================================
+// FORMAT DATE
+// =========================================
+
+function formatDate(date) {
+  if (!date) {
+    return "";
+  }
+
+  const parsedDate = new Date(date);
+
+  if (Number.isNaN(parsedDate.getTime())) {
+    return "";
+  }
+
+  return parsedDate.toLocaleDateString(
+    "en-PH",
+    {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    }
+  );
+}
+
+// =========================================
+// RELATIVE TIME
+// =========================================
+
+function formatRelativeTime(date) {
+  if (!date) {
+    return "Recently";
+  }
+
+  const parsedDate = new Date(date);
+
+  if (Number.isNaN(parsedDate.getTime())) {
+    return "Recently";
+  }
+
+  const now = new Date();
+
+  const difference =
+    now.getTime() -
+    parsedDate.getTime();
+
+  const seconds =
+    Math.floor(difference / 1000);
+
+  if (seconds < 60) {
+    return "Just now";
+  }
+
+  const minutes =
+    Math.floor(seconds / 60);
+
+  if (minutes < 60) {
+    return `${minutes} ${
+      minutes === 1
+        ? "minute"
+        : "minutes"
+    } ago`;
+  }
+
+  const hours =
+    Math.floor(minutes / 60);
+
+  if (hours < 24) {
+    return `${hours} ${
+      hours === 1
+        ? "hour"
+        : "hours"
+    } ago`;
+  }
+
+  const days =
+    Math.floor(hours / 24);
+
+  if (days === 1) {
+    return "Yesterday";
+  }
+
+  if (days < 7) {
+    return `${days} days ago`;
+  }
+
+  return formatDate(date);
 }
 
 export default Notification;

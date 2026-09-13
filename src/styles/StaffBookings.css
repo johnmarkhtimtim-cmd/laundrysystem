@@ -1,0 +1,548 @@
+.staff-bookings {
+  width: 100%;
+  min-height: 100vh;
+  padding: 28px;
+  box-sizing: border-box;
+  background: #f8fafc;
+  color: #0f172a;
+}
+
+/* =========================================
+   HEADER
+========================================= */
+
+.section-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 24px;
+}
+
+.section-header h1 {
+  margin: 0;
+  font-size: 28px;
+  line-height: 1.2;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.section-header p {
+  margin: 7px 0 0;
+  color: #64748b;
+  font-size: 14px;
+}
+
+.booking-count {
+  padding: 8px 13px;
+  border: 1px solid #dbeafe;
+  border-radius: 8px;
+  background: #eff6ff;
+  color: #2563eb;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* =========================================
+   FILTERS
+========================================= */
+
+.filters {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.filter-select,
+.filter-input {
+  height: 42px;
+  box-sizing: border-box;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #334155;
+  font-family: inherit;
+  font-size: 14px;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.filter-select {
+  width: 170px;
+  padding: 0 12px;
+  cursor: pointer;
+}
+
+.search-wrapper {
+  position: relative;
+  width: 300px;
+}
+
+.search-icon {
+  position: absolute;
+  top: 50%;
+  left: 13px;
+  transform: translateY(-50%);
+  color: #94a3b8;
+  font-size: 19px;
+  pointer-events: none;
+}
+
+.filter-input {
+  width: 100%;
+  padding: 0 14px 0 38px;
+}
+
+.filter-select:focus,
+.filter-input:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.filter-input::placeholder {
+  color: #94a3b8;
+}
+
+/* =========================================
+   TABLE
+========================================= */
+
+.table-container {
+  width: 100%;
+  overflow-x: auto;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+}
+
+.bookings-table {
+  width: 100%;
+  min-width: 1250px;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.bookings-table thead {
+  background: #f8fafc;
+}
+
+.bookings-table th {
+  padding: 14px 16px;
+  border-bottom: 1px solid #e2e8f0;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.bookings-table td {
+  padding: 16px;
+  border-bottom: 1px solid #f1f5f9;
+  color: #334155;
+  font-size: 13px;
+  vertical-align: middle;
+}
+
+.bookings-table tbody tr {
+  transition: background 0.15s ease;
+}
+
+.bookings-table tbody tr:hover {
+  background: #f8fafc;
+}
+
+.bookings-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* =========================================
+   BOOKING / CUSTOMER
+========================================= */
+
+.booking-id {
+  color: #2563eb;
+  font-weight: 700;
+}
+
+.customer-name {
+  color: #0f172a;
+  font-weight: 600;
+}
+
+.service-name {
+  color: #475569;
+  font-weight: 500;
+}
+
+/* =========================================
+   WEIGHT
+========================================= */
+
+.weight-display {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 105px;
+}
+
+.weight-value {
+  color: #0f172a;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.edit-weight-btn {
+  padding: 4px 7px;
+  border: 0;
+  border-radius: 5px;
+  background: #eff6ff;
+  color: #2563eb;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.edit-weight-btn:hover {
+  background: #dbeafe;
+}
+
+/* =========================================
+   WEIGHT EDITOR
+========================================= */
+
+.weight-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 130px;
+}
+
+.weight-field {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.weight-input {
+  width: 65px;
+  height: 32px;
+  box-sizing: border-box;
+  padding: 0 8px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  outline: none;
+  color: #0f172a;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.weight-input:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+}
+
+.weight-field span {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.weight-buttons {
+  display: flex;
+  gap: 5px;
+}
+
+.save-weight-btn,
+.cancel-weight-btn {
+  border: 0;
+  border-radius: 5px;
+  padding: 5px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.save-weight-btn {
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.save-weight-btn:hover {
+  background: #1d4ed8;
+}
+
+.cancel-weight-btn {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.cancel-weight-btn:hover {
+  background: #e2e8f0;
+}
+
+/* =========================================
+   GCASH REFERENCE
+========================================= */
+
+.gcash-reference {
+  display: inline-block;
+  padding: 6px 9px;
+  border-radius: 6px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-family: "Courier New", monospace;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.no-reference {
+  color: #94a3b8;
+  font-size: 12px;
+  font-style: italic;
+  white-space: nowrap;
+}
+
+/* =========================================
+   PICKUP LOCATION
+========================================= */
+
+.pickup-location {
+  width: 180px;
+  color: #475569;
+  line-height: 1.45;
+  white-space: normal;
+}
+
+/* =========================================
+   STATUS
+========================================= */
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 75px;
+  max-width: 160px;
+  padding: 6px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.3;
+  text-align: center;
+}
+
+/* Pending */
+.status.pending {
+  background: #fff7ed;
+  color: #c2410c;
+}
+
+/* Accepted */
+.status.accepted {
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+/* Ready for Pickup */
+.status.ready-for-pickup {
+  background: #fefce8;
+  color: #a16207;
+}
+
+/* Picked Up */
+.status.picked-up {
+  background: #f5f3ff;
+  color: #7c3aed;
+}
+
+/* Washing */
+.status.washing {
+  background: #ecfeff;
+  color: #0891b2;
+}
+
+/* Drying */
+.status.drying {
+  background: #fff7ed;
+  color: #ea580c;
+}
+
+/* Folding */
+.status.folding {
+  background: #fdf4ff;
+  color: #a21caf;
+}
+
+/* Ready for Customer Pickup */
+.status.ready-for-customer-pickup {
+  background: #f0fdf4;
+  color: #15803d;
+}
+
+/* Completed */
+.status.completed {
+  background: #dcfce7;
+  color: #166534;
+}
+
+/* =========================================
+   UPDATE STATUS BUTTON
+========================================= */
+
+.update-status-btn {
+  min-width: 115px;
+  padding: 8px 11px;
+  border: 0;
+  border-radius: 7px;
+  background: #2563eb;
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.update-status-btn:hover:not(:disabled) {
+  background: #1d4ed8;
+  transform: translateY(-1px);
+}
+
+.update-status-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.update-status-btn:disabled {
+  background: #dcfce7;
+  color: #15803d;
+  cursor: not-allowed;
+}
+
+/* =========================================
+   EMPTY STATE
+========================================= */
+
+.empty-state {
+  height: 220px;
+  text-align: center !important;
+}
+
+.empty-state div,
+.empty-state strong,
+.empty-state span {
+  display: block;
+}
+
+.empty-icon {
+  margin-bottom: 10px;
+  font-size: 30px;
+}
+
+.empty-state strong {
+  margin-bottom: 5px;
+  color: #334155;
+  font-size: 14px;
+}
+
+.empty-state span {
+  color: #94a3b8;
+  font-size: 13px;
+}
+
+/* =========================================
+   TABLET
+========================================= */
+
+@media (max-width: 900px) {
+  .staff-bookings {
+    padding: 20px;
+  }
+
+  .section-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .filters {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .filter-select,
+  .search-wrapper {
+    width: 100%;
+  }
+}
+
+/* =========================================
+   MOBILE
+========================================= */
+
+@media (max-width: 600px) {
+  .staff-bookings {
+    padding: 15px;
+  }
+
+  .section-header h1 {
+    font-size: 23px;
+  }
+
+  .section-header p {
+    font-size: 13px;
+  }
+
+  .booking-count {
+    font-size: 12px;
+  }
+
+  .filters {
+    gap: 8px;
+    margin-bottom: 15px;
+  }
+
+  .filter-select,
+  .filter-input {
+    height: 40px;
+  }
+
+  .table-container {
+    border-radius: 9px;
+  }
+
+  .bookings-table {
+    min-width: 1200px;
+  }
+
+  .bookings-table th {
+    padding: 12px;
+  }
+
+  .bookings-table td {
+    padding: 13px 12px;
+  }
+}
+/* ========================================= CUSTOMER DISPLAY ========================================= */ .customer-display { min-width: 180px; display: flex; align-items: center; justify-content: space-between; gap: 10px; } .customer-info { display: flex; align-items: center; gap: 10px; min-width: 0; } .customer-avatar { width: 36px; height: 36px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: #eff6ff; color: #2563eb; font-size: 13px; font-weight: 700; } .customer-details { min-width: 0; } .customer-name { color: #1e293b; font-size: 14px; font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } /* ========================================= EDIT CUSTOMER BUTTON ========================================= */ .edit-customer-btn { flex-shrink: 0; padding: 5px 9px; border: 1px solid #dbeafe; border-radius: 7px; background: #eff6ff; color: #2563eb; font-size: 11px; font-weight: 650; cursor: pointer; transition: all 0.2s ease; } .edit-customer-btn:hover { background: #dbeafe; border-color: #bfdbfe; } /* ========================================= CUSTOMER EDITOR ========================================= */ .customer-editor { min-width: 190px; display: flex; flex-direction: column; gap: 8px; } .customer-name-input { width: 100%; min-width: 0; height: 38px; padding: 0 10px; border: 1px solid #93c5fd; border-radius: 8px; outline: none; background: #ffffff; color: #0f172a; font-size: 13px; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.08); transition: all 0.2s ease; } .customer-name-input:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12); } .customer-name-input::placeholder { color: #94a3b8; } /* ========================================= CUSTOMER EDIT BUTTONS ========================================= */ .customer-buttons { display: flex; align-items: center; gap: 6px; } .save-customer-btn, .cancel-customer-btn { min-height: 29px; padding: 5px 10px; border-radius: 7px; font-size: 11px; font-weight: 650; cursor: pointer; transition: all 0.2s ease; } .save-customer-btn { border: 1px solid #2563eb; background: #2563eb; color: white; } .save-customer-btn:hover { background: #1d4ed8; border-color: #1d4ed8; } .cancel-customer-btn { border: 1px solid #e2e8f0; background: #f8fafc; color: #64748b; } .cancel-customer-btn:hover { background: #f1f5f9; color: #334155; } /* ========================================= RESPONSIVE CUSTOMER COLUMN ========================================= */ @media (max-width: 900px) { .customer-display { min-width: 160px; } .customer-editor { min-width: 160px; } .customer-avatar { width: 32px; height: 32px; } .customer-name { font-size: 13px; } } @media (max-width: 600px) { .customer-display { min-width: 150px; } .customer-editor { min-width: 150px; } .customer-display { align-items: flex-start; flex-direction: column; } .edit-customer-btn { margin-left: 46px; } }
+/* =========================================
+   SMALL MOBILE
+========================================= */
+
+@media (max-width: 400px) {
+  .staff-bookings {
+    padding: 12px;
+  }
+
+  .section-header h1 {
+    font-size: 21px;
+  }
+
+  .section-header p {
+    font-size: 12px;
+  }
+}

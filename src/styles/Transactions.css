@@ -1,0 +1,368 @@
+/* ========================================================= LAUNDRYMATE - TRANSACTIONS ========================================================= */
+.transactions-page {
+  min-height: 100vh;
+  padding: 32px;
+  background: #f5f7fb;
+  color: #172033;
+  font-family:
+    Inter,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+} /* ========================================================= HEADER ========================================================= */
+.transactions-header {
+  max-width: 1400px;
+  margin: 0 auto 28px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+}
+.page-label,
+.card-label {
+  display: block;
+  margin-bottom: 7px;
+  color: #2563eb;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.transactions-header h1 {
+  margin: 0;
+  color: #111827;
+  font-size: 34px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+.transactions-header p {
+  margin: 8px 0 0;
+  color: #64748b;
+  font-size: 14px;
+}
+.transaction-total-count {
+  min-width: 110px;
+  padding: 14px 18px;
+  border: 1px solid #dbeafe;
+  border-radius: 13px;
+  background: #eff6ff;
+  text-align: center;
+}
+.transaction-total-count span {
+  display: block;
+  margin-bottom: 3px;
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 700;
+}
+.transaction-total-count strong {
+  color: #2563eb;
+  font-size: 22px;
+  font-weight: 900;
+} /* ========================================================= STATISTICS ========================================================= */
+.transaction-stat-grid {
+  max-width: 1400px;
+  margin: 0 auto 25px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+}
+.transaction-stat-card {
+  min-height: 105px;
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  background: white;
+  box-shadow: 0 5px 20px rgba(15, 23, 42, 0.04);
+  transition: 0.2s ease;
+}
+.transaction-stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px rgba(15, 23, 42, 0.07);
+}
+.transaction-stat-icon {
+  width: 46px;
+  height: 46px;
+  flex: 0 0 46px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 13px;
+  background: #eff6ff;
+  color: #2563eb;
+  font-size: 21px;
+  font-weight: 900;
+}
+.transaction-stat-icon.paid {
+  background: #f0fdf4;
+  color: #16a34a;
+}
+.transaction-stat-icon.pending {
+  background: #fff7ed;
+  color: #ea580c;
+}
+.transaction-stat-card span {
+  display: block;
+  margin-bottom: 5px;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 700;
+}
+.transaction-stat-card strong {
+  color: #111827;
+  font-size: 20px;
+  font-weight: 900;
+} /* ========================================================= TRANSACTION CARD ========================================================= */
+.transactions-card {
+  max-width: 1400px;
+  margin: 0 auto;
+  overflow: hidden;
+  border: 1px solid #e5e7eb;
+  border-radius: 18px;
+  background: white;
+  box-shadow: 0 6px 25px rgba(15, 23, 42, 0.045);
+}
+.transactions-card-header {
+  padding: 22px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  border-bottom: 1px solid #edf0f4;
+}
+.transactions-card-header h2 {
+  margin: 0;
+  color: #111827;
+  font-size: 20px;
+  font-weight: 800;
+}
+.transactions-card-header p {
+  margin: 5px 0 0;
+  color: #64748b;
+  font-size: 12px;
+}
+.transaction-count {
+  padding: 7px 11px;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #2563eb;
+  font-size: 10px;
+  font-weight: 800;
+  white-space: nowrap;
+} /* ========================================================= TABLE ========================================================= */
+.transactions-table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+}
+.transactions-table {
+  width: 100%;
+  min-width: 1000px;
+  border-collapse: collapse;
+}
+.transactions-table th {
+  padding: 14px 17px;
+  border-bottom: 1px solid #e5e7eb;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 800;
+  text-align: left;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+.transactions-table td {
+  padding: 16px 17px;
+  border-bottom: 1px solid #f1f5f9;
+  color: #475569;
+  font-size: 12px;
+  vertical-align: middle;
+}
+.transactions-table tbody tr {
+  transition: background 0.2s ease;
+}
+.transactions-table tbody tr:hover {
+  background: #f8fbff;
+}
+.transactions-table tbody tr:last-child td {
+  border-bottom: none;
+} /* ========================================================= TRANSACTION ID ========================================================= */
+.transaction-id strong {
+  display: block;
+  color: #1e293b;
+  font-size: 12px;
+  font-weight: 800;
+}
+.transaction-id small {
+  display: block;
+  margin-top: 4px;
+  color: #94a3b8;
+  font-size: 10px;
+} /* ========================================================= BOOKING ID ========================================================= */
+.transaction-booking-id {
+  padding: 5px 8px;
+  display: inline-block;
+  border-radius: 7px;
+  background: #f1f5f9;
+  color: #475569;
+  font-size: 10px;
+  font-weight: 700;
+} /* ========================================================= SERVICE ========================================================= */
+.transaction-service {
+  display: block;
+  max-width: 180px;
+  color: #475569;
+  line-height: 1.5;
+} /* ========================================================= DATE ========================================================= */
+.transaction-date {
+  color: #64748b;
+  white-space: nowrap;
+} /* ========================================================= AMOUNT ========================================================= */
+.transaction-amount {
+  color: #111827;
+  font-size: 13px;
+  font-weight: 900;
+  white-space: nowrap;
+} /* ========================================================= PAYMENT METHOD ========================================================= */
+.transaction-method {
+  padding: 6px 10px;
+  display: inline-block;
+  border-radius: 7px;
+  background: #f1f5f9;
+  color: #475569;
+  font-size: 10px;
+  font-weight: 800;
+}
+.transaction-method.gcash {
+  background: #eff6ff;
+  color: #2563eb;
+}
+.transaction-method.cash {
+  background: #f0fdf4;
+  color: #15803d;
+} /* ========================================================= STATUS ========================================================= */
+.transaction-status {
+  padding: 6px 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: capitalize;
+  white-space: nowrap;
+}
+.transaction-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.transaction-status.pending {
+  background: #fff7ed;
+  color: #c2410c;
+}
+.transaction-status.paid {
+  background: #f0fdf4;
+  color: #15803d;
+}
+.transaction-status.failed {
+  background: #fef2f2;
+  color: #dc2626;
+} /* ========================================================= EMPTY ========================================================= */
+.transactions-empty {
+  padding: 65px 25px;
+  text-align: center;
+}
+.empty-transaction-icon {
+  width: 62px;
+  height: 62px;
+  margin: 0 auto 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 17px;
+  background: #eff6ff;
+  font-size: 27px;
+}
+.transactions-empty h3 {
+  margin: 0;
+  color: #334155;
+  font-size: 17px;
+  font-weight: 800;
+}
+.transactions-empty p {
+  max-width: 420px;
+  margin: 7px auto 0;
+  color: #94a3b8;
+  font-size: 12px;
+  line-height: 1.6;
+} /* ========================================================= LOADING ========================================================= */
+.transactions-loading {
+  min-height: 300px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.transaction-spinner {
+  width: 30px;
+  height: 30px;
+  border: 3px solid #dbeafe;
+  border-top-color: #2563eb;
+  border-radius: 50%;
+  animation: transactionSpin 0.7s linear infinite;
+}
+.transactions-loading p {
+  margin-top: 12px;
+  color: #64748b;
+  font-size: 13px;
+}
+@keyframes transactionSpin {
+  to {
+    transform: rotate(360deg);
+  }
+} /* ========================================================= MOBILE ========================================================= */
+@media (max-width: 800px) {
+  .transactions-page {
+    padding: 20px 14px;
+  }
+  .transactions-header {
+    align-items: flex-start;
+  }
+  .transactions-header h1 {
+    font-size: 28px;
+  }
+  .transaction-total-count {
+    display: none;
+  }
+  .transaction-stat-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .transaction-stat-card {
+    min-height: 82px;
+  }
+  .transactions-card-header {
+    padding: 18px;
+    align-items: flex-start;
+  }
+}
+@media (max-width: 480px) {
+  .transactions-page {
+    padding: 16px 10px;
+  }
+  .transactions-header h1 {
+    font-size: 25px;
+  }
+  .transactions-card-header {
+    flex-direction: column;
+  }
+  .transaction-count {
+    align-self: flex-start;
+  }
+}

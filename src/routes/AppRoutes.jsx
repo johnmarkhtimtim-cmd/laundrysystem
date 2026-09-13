@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Login from "../pages/Login";
+import Registration from "../pages/Registration";
 import AdminPortalLayout from "../layouts/AdminLayout";
 import RoleRoute from "./RoleRoute";
 import AdminDashboard from "../pages/Admin/AdminDashboard";
@@ -18,6 +19,7 @@ import CustomerDashboard from "../pages/Customer/CustomerDashboard";
 import BookNow from "../pages/Customer/BookNow";
 import MyBookings from "../pages/Customer/MyBookings";
 import Payments from "../pages/Customer/Payments";
+import Transactions from "../pages/Customer/Transactions";
 import Notification from "../pages/Customer/Notifications";
 import Profile from "../pages/Customer/Profile";
 import StaffLayout from "../layouts/StaffLayout";
@@ -27,7 +29,6 @@ import StaffBookings from "../pages/Staff/Bookings";
 import StaffTasks from "../pages/Staff/Tasks";
 import StaffReports from "../pages/Staff/Reports";
 import PickupManagement from "../pages/Staff/PickupManagement";
-import LaundryProcessing from "../pages/Staff/LaundryProcessing";
 import StaffPayments from "../pages/Staff/Payments";
 import StaffNotifications from "../pages/Staff/Notifications";
 import StaffProfile from "../pages/Staff/Profile";
@@ -36,6 +37,7 @@ function AppRoutes() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Login />} />
+        <Route path="/register" element={<Registration />} />
         <Route
           path="/admin"
           element={
@@ -67,6 +69,7 @@ function AppRoutes() {
           <Route index element={<CustomerDashboard />} />
           <Route path="booknow" element={<BookNow />} />
           <Route path="mybookings" element={<MyBookings />} />
+          <Route path="transactions" element={<Transactions />} />
           <Route path="payments" element={<Payments />} />
           <Route path="notification" element={<Notification />} />
           <Route path="profile" element={<Profile />} />
@@ -81,7 +84,6 @@ function AppRoutes() {
         >
           <Route index element={<StaffDashboard />} />
           <Route path="bookings" element={<StaffBookings />} />
-          <Route path="laundry-processing" element={<LaundryProcessing />} />
           <Route path="pickup-management" element={<PickupManagement />} />
           <Route path="payments" element={<StaffPayments />} />
           <Route path="notifications" element={<StaffNotifications />} />

@@ -1,1074 +1,1294 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useAuth } from "../../context/AuthContext";
 import "../../styles/Payments.css";
 
+const DEFAULT_GCASH_NAME = "Prince-Tyler Laundry Shop";
+const DEFAULT_GCASH_NUMBER = "";
+const DEFAULT_GCASH_QR = "/images/gcash-qr.png";
+
+const SERVICES = [
+  {
+    name: "Wash & Fold",
+    price: 80,
+  },
+  {
+    name: "Dry Cleaning",
+    price: 150,
+  },
+  {
+    name: "Ironing",
+    price: 60,
+  },
+  {
+    name: "Bedding Care",
+    price: 200,
+  },
+];
+
 function Payment() {
-  const [paymentMethod, setPaymentMethod] = useState("GCash");
+  const { user } = useAuth();
+
+  // =========================================================
+  // STATE
+  // =========================================================
+
   const [booking, setBooking] = useState(null);
   const [payments, setPayments] = useState([]);
-  const [referenceNumber, setReferenceNumber] = useState("");
 
-  const [showPaymentSummary, setShowPaymentSummary] = useState(false);
-  const [submittedReference, setSubmittedReference] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState("GCash");
 
-  // =====================================
-  // DEFAULT GCASH INFORMATION
-  // =====================================
+  // CUSTOMER GCASH NAME
+  const [gcashCustomerName, setGcashCustomerName] =
+    useState("");
 
-  const DEFAULT_GCASH_NUMBER = "0912 345 6789";
-  const DEFAULT_GCASH_NAME = "Prince-Tyler Laundry Shop";
-  const DEFAULT_GCASH_QR = "/images/gcash-qr.png";
+  // GCASH REFERENCE
+  const [referenceNumber, setReferenceNumber] =
+    useState("");
 
-  const [gcashSettings, setGcashSettings] = useState({
-    name: DEFAULT_GCASH_NAME,
-    number: DEFAULT_GCASH_NUMBER,
-    qr: DEFAULT_GCASH_QR,
-  });
+  // SHOP GCASH SETTINGS
+  const [gcashName, setGcashName] =
+    useState(DEFAULT_GCASH_NAME);
 
-  // =====================================
-  // SERVICE PRICES
-  // =====================================
+  const [gcashNumber, setGcashNumber] =
+    useState(DEFAULT_GCASH_NUMBER);
 
-  const servicePrices = {
-    "Wash & Fold": 80,
-    "Dry Cleaning": 150,
-    Ironing: 60,
-    "Bedding Care": 200,
-  };
+  const [gcashQr, setGcashQr] =
+    useState(DEFAULT_GCASH_QR);
 
-  // =====================================
-  // FORMAT CURRENCY
-  // =====================================
+  const [isSubmitting, setIsSubmitting] =
+    useState(false);
 
-  const formatCurrency = (amount) => {
-    return Number(amount || 0).toLocaleString("en-PH", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    });
-  };
+  const [showPaymentSummary, setShowPaymentSummary] =
+    useState(false);
 
-  // =====================================
-  // LOAD PAYMENT SETTINGS
-  // =====================================
+  const [submittedPayment, setSubmittedPayment] =
+    useState(null);
 
-  const loadGcashSettings = () => {
-    try {
-      const savedSettings = JSON.parse(
-        localStorage.getItem("laundrymatePaymentSettings") || "null"
-      );
+  const [editingPayment, setEditingPayment] =
+    useState(null);
 
-      if (savedSettings) {
-        setGcashSettings({
-          name: savedSettings.gcashName || DEFAULT_GCASH_NAME,
-          number: savedSettings.gcashNumber || DEFAULT_GCASH_NUMBER,
-          qr: savedSettings.gcashQr || DEFAULT_GCASH_QR,
-        });
-      } else {
-        setGcashSettings({
-          name: DEFAULT_GCASH_NAME,
-          number: DEFAULT_GCASH_NUMBER,
-          qr: DEFAULT_GCASH_QR,
-        });
-      }
-    } catch (error) {
-      console.error("Unable to load GCash settings:", error);
-    }
-  };
+  const [error, setError] = useState("");
 
-  // =====================================
-  // FORMAT PAYMENT HISTORY
-  // NEWEST TRANSACTION FIRST
-  // =====================================
+  const [successMessage, setSuccessMessage] =
+    useState("");
 
-  const formatPayments = (savedPayments) => {
-    return [...savedPayments]
-      .sort(
-        (a, b) =>
-          new Date(b.createdAt || 0) -
-          new Date(a.createdAt || 0)
-      )
-      .map((payment) => ({
-        id: payment.id || `PAY-${payment.bookingId}`,
-
-        booking: payment.bookingId || "—",
-
-        service:
-          payment.services?.length > 0
-            ? payment.services.join(", ")
-            : "Laundry Service",
-
-        date: payment.createdAt
-          ? new Date(payment.createdAt).toLocaleDateString(
-              "en-US",
-              {
-                month: "long",
-                day: "numeric",
-                year: "numeric",
-              }
-            )
-          : "—",
-
-        amount: Number(payment.totalAmount || 0),
-
-        method:
-          payment.paymentMethod === "Cash"
-            ? "Cash"
-            : "GCash",
-
-        status:
-          payment.paymentStatus === "Paid"
-            ? "Paid"
-            : "Pending",
-
-        referenceNumber:
-          payment.referenceNumber || "",
-
-        createdAt: payment.createdAt || null,
-      }));
-  };
-
-  // =====================================
-  // LOAD BOOKINGS + PAYMENTS
-  // =====================================
+  // =========================================================
+  // LOAD DATA
+  // =========================================================
 
   useEffect(() => {
-    const loadPaymentData = () => {
-      try {
-        const savedBookings = JSON.parse(
-          localStorage.getItem("laundrymateBookings") || "[]"
-        );
-
-        const savedPayments = JSON.parse(
-          localStorage.getItem("laundrymatePayments") || "[]"
-        );
-
-        if (savedBookings.length > 0) {
-          const latestBooking =
-            savedBookings[savedBookings.length - 1];
-
-          setBooking(latestBooking);
-        } else {
-          setBooking(null);
-        }
-
-        setPayments(formatPayments(savedPayments));
-      } catch (error) {
-        console.error("Unable to load payment data:", error);
-      }
-    };
-
-    loadPaymentData();
-    loadGcashSettings();
-
-    window.addEventListener("storage", loadPaymentData);
-    window.addEventListener("storage", loadGcashSettings);
+    loadData();
 
     window.addEventListener(
       "laundrymatePaymentUpdated",
-      loadPaymentData
+      loadData
     );
 
     window.addEventListener(
       "laundrymatePaymentSettingsUpdated",
-      loadGcashSettings
+      loadData
+    );
+
+    window.addEventListener(
+      "laundrymateBookingUpdated",
+      loadData
     );
 
     return () => {
-      window.removeEventListener("storage", loadPaymentData);
-      window.removeEventListener("storage", loadGcashSettings);
-
       window.removeEventListener(
         "laundrymatePaymentUpdated",
-        loadPaymentData
+        loadData
       );
 
       window.removeEventListener(
         "laundrymatePaymentSettingsUpdated",
-        loadGcashSettings
+        loadData
+      );
+
+      window.removeEventListener(
+        "laundrymateBookingUpdated",
+        loadData
       );
     };
-  }, []);
+  }, [user]);
 
-  // =====================================
-  // PAYMENT STATISTICS
-  // =====================================
+  // =========================================================
+  // LOAD LOCAL STORAGE DATA
+  // =========================================================
 
-  const totalSpent = payments.reduce(
-    (total, payment) =>
-      total + Number(payment.amount || 0),
-    0
-  );
-
-  const paidAmount = payments
-    .filter((payment) => payment.status === "Paid")
-    .reduce(
-      (total, payment) =>
-        total + Number(payment.amount || 0),
-      0
-    );
-
-  const pendingAmount = payments
-    .filter((payment) => payment.status === "Pending")
-    .reduce(
-      (total, payment) =>
-        total + Number(payment.amount || 0),
-      0
-    );
-
-  // =====================================
-  // MOST RECENT TRANSACTION
-  // =====================================
-
-  const recentPayment =
-    payments.length > 0
-      ? payments[0]
-      : null;
-
-  // =====================================
-  // CURRENT BOOKING
-  // =====================================
-
-  const bookingTotal = Number(
-    booking?.estimatedTotal || 0
-  );
-
-  const laundrySubtotal = Number(
-    booking?.laundrySubtotal || 0
-  );
-
-  const deliveryFee = Number(
-    booking?.deliveryFee || 0
-  );
-
-  const services = booking?.services || [];
-
-  const numericWeight = Number(
-    booking?.weight || 0
-  );
-
-  const minimumServicePrice = services.reduce(
-    (total, serviceName) =>
-      total + (servicePrices[serviceName] || 0),
-    0
-  );
-
-  const displayedLaundryTotal =
-    numericWeight > 0
-      ? laundrySubtotal
-      : minimumServicePrice;
-
-  // =====================================
-  // SAVE PAYMENT
-  // =====================================
-
-  const savePayment = ({
-    method,
-    status,
-    reference = "",
-  }) => {
-    if (!booking) {
-      return null;
-    }
-
+  const loadData = () => {
     try {
-      const existingPayments = JSON.parse(
-        localStorage.getItem("laundrymatePayments") || "[]"
+      // =====================================================
+      // BOOKINGS
+      // =====================================================
+
+      const storedBookings = JSON.parse(
+        localStorage.getItem(
+          "laundrymateBookings"
+        ) || "[]"
       );
 
-      const newPayment = {
-        id: `PAY-${Date.now()}`,
-        bookingId: booking.id,
-        services: booking.services || [],
-        totalAmount: bookingTotal,
-        paymentMethod: method,
-        paymentStatus: status,
-        referenceNumber: reference,
-        createdAt: new Date().toISOString(),
-      };
+      let userBookings = storedBookings;
 
-      const updatedPayments = [
-        ...existingPayments,
-        newPayment,
-      ];
+      if (user?.uid) {
+        userBookings = storedBookings.filter(
+          (item) =>
+            !item.userId ||
+            item.userId === user.uid
+        );
+      }
 
-      localStorage.setItem(
-        "laundrymatePayments",
-        JSON.stringify(updatedPayments)
+      if (userBookings.length > 0) {
+        const sortedBookings = [...userBookings].sort(
+          (a, b) =>
+            new Date(
+              b.createdAt || b.date || 0
+            ) -
+            new Date(
+              a.createdAt || a.date || 0
+            )
+        );
+
+        setBooking(sortedBookings[0]);
+      } else {
+        setBooking(null);
+      }
+
+      // =====================================================
+      // PAYMENTS
+      // =====================================================
+
+      const storedPayments = JSON.parse(
+        localStorage.getItem(
+          "laundrymatePayments"
+        ) || "[]"
       );
 
-      setPayments(formatPayments(updatedPayments));
+      let userPayments = storedPayments;
 
-      window.dispatchEvent(
-        new Event("laundrymatePaymentUpdated")
+      if (user?.uid) {
+        userPayments = storedPayments.filter(
+          (item) =>
+            !item.userId ||
+            item.userId === user.uid
+        );
+      }
+
+      const sortedPayments = [...userPayments].sort(
+        (a, b) =>
+          new Date(
+            b.createdAt || 0
+          ) -
+          new Date(
+            a.createdAt || 0
+          )
       );
 
-      return newPayment;
+      setPayments(sortedPayments);
+
+      // =====================================================
+      // PAYMENT SETTINGS
+      // =====================================================
+
+      const settings = JSON.parse(
+        localStorage.getItem(
+          "laundrymatePaymentSettings"
+        ) || "{}"
+      );
+
+      setGcashName(
+        settings.gcashName ||
+          DEFAULT_GCASH_NAME
+      );
+
+      setGcashNumber(
+        settings.gcashNumber ||
+          DEFAULT_GCASH_NUMBER
+      );
+
+      setGcashQr(
+        settings.gcashQr ||
+          DEFAULT_GCASH_QR
+      );
     } catch (error) {
-      console.error("Unable to save payment:", error);
-      alert("Unable to save payment. Please try again.");
-      return null;
+      console.error(
+        "Failed to load payment data:",
+        error
+      );
     }
   };
 
-  // =====================================
-  // PAYMENT HANDLER
-  // =====================================
+  // =========================================================
+  // GET SERVICE PRICE
+  // =========================================================
 
-  const handlePayment = (e) => {
-    e.preventDefault();
+  const getServicePrice = (serviceName) => {
+    const service = SERVICES.find(
+      (item) =>
+        item.name.toLowerCase() ===
+        String(serviceName)
+          .toLowerCase()
+          .trim()
+    );
 
-    if (isSubmitting) {
-      return;
+    return service ? service.price : 0;
+  };
+
+  // =========================================================
+  // GET BOOKING SERVICES
+  // =========================================================
+
+  const bookingServices = useMemo(() => {
+    if (!booking) return [];
+
+    if (Array.isArray(booking.services)) {
+      return booking.services;
     }
 
+    if (booking.services) {
+      return String(booking.services)
+        .split(",")
+        .map((service) => service.trim())
+        .filter(Boolean);
+    }
+
+    if (booking.service) {
+      return String(booking.service)
+        .split(",")
+        .map((service) => service.trim())
+        .filter(Boolean);
+    }
+
+    return [];
+  }, [booking]);
+
+  // =========================================================
+  // CALCULATE LAUNDRY SUBTOTAL
+  // =========================================================
+
+  const laundrySubtotal = useMemo(() => {
+    if (!booking) return 0;
+
+    // Current Book Now does not require weight.
+    // If a future booking contains weight, support it.
+    const weight = Number(
+      booking.weight || 0
+    );
+
+    if (
+      weight > 0 &&
+      bookingServices.length > 0
+    ) {
+      return bookingServices.reduce(
+        (total, service) =>
+          total +
+          getServicePrice(service) *
+            weight,
+        0
+      );
+    }
+
+    return bookingServices.reduce(
+      (total, service) =>
+        total +
+        getServicePrice(service),
+      0
+    );
+  }, [booking, bookingServices]);
+
+  // =========================================================
+  // PICKUP FEE
+  // =========================================================
+
+  const pickupFee = useMemo(() => {
+    if (!booking) return 0;
+
+    const pickupType =
+      booking.pickupType ||
+      booking.pickupOption ||
+      booking.deliveryType ||
+      booking.pickup ||
+      "Pickup & Delivery";
+
+    if (
+      String(pickupType)
+        .toLowerCase()
+        .includes("pickup only")
+    ) {
+      return 20;
+    }
+
+    return 30;
+  }, [booking]);
+
+  // =========================================================
+  // TOTAL
+  // =========================================================
+
+  const calculatedTotal = useMemo(() => {
+    if (!booking) return 0;
+
+    const savedTotal = Number(
+      booking.total_amount ??
+        booking.totalAmount ??
+        booking.estimatedTotal ??
+        0
+    );
+
+    if (savedTotal > 0) {
+      return savedTotal;
+    }
+
+    return laundrySubtotal + pickupFee;
+  }, [
+    booking,
+    laundrySubtotal,
+    pickupFee,
+  ]);
+
+  // =========================================================
+  // FORMAT CURRENCY
+  // =========================================================
+
+  const formatCurrency = (amount) => {
+    return `₱${Number(
+      amount || 0
+    ).toLocaleString("en-PH", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`;
+  };
+
+  // =========================================================
+  // FORMAT DATE
+  // =========================================================
+
+  const formatDate = (date) => {
+    if (!date) return "—";
+
+    const parsed = new Date(date);
+
+    if (Number.isNaN(parsed.getTime())) {
+      return date;
+    }
+
+    return parsed.toLocaleDateString(
+      "en-PH",
+      {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      }
+    );
+  };
+
+  // =========================================================
+  // BOOKING SCHEDULE
+  // =========================================================
+
+  const getBookingSchedule = () => {
+    if (!booking) return "—";
+
+    // New Book Now format
+    if (
+      booking.schedule &&
+      booking.time
+    ) {
+      return `${formatDate(
+        booking.schedule
+      )} • ${booking.time}`;
+    }
+
+    return (
+      booking.pickup_date ||
+      booking.pickupDate ||
+      booking.schedule ||
+      booking.date ||
+      "—"
+    );
+  };
+
+  // =========================================================
+  // ADDRESS
+  // =========================================================
+
+  const getAddress = () => {
+    if (!booking) return "—";
+
+    return (
+      booking.address ||
+      booking.pickupAddress ||
+      booking.laundryAddress ||
+      "—"
+    );
+  };
+
+  // =========================================================
+  // BARANGAY
+  // =========================================================
+
+  const getBarangay = () => {
+    if (!booking) return "—";
+
+    return (
+      booking.barangay ||
+      booking.addressBarangay ||
+      "—"
+    );
+  };
+
+  // =========================================================
+  // CITY
+  // =========================================================
+
+  const getCity = () => {
+    if (!booking) return "—";
+
+    return (
+      booking.city ||
+      booking.addressCity ||
+      "—"
+    );
+  };
+
+  // =========================================================
+  // PROVINCE
+  // =========================================================
+
+  const getProvince = () => {
+    if (!booking) return "—";
+
+    return (
+      booking.province ||
+      booking.addressProvince ||
+      "—"
+    );
+  };
+
+  // =========================================================
+  // LANDMARK
+  // =========================================================
+
+  const getLandmark = () => {
+    if (!booking) return "—";
+
+    return (
+      booking.landmark ||
+      "—"
+    );
+  };
+
+  // =========================================================
+  // PAYMENT STATISTICS
+  // =========================================================
+
+  const totalPayments = payments.reduce(
+    (total, payment) =>
+      total +
+      Number(
+        payment.totalAmount ??
+          payment.amount ??
+          0
+      ),
+    0
+  );
+
+  const paidPayments = payments
+    .filter(
+      (payment) =>
+        String(
+          payment.paymentStatus ||
+            payment.status ||
+            ""
+        ).toLowerCase() === "paid"
+    )
+    .reduce(
+      (total, payment) =>
+        total +
+        Number(
+          payment.totalAmount ??
+            payment.amount ??
+            0
+        ),
+      0
+    );
+
+  const pendingPayments = payments
+    .filter(
+      (payment) =>
+        String(
+          payment.paymentStatus ||
+            payment.status ||
+            ""
+        ).toLowerCase() === "pending"
+    )
+    .reduce(
+      (total, payment) =>
+        total +
+        Number(
+          payment.totalAmount ??
+            payment.amount ??
+            0
+        ),
+      0
+    );
+
+  // =========================================================
+  // PAYMENT METHOD
+  // =========================================================
+
+  const handlePaymentMethodChange = (
+    method
+  ) => {
+    setPaymentMethod(method);
+    setError("");
+  };
+
+  // =========================================================
+  // GCASH CUSTOMER NAME
+  // =========================================================
+
+  const handleGcashCustomerNameChange = (
+    event
+  ) => {
+    setGcashCustomerName(
+      event.target.value
+    );
+
+    if (error) {
+      setError("");
+    }
+  };
+
+  // =========================================================
+  // GCASH REFERENCE
+  // =========================================================
+
+  const handleReferenceChange = (
+    event
+  ) => {
+    setReferenceNumber(
+      event.target.value
+    );
+
+    if (error) {
+      setError("");
+    }
+  };
+
+  // =========================================================
+  // CONFIRM PAYMENT
+  // =========================================================
+
+  const handleConfirmPayment = () => {
     if (!booking) {
-      alert("Please confirm a booking first.");
+      setError(
+        "You do not have a booking to pay."
+      );
       return;
     }
 
-    const cleanReference =
-      paymentMethod === "GCash"
-        ? referenceNumber.trim()
-        : "";
+    if (isSubmitting) return;
 
-    // =====================================
+    const bookingId =
+      booking.bookingId ||
+      booking.id;
+
+    // =====================================================
+    // DUPLICATE PENDING PAYMENT
+    // =====================================================
+
+    const duplicatePayment =
+      payments.find(
+        (payment) =>
+          String(payment.bookingId) ===
+            String(bookingId) &&
+          String(
+            payment.paymentStatus ||
+              payment.status ||
+              ""
+          ).toLowerCase() ===
+            "pending"
+      );
+
+    if (
+      duplicatePayment &&
+      editingPayment?.id !==
+        duplicatePayment.id
+    ) {
+      setError(
+        "This booking already has a pending payment."
+      );
+      return;
+    }
+
+    // =====================================================
     // GCASH VALIDATION
-    // =====================================
+    // =====================================================
 
     if (paymentMethod === "GCash") {
+      const cleanName =
+        gcashCustomerName.trim();
+
+      const cleanReference =
+        referenceNumber.trim();
+
+      if (!cleanName) {
+        setError(
+          "Please enter your GCash account name."
+        );
+        return;
+      }
+
+      if (cleanName.length < 2) {
+        setError(
+          "Please enter a valid GCash account name."
+        );
+        return;
+      }
+
       if (!cleanReference) {
-        alert("Please enter your GCash reference number.");
+        setError(
+          "Please enter your GCash reference number."
+        );
         return;
       }
 
       if (cleanReference.length < 6) {
-        alert(
-          "Please enter a valid GCash reference number."
+        setError(
+          "GCash reference number must contain at least 6 characters."
         );
         return;
       }
     }
 
-    // =====================================
-    // CHECK DUPLICATE PENDING PAYMENT
-    // =====================================
-
-    try {
-      const existingPayments = JSON.parse(
-        localStorage.getItem("laundrymatePayments") || "[]"
-      );
-
-      const alreadySubmitted = existingPayments.some(
-        (payment) =>
-          payment.bookingId === booking.id &&
-          payment.paymentStatus === "Pending"
-      );
-
-      if (alreadySubmitted) {
-        alert(
-          "A payment for this booking has already been submitted and is pending verification."
-        );
-        return;
-      }
-    } catch (error) {
-      console.error("Payment validation error:", error);
-    }
+    // =====================================================
+    // START SUBMIT
+    // =====================================================
 
     setIsSubmitting(true);
+    setError("");
 
-    const newPayment = savePayment({
-      method: paymentMethod,
-      status: "Pending",
-      reference: cleanReference,
-    });
+    try {
+      const existingPayments =
+        JSON.parse(
+          localStorage.getItem(
+            "laundrymatePayments"
+          ) || "[]"
+        );
 
-    if (newPayment) {
-      setSubmittedReference(cleanReference);
-      setShowPaymentSummary(true);
+      const paymentId =
+        editingPayment?.id ||
+        `PAY-${Date.now()}`;
+
+      const paymentData = {
+        id: paymentId,
+
+        paymentId,
+
+        bookingId,
+
+        userId:
+          user?.uid ||
+          booking.userId ||
+          "",
+
+        customerId:
+          user?.uid ||
+          booking.userId ||
+          "",
+
+        customerName:
+          user?.displayName ||
+          booking.customerName ||
+          booking.name ||
+          "Customer",
+
+        // CUSTOMER GCASH NAME
+        gcashCustomerName:
+          paymentMethod === "GCash"
+            ? gcashCustomerName.trim()
+            : "",
+
+        services:
+          bookingServices.join(", "),
+
+        totalAmount:
+          calculatedTotal,
+
+        amount:
+          calculatedTotal,
+
+        paymentMethod,
+
+        paymentStatus: "Pending",
+
+        status: "Pending",
+
+        referenceNumber:
+          paymentMethod === "GCash"
+            ? referenceNumber.trim()
+            : "",
+
+        createdAt:
+          editingPayment?.createdAt ||
+          new Date().toISOString(),
+
+        updatedAt:
+          new Date().toISOString(),
+
+        booking: {
+          id: bookingId,
+
+          services:
+            bookingServices.join(", "),
+
+          pickup_date:
+            getBookingSchedule(),
+
+          pickupType:
+            booking.pickupType ||
+            booking.pickupOption ||
+            "Pickup & Delivery",
+
+          address:
+            getAddress(),
+
+          barangay:
+            getBarangay(),
+
+          city:
+            getCity(),
+
+          province:
+            getProvince(),
+
+          landmark:
+            getLandmark(),
+
+          totalAmount:
+            calculatedTotal,
+        },
+      };
+
+      // =====================================================
+      // REMOVE OLD PAYMENT WHEN EDITING
+      // =====================================================
+
+      let updatedPayments =
+        existingPayments.filter(
+          (payment) =>
+            payment.id !== paymentId
+        );
+
+      // =====================================================
+      // ADD PAYMENT
+      // =====================================================
+
+      updatedPayments.unshift(
+        paymentData
+      );
+
+      localStorage.setItem(
+        "laundrymatePayments",
+        JSON.stringify(
+          updatedPayments
+        )
+      );
+
+      // =====================================================
+      // UPDATE BOOKING
+      // =====================================================
+
+      const storedBookings =
+        JSON.parse(
+          localStorage.getItem(
+            "laundrymateBookings"
+          ) || "[]"
+        );
+
+      const updatedBookings =
+        storedBookings.map(
+          (item) => {
+            const itemId =
+              item.bookingId ||
+              item.id;
+
+            if (
+              String(itemId) !==
+              String(bookingId)
+            ) {
+              return item;
+            }
+
+            return {
+              ...item,
+
+              paymentMethod,
+
+              paymentStatus:
+                "Pending",
+
+              paymentReference:
+                paymentData.referenceNumber,
+
+              paymentId,
+
+              updatedAt:
+                new Date().toISOString(),
+            };
+          }
+        );
+
+      localStorage.setItem(
+        "laundrymateBookings",
+        JSON.stringify(
+          updatedBookings
+        )
+      );
+
+      // =====================================================
+      // UPDATE LATEST PAYMENT
+      // =====================================================
+
+      localStorage.setItem(
+        "laundrymatePayment",
+        JSON.stringify(
+          paymentData
+        )
+      );
+
+      // =====================================================
+      // UPDATE STATE
+      // =====================================================
+
+      const filteredPayments =
+        updatedPayments.filter(
+          (item) =>
+            !user?.uid ||
+            !item.userId ||
+            item.userId === user.uid
+        );
+
+      setPayments(
+        filteredPayments
+      );
+
+      setSubmittedPayment(
+        paymentData
+      );
+
+      setShowPaymentSummary(
+        true
+      );
+
       setReferenceNumber("");
-    }
 
-    setIsSubmitting(false);
+      setGcashCustomerName("");
+
+      setEditingPayment(null);
+
+      setSuccessMessage(
+        "Payment submitted successfully!"
+      );
+
+      // =====================================================
+      // EVENTS
+      // =====================================================
+
+      window.dispatchEvent(
+        new Event(
+          "laundrymatePaymentUpdated"
+        )
+      );
+
+      window.dispatchEvent(
+        new Event(
+          "laundrymateBookingUpdated"
+        )
+      );
+    } catch (error) {
+      console.error(
+        "Payment submission error:",
+        error
+      );
+
+      setError(
+        "Something went wrong while submitting your payment. Please try again."
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  // =====================================
-  // DONE BUTTON
-  // =====================================
+  // =========================================================
+  // CANCEL EDIT
+  // =========================================================
+
+  const handleCancelEdit = () => {
+    setEditingPayment(null);
+
+    setPaymentMethod("GCash");
+
+    setGcashCustomerName("");
+
+    setReferenceNumber("");
+
+    setError("");
+  };
+
+  // =========================================================
+  // DONE
+  // =========================================================
 
   const handleDone = () => {
     setShowPaymentSummary(false);
+
+    setSubmittedPayment(null);
+
+    setSuccessMessage("");
+
+    setPaymentMethod("GCash");
+
+    setGcashCustomerName("");
+
+    setReferenceNumber("");
+
+    setEditingPayment(null);
+
+    loadData();
+
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
   };
 
-  // =====================================
-  // QR ERROR HANDLER
-  // =====================================
-
-  const handleQrError = (e) => {
-    e.currentTarget.style.display = "none";
-
-    const fallback =
-      e.currentTarget.parentElement.querySelector(
-        ".qr-fallback"
-      );
-
-    if (fallback) {
-      fallback.style.display = "flex";
-    }
-  };
-
-  // =====================================
+  // =========================================================
   // NO BOOKING
-  // =====================================
+  // =========================================================
 
   if (!booking) {
     return (
-      <div className="payment-page">
+      <div className="payments-page">
 
-        <header className="payment-page-header">
+        <div className="payments-header">
           <div>
-            <span className="payment-eyebrow">
-              LAUNDRYMATE
+            <span className="page-label">
+              CUSTOMER PORTAL
             </span>
 
             <h1>Payments</h1>
 
             <p>
-              Manage your laundry payments securely
-              and conveniently.
+              Manage your laundry payments
+              in one place.
             </p>
           </div>
-
-          <div className="payment-header-icon">
-            ₱
-          </div>
-        </header>
+        </div>
 
         <div className="empty-payment-card">
 
           <div className="empty-payment-icon">
-            🧺
+            💳
           </div>
 
-          <h2>No Confirmed Booking</h2>
+          <h2>
+            No Confirmed Booking
+          </h2>
 
           <p>
-            Confirm a laundry booking first to view
-            your payment summary.
+            You need to create a booking
+            before making a payment.
           </p>
 
         </div>
+
       </div>
     );
   }
 
-  // =====================================
-  // RENDER
-  // =====================================
+  // =========================================================
+  // MAIN UI
+  // =========================================================
 
   return (
-    <div className="payment-page">
+    <div className="payments-page">
 
-      {/* =====================================
+      {/* =====================================================
           HEADER
-      ===================================== */}
+      ===================================================== */}
 
-      <header className="payment-page-header">
+      <div className="payments-header">
 
         <div>
-          <span className="payment-eyebrow">
-            LAUNDRYMATE
+
+          <span className="page-label">
+            CUSTOMER PORTAL
           </span>
 
-          <h1>Payments</h1>
+          <h1>
+            Payments
+          </h1>
 
           <p>
-            Complete your laundry payment securely.
+            Review your booking and
+            complete your payment.
           </p>
+
         </div>
 
-        <div className="payment-header-icon">
-          ₱
+      </div>
+
+      {/* =====================================================
+          SUCCESS ALERT
+      ===================================================== */}
+
+      {successMessage && (
+        <div className="payment-success-alert">
+
+          <span>✓</span>
+
+          <div>
+            <strong>
+              {successMessage}
+            </strong>
+
+            <p>
+              Your payment is now pending
+              verification by the laundry
+              staff.
+            </p>
+          </div>
+
         </div>
+      )}
 
-      </header>
+      {/* =====================================================
+          EDIT MODE
+      ===================================================== */}
 
-      {/* =====================================
+      {editingPayment && (
+        <div className="edit-payment-alert">
+
+          <div>
+            <strong>
+              Editing Pending Payment
+            </strong>
+
+            <p>
+              Update your payment details
+              and confirm again.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={
+              handleCancelEdit
+            }
+            className="cancel-edit-btn"
+          >
+            Cancel
+          </button>
+
+        </div>
+      )}
+
+      {/* =====================================================
           MAIN GRID
-      ===================================== */}
+      ===================================================== */}
 
       <div className="payment-main-grid">
 
-        {/* =====================================
-            LEFT CARD
-        ===================================== */}
+        {/* ===================================================
+            BOOKING SUMMARY
+        =================================================== */}
 
-        <main className="payment-card">
+        <div className="payment-card booking-summary-card">
 
           <div className="payment-card-header">
 
             <div>
-              <span className="section-kicker">
-                CHECKOUT
-              </span>
 
-              <h2>Make a Payment</h2>
-
-              <p>
-                Choose your preferred payment method.
-              </p>
-            </div>
-
-            <span className="secure-badge">
-              🔒 Secure
-            </span>
-
-          </div>
-
-          {/* BOOKING */}
-
-          <div className="payment-booking">
-
-            <div className="payment-booking-icon">
-              🧺
-            </div>
-
-            <div className="payment-booking-info">
-
-              <span>
-                Booking #{booking.id}
-              </span>
-
-              <strong>
-                {services.length > 0
-                  ? services.join(", ")
-                  : "Laundry Service"}
-              </strong>
-
-              <small>
-                {booking.schedule || "—"}{" "}
-                •{" "}
-                {booking.time || "—"}{" "}
-                •{" "}
-                {booking.weight || 0} kg
-              </small>
-
-            </div>
-
-            <strong className="booking-price">
-              ₱{formatCurrency(bookingTotal)}
-            </strong>
-
-          </div>
-
-          {/* PAYMENT METHOD */}
-
-          <div className="payment-section">
-
-            <div className="payment-section-heading">
-
-              <div>
-                <h3>Payment Method</h3>
-
-                <p>
-                  Select how you want to pay.
-                </p>
-              </div>
-
-            </div>
-
-            <div className="payment-methods">
-
-              {/* GCASH */}
-
-              <button
-                type="button"
-                className={
-                  paymentMethod === "GCash"
-                    ? "payment-method selected"
-                    : "payment-method"
-                }
-                onClick={() => setPaymentMethod("GCash")}
-              >
-
-                <div className="method-icon gcash-icon">
-                  G
-                </div>
-
-                <div className="method-content">
-
-                  <strong>
-                    GCash
-                  </strong>
-
-                  <span>
-                    Pay using your GCash account
-                  </span>
-
-                </div>
-
-                <div className="method-radio">
-                  {paymentMethod === "GCash" && "✓"}
-                </div>
-
-              </button>
-
-              {/* CASH */}
-
-              <button
-                type="button"
-                className={
-                  paymentMethod === "Cash"
-                    ? "payment-method selected"
-                    : "payment-method"
-                }
-                onClick={() => setPaymentMethod("Cash")}
-              >
-
-                <div className="method-icon cash-icon-small">
-                  ₱
-                </div>
-
-                <div className="method-content">
-
-                  <strong>
-                    Cash
-                  </strong>
-
-                  <span>
-                    Pay upon pickup or delivery
-                  </span>
-
-                </div>
-
-                <div className="method-radio">
-                  {paymentMethod === "Cash" && "✓"}
-                </div>
-
-              </button>
-
-            </div>
-          </div>
-
-          {/* =====================================
-              GCASH
-          ===================================== */}
-
-          {paymentMethod === "GCash" && (
-
-            <div className="gcash-payment-box">
-
-              <div className="gcash-payment-header">
-
-                <div className="gcash-logo">
-                  G
-                </div>
-
-                <div>
-
-                  <strong>
-                    Pay with GCash
-                  </strong>
-
-                  <span>
-                    Scan the QR code or send payment
-                    directly.
-                  </span>
-
-                </div>
-
-              </div>
-
-              <div className="gcash-payment-content">
-
-                {/* QR */}
-
-                <div className="gcash-qr-section">
-
-                  <div className="qr-frame">
-
-                    <img
-                      src={gcashSettings.qr}
-                      alt={`${gcashSettings.name} GCash QR Code`}
-                      className="gcash-qr"
-                      onError={handleQrError}
-                    />
-
-                    <div
-                      className="qr-fallback"
-                      style={{ display: "none" }}
-                    >
-
-                      <span>
-                        GCash
-                      </span>
-
-                      <small>
-                        QR CODE
-                      </small>
-
-                      <em>
-                        QR image unavailable
-                      </em>
-
-                    </div>
-
-                  </div>
-
-                  <p>
-                    Scan using your GCash app
-                  </p>
-
-                </div>
-
-                {/* ACCOUNT */}
-
-                <div className="gcash-account">
-
-                  <div className="gcash-account-label">
-                    GCash Account
-                  </div>
-
-                  <div className="gcash-account-card">
-
-                    <span>
-                      Account Name
-                    </span>
-
-                    <strong>
-                      {gcashSettings.name}
-                    </strong>
-
-                  </div>
-
-                  <div className="gcash-account-card">
-
-                    <span>
-                      GCash Number
-                    </span>
-
-                    <strong className="gcash-number">
-                      {gcashSettings.number}
-                    </strong>
-
-                  </div>
-
-                  <div className="gcash-amount-card">
-
-                    <span>
-                      Amount to Pay
-                    </span>
-
-                    <strong>
-                      ₱{formatCurrency(bookingTotal)}
-                    </strong>
-
-                  </div>
-
-                </div>
-
-              </div>
-
-              {/* INSTRUCTIONS */}
-
-              <div className="gcash-instructions">
-
-                <div className="instruction-icon">
-                  i
-                </div>
-
-                <div>
-
-                  <strong>
-                    Payment Instructions
-                  </strong>
-
-                  <ol>
-
-                    <li>
-                      Open your GCash application.
-                    </li>
-
-                    <li>
-                      Scan the QR code or send{" "}
-                      <strong>
-                        ₱{formatCurrency(bookingTotal)}
-                      </strong>{" "}
-                      to{" "}
-                      <strong>
-                        {gcashSettings.number}
-                      </strong>.
-                    </li>
-
-                    <li>
-                      Enter your GCash reference
-                      number below.
-                    </li>
-
-                    <li>
-                      Click{" "}
-                      <strong>
-                        "Confirm GCash Payment"
-                      </strong>.
-                    </li>
-
-                  </ol>
-
-                </div>
-
-              </div>
-
-              {/* REFERENCE */}
-
-              <div className="reference-input">
-
-                <label>
-                  GCash Reference Number
-                </label>
-
-                <input
-                  type="text"
-                  value={referenceNumber}
-                  onChange={(e) =>
-                    setReferenceNumber(e.target.value)
-                  }
-                  placeholder="Enter your GCash reference number"
-                  maxLength={30}
-                  autoComplete="off"
-                />
-
-                <small>
-                  You can find this number in your
-                  GCash transaction receipt.
-                </small>
-
-              </div>
-
-            </div>
-          )}
-
-          {/* =====================================
-              CASH
-          ===================================== */}
-
-          {paymentMethod === "Cash" && (
-
-            <div className="cash-payment-box">
-
-              <div className="cash-payment-icon">
-                ₱
-              </div>
-
-              <div>
-
-                <strong>
-                  Cash Payment
-                </strong>
-
-                <p>
-                  Please prepare the exact amount of{" "}
-                  <strong>
-                    ₱{formatCurrency(bookingTotal)}
-                  </strong>.
-                  Payment can be made when your
-                  laundry is picked up or delivered.
-                </p>
-
-              </div>
-
-            </div>
-          )}
-
-          {/* =====================================
-              CONFIRM BUTTON
-          ===================================== */}
-
-          <button
-            type="button"
-            className={
-              paymentMethod === "GCash"
-                ? "pay-button gcash-pay-button"
-                : "pay-button"
-            }
-            onClick={handlePayment}
-            disabled={isSubmitting}
-          >
-
-            <span>
-              {isSubmitting
-                ? "Processing..."
-                : paymentMethod === "GCash"
-                ? "Confirm GCash Payment"
-                : "Confirm Cash Payment"}
-            </span>
-
-            {!isSubmitting && (
-              <span className="pay-arrow">
-                →
-              </span>
-            )}
-
-          </button>
-
-        </main>
-
-        {/* =====================================
-            RIGHT SUMMARY
-        ===================================== */}
-
-        <aside className="payment-summary">
-
-          <div className="summary-title">
-
-            <div>
-
-              <span className="section-kicker">
-                ORDER
+              <span className="card-label">
+                CURRENT BOOKING
               </span>
 
               <h2>
-                Payment Summary
+                Booking Summary
               </h2>
 
             </div>
 
-            <span className="current-badge">
-              Current
+            <span className="booking-status">
+              {booking.status ||
+                "Pending"}
             </span>
 
           </div>
 
-          <div className="payment-summary-section-label">
-            Selected Services
+          {/* BOOKING ID */}
+
+          <div className="booking-id-box">
+
+            <span>
+              Booking ID
+            </span>
+
+            <strong>
+              {booking.bookingId ||
+                booking.id ||
+                "—"}
+            </strong>
+
           </div>
 
-          <div className="payment-summary-services">
+          {/* SERVICES */}
 
-            {services.map((serviceName) => {
+          <div className="summary-group">
 
-              const price =
-                servicePrices[serviceName] || 0;
+            <span className="summary-label">
+              Laundry Services
+            </span>
 
-              const serviceTotal =
-                numericWeight > 0
-                  ? price * numericWeight
-                  : price;
+            <div className="service-list">
 
-              return (
-                <div
-                  className="payment-summary-service-row"
-                  key={serviceName}
-                >
-
-                  <div className="payment-summary-service-left">
-
-                    <div className="summary-service-icon">
-                      🧺
-                    </div>
-
-                    <div>
-
-                      <strong>
-                        {serviceName}
-                      </strong>
+              {bookingServices.length >
+              0 ? (
+                bookingServices.map(
+                  (
+                    service,
+                    index
+                  ) => (
+                    <div
+                      key={`${service}-${index}`}
+                      className="service-row"
+                    >
 
                       <span>
-                        ₱{formatCurrency(price)}/kg
+                        {service}
                       </span>
 
+                      <strong>
+                        {formatCurrency(
+                          getServicePrice(
+                            service
+                          )
+                        )}
+                        {Number(
+                          booking.weight
+                        ) > 0
+                          ? "/kg"
+                          : ""}
+                      </strong>
+
                     </div>
+                  )
+                )
+              ) : (
+                <span>
+                  No service information
+                </span>
+              )}
 
-                  </div>
-
-                  <strong className="payment-summary-service-amount">
-                    ₱{formatCurrency(serviceTotal)}
-                  </strong>
-
-                </div>
-              );
-            })}
+            </div>
 
           </div>
 
-          {/* SUMMARY ITEMS */}
+          {/* SCHEDULE */}
 
-          <div className="summary-items">
+          <div className="summary-info-grid">
 
-            <div>
+            <div className="summary-info-item">
+
               <span>
-                Laundry
+                📅 Pickup Schedule
               </span>
 
               <strong>
-                ₱{formatCurrency(displayedLaundryTotal)}
+                {getBookingSchedule()}
               </strong>
+
             </div>
 
-            <div>
+            <div className="summary-info-item">
+
               <span>
-                Service Type
+                🚚 Pickup Option
               </span>
 
               <strong>
-                {booking.pickupType || "—"}
+                {booking.pickupType ||
+                  booking.pickupOption ||
+                  booking.deliveryType ||
+                  "Pickup & Delivery"}
               </strong>
+
             </div>
+
+          </div>
+
+          {/* ADDRESS */}
+
+          <div className="summary-address">
+
+            <span className="summary-label">
+              Pickup Address
+            </span>
+
+            <strong>
+              {getAddress()}
+            </strong>
+
+            <p>
+              {getBarangay()}
+              {getBarangay() !== "—" &&
+                ", "}
+              {getCity()}
+              {getCity() !== "—" &&
+                ", "}
+              {getProvince()}
+            </p>
+
+            {getLandmark() !==
+              "—" && (
+              <small>
+                📍 Landmark:{" "}
+                {getLandmark()}
+              </small>
+            )}
+
+          </div>
+
+          {/* PRICE BREAKDOWN */}
+
+          <div className="payment-price-breakdown">
 
             <div>
               <span>
-                Pickup Date
+                Laundry Services
               </span>
 
               <strong>
-                {booking.schedule || "—"}
+                {formatCurrency(
+                  laundrySubtotal
+                )}
               </strong>
             </div>
 
             <div>
               <span>
-                Pickup Time
+                {booking.pickupType ===
+                "Pickup Only"
+                  ? "Pickup Fee"
+                  : "Pickup & Delivery Fee"}
               </span>
 
               <strong>
-                {booking.time || "—"}
-              </strong>
-            </div>
-
-            <div>
-              <span>
-                Pickup Location
-              </span>
-
-              <strong className="summary-long-text">
-                {[
-                  booking.address,
-                  booking.barangay,
-                  booking.city,
-                  booking.province,
-                ]
-                  .filter(Boolean)
-                  .join(", ") || "Not provided"}
-              </strong>
-            </div>
-
-            <div>
-              <span>
-                Landmark
-              </span>
-
-              <strong className="summary-long-text">
-                {booking.landmark || "None"}
-              </strong>
-            </div>
-
-            <div>
-              <span>
-                {booking.pickupType === "Pickup & Delivery"
-                  ? "Pickup & Delivery Fee"
-                  : "Pickup Fee"}
-              </span>
-
-              <strong>
-                ₱{formatCurrency(deliveryFee)}
+                {formatCurrency(
+                  pickupFee
+                )}
               </strong>
             </div>
 
@@ -1076,432 +1296,605 @@ function Payment() {
 
           {/* TOTAL */}
 
-          <div className="summary-total">
+          <div className="booking-total-box">
 
             <div>
 
               <span>
-                Estimated Total
+                Total Amount
               </span>
 
               <small>
-                Based on selected weight and
-                services
+                Final amount for this
+                booking
               </small>
 
             </div>
 
             <strong>
-              ₱{formatCurrency(bookingTotal)}
+              {formatCurrency(
+                calculatedTotal
+              )}
             </strong>
 
           </div>
 
-          {/* SECURITY */}
-
-          <div className="secure-payment">
-
-            <div className="secure-payment-icon">
-              🔒
-            </div>
-
-            <div>
-
-              <strong>
-                Secure Payment
-              </strong>
-
-              <p>
-                Your payment information is
-                protected.
-              </p>
-
-            </div>
-
-          </div>
-
-        </aside>
-
-      </div>
-
-
-      {/* =====================================
-          PAYMENT HISTORY
-      ===================================== */}
-
-      <section className="payment-history">
-
-        <div className="history-header">
-
-          <div>
-
-            <span className="section-kicker">
-              TRANSACTIONS
-            </span>
-
-            <h2>
-              Payment History
-            </h2>
-
-            <p>
-              View your previous laundry
-              transactions.
-            </p>
-
-          </div>
-
-          <div className="history-stats">
-
-            <div>
-
-              <span>
-                Total
-              </span>
-
-              <strong>
-                ₱{formatCurrency(totalSpent)}
-              </strong>
-
-            </div>
-
-            <div>
-
-              <span>
-                Paid
-              </span>
-
-              <strong>
-                ₱{formatCurrency(paidAmount)}
-              </strong>
-
-            </div>
-
-            <div>
-
-              <span>
-                Pending
-              </span>
-
-              <strong>
-                ₱{formatCurrency(pendingAmount)}
-              </strong>
-
-            </div>
-
-          </div>
-
         </div>
 
-        <div className="payment-table-wrapper">
+        {/* ===================================================
+            PAYMENT FORM
+        =================================================== */}
 
-          <table className="payment-table">
+        <div className="payment-card payment-form-card">
 
-            <thead>
+          <div className="payment-card-header">
 
-              <tr>
-                <th>
-                  Transaction
-                </th>
+            <div>
 
-                <th>
-                  Service
-                </th>
-
-                <th>
-                  Date
-                </th>
-
-                <th>
-                  Method
-                </th>
-
-                <th>
-                  Amount
-                </th>
-
-                <th>
-                  Status
-                </th>
-              </tr>
-
-            </thead>
-
-            <tbody>
-
-              {payments.length === 0 ? (
-
-                <tr>
-
-                  <td
-                    colSpan="6"
-                    className="empty-history"
-                  >
-
-                    <div>
-
-                      <span>
-                        💳
-                      </span>
-
-                      <strong>
-                        No payment transactions yet
-                      </strong>
-
-                      <p>
-                        Your completed payments will
-                        appear here.
-                      </p>
-
-                    </div>
-
-                  </td>
-
-                </tr>
-
-              ) : (
-
-                payments.map((payment) => (
-
-                  <tr key={payment.id}>
-
-                    <td>
-
-                      <div className="transaction-cell">
-
-                        <strong>
-                          {payment.id}
-                        </strong>
-
-                        <span>
-                          {payment.booking}
-                        </span>
-
-                      </div>
-
-                    </td>
-
-                    <td>
-                      {payment.service}
-                    </td>
-
-                    <td>
-                      {payment.date}
-                    </td>
-
-                    <td>
-
-                      <span className="method-label">
-
-                        {payment.method === "Cash"
-                          ? "₱ Cash"
-                          : "GCash"}
-
-                      </span>
-
-                    </td>
-
-                    <td>
-
-                      <strong className="table-amount">
-                        ₱{formatCurrency(payment.amount)}
-                      </strong>
-
-                    </td>
-
-                    <td>
-
-                      <span
-                        className={
-                          payment.status === "Paid"
-                            ? "payment-status paid"
-                            : "payment-status pending"
-                        }
-                      >
-                        ● {payment.status}
-                      </span>
-
-                    </td>
-
-                  </tr>
-
-                ))
-
-              )}
-
-            </tbody>
-
-          </table>
-
-        </div>
-
-      </section>
-
-      {/* =====================================
-          PAYMENT CONFIRMATION MODAL
-      ===================================== */}
-
-      {showPaymentSummary && (
-
-        <div
-          className="payment-modal-overlay"
-          onClick={handleDone}
-        >
-
-          <div
-            className="payment-summary-modal"
-            onClick={(e) => e.stopPropagation()}
-          >
-
-            <div className="payment-summary-icon">
-              ✓
-            </div>
-
-            <span className="payment-success-label">
-              PAYMENT SUBMITTED
-            </span>
-
-            <h2>
-              Payment Received
-            </h2>
-
-            <p className="payment-summary-subtitle">
-              Your payment has been submitted and
-              is waiting for verification.
-            </p>
-
-            <div className="payment-pending-banner">
-
-              <span className="pending-dot">
-                ●
+              <span className="card-label">
+                PAYMENT
               </span>
 
-              <div>
+              <h2>
+                Payment Method
+              </h2>
+
+            </div>
+
+          </div>
+
+          {/* PAYMENT OPTIONS */}
+
+          <div className="payment-methods">
+
+            <button
+              type="button"
+              className={`payment-method ${
+                paymentMethod ===
+                "GCash"
+                  ? "active"
+                  : ""
+              }`}
+              onClick={() =>
+                handlePaymentMethodChange(
+                  "GCash"
+                )
+              }
+            >
+
+              <span className="method-icon">
+                G
+              </span>
+
+              <span>
 
                 <strong>
-                  Payment Pending
+                  GCash
                 </strong>
 
                 <small>
-                  The laundry shop will verify your
-                  payment.
+                  Online payment
+                </small>
+
+              </span>
+
+              <span className="radio-circle">
+                {paymentMethod ===
+                  "GCash" &&
+                  "✓"}
+              </span>
+
+            </button>
+
+            <button
+              type="button"
+              className={`payment-method ${
+                paymentMethod ===
+                "Cash"
+                  ? "active"
+                  : ""
+              }`}
+              onClick={() =>
+                handlePaymentMethodChange(
+                  "Cash"
+                )
+              }
+            >
+
+              <span className="method-icon cash-icon">
+                ₱
+              </span>
+
+              <span>
+
+                <strong>
+                  Cash
+                </strong>
+
+                <small>
+                  Pay upon pickup
+                </small>
+
+              </span>
+
+              <span className="radio-circle">
+                {paymentMethod ===
+                  "Cash" &&
+                  "✓"}
+              </span>
+
+            </button>
+
+          </div>
+
+          {/* =================================================
+              GCASH
+          ================================================= */}
+
+          {paymentMethod ===
+            "GCash" && (
+            <div className="gcash-payment-box">
+
+              <div className="gcash-header">
+
+                <div>
+
+                  <h3>
+                    Pay using GCash
+                  </h3>
+
+                  <p>
+                    Scan the QR code,
+                    send the exact amount,
+                    then enter your payment
+                    details.
+                  </p>
+
+                </div>
+
+              </div>
+
+              <div className="gcash-content">
+
+                {/* QR */}
+
+                <div className="gcash-qr-wrapper">
+
+                  {gcashQr ? (
+                    <img
+                      src={gcashQr}
+                      alt="Prince-Tyler Laundry Shop GCash QR"
+                      className="gcash-qr"
+                      onError={(event) => {
+                        event.currentTarget.style.display =
+                          "none";
+
+                        const fallback =
+                          event.currentTarget
+                            .nextElementSibling;
+
+                        if (fallback) {
+                          fallback.style.display =
+                            "flex";
+                        }
+                      }}
+                    />
+                  ) : null}
+
+                  <div
+                    className="gcash-qr-fallback"
+                    style={{
+                      display:
+                        gcashQr
+                          ? "none"
+                          : "flex",
+                    }}
+                  >
+                    <span>
+                      QR
+                    </span>
+
+                    <small>
+                      GCash QR
+                      unavailable
+                    </small>
+                  </div>
+
+                </div>
+
+                {/* SHOP DETAILS */}
+
+                <div className="gcash-details">
+
+                  <div>
+
+                    <span>
+                      Account Name
+                    </span>
+
+                    <strong>
+                      {gcashName}
+                    </strong>
+
+                  </div>
+
+                  {gcashNumber && (
+                    <div>
+
+                      <span>
+                        GCash Number
+                      </span>
+
+                      <strong>
+                        {gcashNumber}
+                      </strong>
+
+                    </div>
+                  )}
+
+                  <div>
+
+                    <span>
+                      Amount to Send
+                    </span>
+
+                    <strong>
+                      {formatCurrency(
+                        calculatedTotal
+                      )}
+                    </strong>
+
+                  </div>
+
+                </div>
+
+              </div>
+
+              {/* CUSTOMER GCASH NAME */}
+
+              <div className="form-group">
+
+                <label htmlFor="gcashCustomerName">
+                  Your GCash Name
+                  <span>*</span>
+                </label>
+
+                <input
+                  id="gcashCustomerName"
+                  type="text"
+                  value={
+                    gcashCustomerName
+                  }
+                  onChange={
+                    handleGcashCustomerNameChange
+                  }
+                  placeholder="Enter the name on your GCash account"
+                  maxLength={50}
+                />
+
+                <small>
+                  Enter the GCash account name
+                  used to make the payment.
+                </small>
+
+              </div>
+
+              {/* REFERENCE NUMBER */}
+
+              <div className="form-group">
+
+                <label htmlFor="referenceNumber">
+                  GCash Reference Number
+                  <span>*</span>
+                </label>
+
+                <input
+                  id="referenceNumber"
+                  type="text"
+                  value={
+                    referenceNumber
+                  }
+                  onChange={
+                    handleReferenceChange
+                  }
+                  placeholder="Enter your GCash reference number"
+                  maxLength={30}
+                />
+
+                <small>
+                  The reference number can
+                  be found on your GCash
+                  payment receipt.
                 </small>
 
               </div>
 
             </div>
+          )}
 
-            <div className="confirmation-details">
+          {/* =================================================
+              CASH
+          ================================================= */}
 
-              <div className="confirmation-row">
+          {paymentMethod ===
+            "Cash" && (
+            <div className="cash-payment-box">
 
-                <span>
-                  Booking ID
-                </span>
+              <div className="cash-icon-large">
+                ₱
+              </div>
+
+              <div>
+
+                <h3>
+                  Cash Payment
+                </h3>
+
+                <p>
+                  You selected cash payment.
+                  Please prepare the exact
+                  amount when your laundry is
+                  picked up or delivered.
+                </p>
 
                 <strong>
-                  {booking.id}
+                  Amount to prepare:{" "}
+                  {formatCurrency(
+                    calculatedTotal
+                  )}
                 </strong>
 
               </div>
 
-              <div className="confirmation-row">
+            </div>
+          )}
+
+          {/* ERROR */}
+
+          {error && (
+            <div className="payment-error">
+
+              <span>!</span>
+
+              <p>
+                {error}
+              </p>
+
+            </div>
+          )}
+
+          {/* TOTAL */}
+
+          <div className="payment-total">
+
+            <span>
+              Amount to Pay
+            </span>
+
+            <strong>
+              {formatCurrency(
+                calculatedTotal
+              )}
+            </strong>
+
+          </div>
+
+          {/* CONFIRM */}
+
+          <button
+            type="button"
+            className="confirm-payment-btn"
+            onClick={
+              handleConfirmPayment
+            }
+            disabled={isSubmitting}
+          >
+
+            {isSubmitting ? (
+              <>
+                <span className="spinner" />
+                Submitting...
+              </>
+            ) : editingPayment ? (
+              "Update Payment"
+            ) : (
+              "Confirm Payment"
+            )}
+
+          </button>
+
+          <p className="payment-note">
+            Your payment will be marked as
+            <strong>
+              {" "}
+              Pending
+            </strong>{" "}
+            until it is verified by the
+            laundry staff.
+          </p>
+
+        </div>
+
+      </div>
+
+      {/* =====================================================
+          PAYMENT SUMMARY MODAL
+      ===================================================== */}
+
+      {showPaymentSummary &&
+        submittedPayment && (
+          <div className="payment-modal-overlay">
+
+            <div className="payment-summary-modal">
+
+              {/* SUCCESS ICON */}
+
+              <div className="submitted-icon">
+                ✓
+              </div>
+
+              <h2>
+                Payment Submitted!
+              </h2>
+
+              <p className="submitted-message">
+                Your booking payment has
+                been successfully recorded.
+                It is now pending verification.
+              </p>
+
+              {/* STATUS */}
+
+              <div className="submitted-status">
 
                 <span>
-                  Payment Method
+                  Payment Status
                 </span>
 
                 <strong>
-                  {paymentMethod}
+                  Pending
                 </strong>
 
               </div>
 
-              {paymentMethod === "GCash" && (
+              {/* DETAILS */}
 
-                <div className="confirmation-row">
+              <div className="submitted-details">
+
+                <div>
 
                   <span>
-                    Reference Number
+                    Booking ID
                   </span>
 
-                  <strong className="reference-value">
-                    {submittedReference || "Submitted"}
+                  <strong>
+                    {
+                      submittedPayment.bookingId
+                    }
                   </strong>
 
                 </div>
 
-              )}
+                <div>
 
-              <div className="confirmation-row">
+                  <span>
+                    Payment ID
+                  </span>
 
-                <span>
-                  Services
-                </span>
+                  <strong>
+                    {
+                      submittedPayment.paymentId
+                    }
+                  </strong>
 
-                <strong className="confirmation-long-text">
-                  {services.length > 0
-                    ? services.join(", ")
-                    : "Laundry Service"}
-                </strong>
+                </div>
+
+                <div>
+
+                  <span>
+                    Payment Method
+                  </span>
+
+                  <strong>
+                    {
+                      submittedPayment.paymentMethod
+                    }
+                  </strong>
+
+                </div>
+
+                {submittedPayment.gcashCustomerName && (
+                  <div>
+
+                    <span>
+                      GCash Name
+                    </span>
+
+                    <strong>
+                      {
+                        submittedPayment.gcashCustomerName
+                      }
+                    </strong>
+
+                  </div>
+                )}
+
+                {submittedPayment.referenceNumber && (
+                  <div>
+
+                    <span>
+                      GCash Reference
+                    </span>
+
+                    <strong>
+                      {
+                        submittedPayment.referenceNumber
+                      }
+                    </strong>
+
+                  </div>
+                )}
+
+                <div>
+
+                  <span>
+                    Pickup Schedule
+                  </span>
+
+                  <strong>
+                    {getBookingSchedule()}
+                  </strong>
+
+                </div>
+
+                <div>
+
+                  <span>
+                    Services
+                  </span>
+
+                  <strong>
+                    {
+                      submittedPayment.services
+                    }
+                  </strong>
+
+                </div>
 
               </div>
 
-              <div className="confirmation-row">
+              {/* TOTAL */}
 
-                <span>
-                  Laundry
-                </span>
-
-                <strong>
-                  ₱{formatCurrency(displayedLaundryTotal)}
-                </strong>
-
-              </div>
-
-              <div className="confirmation-row">
-
-                <span>
-                  Pickup / Delivery
-                </span>
-
-                <strong>
-                  ₱{formatCurrency(deliveryFee)}
-                </strong>
-
-              </div>
-
-              <div className="confirmation-total">
+              <div className="submitted-total">
 
                 <span>
                   Total Amount
                 </span>
 
                 <strong>
-                  ₱{formatCurrency(bookingTotal)}
+                  {formatCurrency(
+                    submittedPayment.totalAmount
+                  )}
                 </strong>
 
               </div>
 
+              {/* DONE */}
+
+              <button
+                type="button"
+                className="done-payment-btn"
+                onClick={
+                  handleDone
+                }
+              >
+                Done
+              </button>
+
             </div>
 
-            <button
-              type="button"
-              className="payment-done-btn"
-              onClick={handleDone}
-            >
-              Done
-            </button>
-
-            <p className="payment-modal-note">
-              You can check your payment status in
-              Payment History.
-            </p>
-
           </div>
-
-        </div>
-
-      )}
+        )}
 
     </div>
   );

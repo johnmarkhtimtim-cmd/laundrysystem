@@ -227,19 +227,19 @@ function CustomerLayout() {
             </div>
 
             <NavLink
-              to="/customer/payments"
+              to="/customer/transactions"
               onClick={closeSidebarOnMobile}
               className={({ isActive }) =>
                 isActive ? "nav-link active" : "nav-link"
               }
-              title="Profile"
+              title="Transactions"
             >
               <span className="nav-icon">
                 <CreditCard size={18} />
               </span>
 
               <span className="nav-text">
-                Payments
+                Transactions
               </span>
             </NavLink>
 

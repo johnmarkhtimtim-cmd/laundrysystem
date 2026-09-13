@@ -76,18 +76,7 @@ function StaffLayout() {
               }
             >
               <span className="nav-icon">📋</span>
-              <span>Orders / Bookings</span>
-            </NavLink>
-
-            {/* Laundry Processing */}
-            <NavLink
-              to="/staff/laundry-processing"
-              className={({ isActive }) =>
-                isActive ? "nav-link active" : "nav-link"
-              }
-            >
-              <span className="nav-icon">🌊</span>
-              <span>Laundry Processing</span>
+              <span>Transaction</span>
             </NavLink>
 
             {/* Pickup Management */}

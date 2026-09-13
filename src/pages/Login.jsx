@@ -229,6 +229,18 @@ function Login() {
                 </>
               )}
             </button>
+                <div className="register-link">
+          <p>
+            Don't have an account?{" "}
+            <button
+              type="button"
+              onClick={() => navigate("/register")}
+              disabled={loading}
+            >
+              Register
+            </button>
+          </p>
+        </div>
 
           </form>
 
