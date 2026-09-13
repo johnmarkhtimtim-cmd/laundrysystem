@@ -24,6 +24,7 @@ import Notification from "../pages/Customer/Notifications";
 import Profile from "../pages/Customer/Profile";
 import StaffLayout from "../layouts/StaffLayout";
 import StaffRoute from "./StaffRoute";
+import CustomerMap from "../pages/Staff/CustomerMap";
 import StaffDashboard from "../pages/Staff/StaffDashboard";
 import StaffBookings from "../pages/Staff/Bookings";
 import StaffTasks from "../pages/Staff/Tasks";
@@ -84,6 +85,7 @@ function AppRoutes() {
         >
           <Route index element={<StaffDashboard />} />
           <Route path="bookings" element={<StaffBookings />} />
+          <Route path="CustomerMap" element={<CustomerMap />} />
           <Route path="pickup-management" element={<PickupManagement />} />
           <Route path="payments" element={<StaffPayments />} />
           <Route path="notifications" element={<StaffNotifications />} />

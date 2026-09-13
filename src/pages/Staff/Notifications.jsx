@@ -158,24 +158,6 @@ function StaffNotifications() {
             >
               Payments
             </button>
-            <button
-              className={`filter-button ${filter === "progress" ? "active" : ""}`}
-              onClick={() => setFilter("progress")}
-            >
-              Progress
-            </button>
-            <button
-              className={`filter-button ${filter === "pickup" ? "active" : ""}`}
-              onClick={() => setFilter("pickup")}
-            >
-              Pickups
-            </button>
-            <button
-              className={`filter-button ${filter === "status" ? "active" : ""}`}
-              onClick={() => setFilter("status")}
-            >
-              Status
-            </button>
           </div>
 
           {/* NOTIFICATIONS LIST */}

@@ -1,236 +1,693 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../../context/AuthContext";
-import { getBookingsByStatus } from "../../services/bookingService";
 import "../../styles/StaffDashboard.css";
+
+// ==========================================
+// STATUS FLOW
+// ==========================================
+
+const STATUS_FLOW = [
+  "Pending",
+  "Accepted",
+  "Ready for Pickup",
+  "Picked Up",
+  "Washing",
+  "Drying",
+  "Folding",
+  "Ready for Customer Pickup",
+  "Completed",
+];
+
+// ==========================================
+// HELPERS
+// ==========================================
+
+function readBookings() {
+  try {
+    const savedBookings = localStorage.getItem("laundrymateBookings");
+    return savedBookings ? JSON.parse(savedBookings) : [];
+  } catch (error) {
+    console.error("Error reading bookings:", error);
+    return [];
+  }
+}
+
+function saveBookings(bookings) {
+  localStorage.setItem("laundrymateBookings", JSON.stringify(bookings));
+
+  // Notify other components that bookings have changed
+  window.dispatchEvent(new Event("laundrymateBookingsUpdated"));
+}
+
+function getBookingStatus(booking) {
+  return (
+    booking.status ||
+    booking.bookingStatus ||
+    booking.orderStatus ||
+    "Pending"
+  );
+}
+
+function getBookingId(booking) {
+  return (
+    booking.bookingId ||
+    booking.id ||
+    booking.booking_id ||
+    "N/A"
+  );
+}
+
+function getCustomerName(booking) {
+  return (
+    booking.customerName ||
+    booking.name ||
+    booking.userName ||
+    booking.customer?.name ||
+    booking.customer?.displayName ||
+    "Customer"
+  );
+}
+
+function getServices(booking) {
+  if (Array.isArray(booking.services)) {
+    return booking.services.join(", ");
+  }
+
+  return (
+    booking.services ||
+    booking.serviceType ||
+    booking.service ||
+    "Laundry Service"
+  );
+}
+
+function getAmount(booking) {
+  return Number(
+    booking.totalAmount ||
+      booking.total_amount ||
+      booking.estimatedTotal ||
+      booking.amount ||
+      0
+  );
+}
+
+function getDate(booking) {
+  return (
+    booking.createdAt ||
+    booking.created_at ||
+    booking.bookingDate ||
+    booking.date ||
+    ""
+  );
+}
+
+function formatDate(dateValue) {
+  if (!dateValue) return "No date";
+
+  const date = new Date(dateValue);
+
+  if (Number.isNaN(date.getTime())) {
+    return dateValue;
+  }
+
+  return date.toLocaleDateString("en-PH", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function formatCurrency(amount) {
+  return `₱${Number(amount || 0).toLocaleString("en-PH", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+}
+
+function getStatusClass(status) {
+  return status.toLowerCase().replace(/\s+/g, "-");
+}
+
+// ==========================================
+// COMPONENT
+// ==========================================
 
 function StaffDashboard() {
   const { user } = useAuth();
-  const [loading, setLoading] = useState(true);
+
   const [bookings, setBookings] = useState([]);
-  const [stats, setStats] = useState({
-    newBookings: 0,
-    pendingPickup: 0,
-    pickedUp: 0,
-    washing: 0,
-    drying: 0,
-    folding: 0,
-    readyForPickup: 0,
-    completed: 0,
-  });
-  const [todayPickups, setTodayPickups] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("All");
+  const [updatingId, setUpdatingId] = useState(null);
+  const [lastUpdated, setLastUpdated] = useState(new Date());
+
+  // ==========================================
+  // LOAD BOOKINGS
+  // ==========================================
+
+  const loadBookings = () => {
+    setLoading(true);
+
+    const savedBookings = readBookings();
+
+    // Sort newest bookings first
+    const sortedBookings = [...savedBookings].sort((a, b) => {
+      const dateA = new Date(getDate(a)).getTime() || 0;
+      const dateB = new Date(getDate(b)).getTime() || 0;
+
+      return dateB - dateA;
+    });
+
+    setBookings(sortedBookings);
+    setLastUpdated(new Date());
+    setLoading(false);
+  };
 
   useEffect(() => {
-    const fetchBookings = async () => {
-      try {
-        // Fetch bookings by each status
-        const statusTypes = [
-          "Pending",
-          "Accepted",
-          "Ready for Pickup",
-          "Picked Up",
-          "Washing",
-          "Drying",
-          "Folding",
-          "Ready for Customer Pickup",
-          "Completed"
-        ];
+    loadBookings();
 
-        let allBookings = [];
-        for (const status of statusTypes) {
-          const statusBookings = await getBookingsByStatus(status);
-          allBookings = [...allBookings, ...statusBookings];
-        }
-
-        setBookings(allBookings);
-
-        // Calculate stats
-        const newStats = {
-          newBookings: allBookings.filter(b => b.status === "Pending").length,
-          pendingPickup: allBookings.filter(b => b.status === "Accepted" || b.status === "Ready for Pickup").length,
-          pickedUp: allBookings.filter(b => b.status === "Picked Up").length,
-          washing: allBookings.filter(b => b.status === "Washing").length,
-          drying: allBookings.filter(b => b.status === "Drying").length,
-          folding: allBookings.filter(b => b.status === "Folding").length,
-          readyForPickup: allBookings.filter(b => b.status === "Ready for Customer Pickup").length,
-          completed: allBookings.filter(b => b.status === "Completed").length,
-        };
-
-        setStats(newStats);
-
-        // Get today's pickups
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const tomorrow = new Date(today);
-        tomorrow.setDate(tomorrow.getDate() + 1);
-
-        const todayPickupBookings = allBookings.filter(booking => {
-          if (!booking.pickup_date) return false;
-          const pickupDate = booking.pickup_date.toDate ? booking.pickup_date.toDate() : new Date(booking.pickup_date);
-          pickupDate.setHours(0, 0, 0, 0);
-          return pickupDate.getTime() === today.getTime() && 
-                 (booking.status === "Ready for Pickup" || booking.status === "Accepted");
-        });
-
-        setTodayPickups(todayPickupBookings.slice(0, 10)); // Limit to 10
-      } catch (error) {
-        console.error("Error fetching bookings:", error);
-      } finally {
-        setLoading(false);
-      }
+    const handleBookingUpdate = () => {
+      loadBookings();
     };
 
-    fetchBookings();
+    window.addEventListener(
+      "laundrymateBookingsUpdated",
+      handleBookingUpdate
+    );
+
+    window.addEventListener("storage", handleBookingUpdate);
+
+    return () => {
+      window.removeEventListener(
+        "laundrymateBookingsUpdated",
+        handleBookingUpdate
+      );
+
+      window.removeEventListener("storage", handleBookingUpdate);
+    };
   }, []);
 
-  const getStatusColor = (status) => {
-    const colors = {
-      "Pending": "orange",
-      "Accepted": "blue",
-      "Ready for Pickup": "blue",
-      "Picked Up": "purple",
-      "Washing": "blue",
-      "Drying": "cyan",
-      "Folding": "indigo",
-      "Ready for Customer Pickup": "green",
-      "Completed": "green"
+  // ==========================================
+  // STATISTICS
+  // ==========================================
+
+  const stats = useMemo(() => {
+    const total = bookings.length;
+
+    const pending = bookings.filter(
+      (booking) => getBookingStatus(booking) === "Pending"
+    ).length;
+
+    const inProgress = bookings.filter((booking) =>
+      [
+        "Accepted",
+        "Ready for Pickup",
+        "Picked Up",
+        "Washing",
+        "Drying",
+        "Folding",
+        "Ready for Customer Pickup",
+      ].includes(getBookingStatus(booking))
+    ).length;
+
+    const completed = bookings.filter(
+      (booking) => getBookingStatus(booking) === "Completed"
+    ).length;
+
+    return {
+      total,
+      pending,
+      inProgress,
+      completed,
     };
-    return colors[status] || "gray";
+  }, [bookings]);
+
+  // ==========================================
+  // FILTER BOOKINGS
+  // ==========================================
+
+  const filteredBookings = useMemo(() => {
+    return bookings.filter((booking) => {
+      const bookingId = getBookingId(booking).toLowerCase();
+      const customerName = getCustomerName(booking).toLowerCase();
+      const services = getServices(booking).toLowerCase();
+      const status = getBookingStatus(booking);
+
+      const search = searchTerm.toLowerCase();
+
+      const matchesSearch =
+        bookingId.includes(search) ||
+        customerName.includes(search) ||
+        services.includes(search);
+
+      const matchesStatus =
+        statusFilter === "All" || status === statusFilter;
+
+      return matchesSearch && matchesStatus;
+    });
+  }, [bookings, searchTerm, statusFilter]);
+
+  // ==========================================
+  // UPDATE ORDER STATUS
+  // ==========================================
+
+  const updateBookingStatus = (bookingId, newStatus) => {
+    setUpdatingId(bookingId);
+
+    const updatedBookings = bookings.map((booking) => {
+      const currentId = getBookingId(booking);
+
+      if (String(currentId) !== String(bookingId)) {
+        return booking;
+      }
+
+      return {
+        ...booking,
+        status: newStatus,
+        bookingStatus: newStatus,
+        orderStatus: newStatus,
+        updatedAt: new Date().toISOString(),
+      };
+    });
+
+    saveBookings(updatedBookings);
+    setBookings(updatedBookings);
+    setLastUpdated(new Date());
+
+    setTimeout(() => {
+      setUpdatingId(null);
+    }, 300);
   };
 
-  const formatDate = (timestamp) => {
-    if (!timestamp) return "N/A";
-    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-    return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  // ==========================================
+  // NEXT STATUS
+  // ==========================================
+
+  const moveToNextStatus = (booking) => {
+    const currentStatus = getBookingStatus(booking);
+    const currentIndex = STATUS_FLOW.indexOf(currentStatus);
+
+    if (currentIndex === -1 || currentIndex === STATUS_FLOW.length - 1) {
+      return;
+    }
+
+    const nextStatus = STATUS_FLOW[currentIndex + 1];
+
+    updateBookingStatus(getBookingId(booking), nextStatus);
   };
+
+  // ==========================================
+  // GREETING
+  // ==========================================
+
+  const staffName =
+    user?.displayName ||
+    user?.name ||
+    user?.email?.split("@")[0] ||
+    "Staff";
+
+  // ==========================================
+  // RENDER
+  // ==========================================
 
   return (
     <div className="staff-dashboard">
-      <div className="dashboard-header">
-        <h1>Staff Dashboard</h1>
-        <p>Welcome, {user?.name || user?.email || "Staff Member"}</p>
+      {/* ======================================
+          HEADER
+      ====================================== */}
+
+      <div className="staff-dashboard-header">
+        <div>
+          <span className="dashboard-eyebrow">
+            STAFF WORKSPACE
+          </span>
+
+          <h1>Good day, {staffName} 👋</h1>
+
+          <p>
+            Manage laundry orders, monitor progress, and keep
+            customer bookings organized.
+          </p>
+        </div>
+
+        <button
+          className="refresh-dashboard-btn"
+          onClick={loadBookings}
+          title="Refresh dashboard"
+        >
+          <span className="refresh-icon">↻</span>
+          Refresh
+        </button>
       </div>
 
-      {loading ? (
-        <div className="loading-message">Loading dashboard...</div>
-      ) : (
-        <>
-          {/* SUMMARY CARDS */}
-          <div className="dashboard-cards">
-            <div className="stat-card">
-              <div className="card-icon orange">📋</div>
-              <div className="card-content">
-                <span>New Bookings</span>
-                <strong className="card-number">{stats.newBookings}</strong>
-              </div>
-            </div>
+      {/* ======================================
+          STATISTICS
+      ====================================== */}
 
-            <div className="stat-card">
-              <div className="card-icon blue">🛍️</div>
-              <div className="card-content">
-                <span>Pending Pickup</span>
-                <strong className="card-number">{stats.pendingPickup}</strong>
-              </div>
-            </div>
-
-            <div className="stat-card">
-              <div className="card-icon purple">✓</div>
-              <div className="card-content">
-                <span>Picked Up</span>
-                <strong className="card-number">{stats.pickedUp}</strong>
-              </div>
-            </div>
-
-            <div className="stat-card">
-              <div className="card-icon blue">🌊</div>
-              <div className="card-content">
-                <span>Washing</span>
-                <strong className="card-number">{stats.washing}</strong>
-              </div>
-            </div>
-
-            <div className="stat-card">
-              <div className="card-icon cyan">🌬️</div>
-              <div className="card-content">
-                <span>Drying</span>
-                <strong className="card-number">{stats.drying}</strong>
-              </div>
-            </div>
-
-            <div className="stat-card">
-              <div className="card-icon indigo">📦</div>
-              <div className="card-content">
-                <span>Folding</span>
-                <strong className="card-number">{stats.folding}</strong>
-              </div>
-            </div>
-
-            <div className="stat-card">
-              <div className="card-icon green">✅</div>
-              <div className="card-content">
-                <span>Ready for Pickup</span>
-                <strong className="card-number">{stats.readyForPickup}</strong>
-              </div>
-            </div>
-
-            <div className="stat-card">
-              <div className="card-icon green">🎉</div>
-              <div className="card-content">
-                <span>Completed</span>
-                <strong className="card-number">{stats.completed}</strong>
-              </div>
-            </div>
+      <div className="staff-stats-grid">
+        <div className="staff-stat-card">
+          <div className="stat-card-top">
+            <div className="stat-icon blue">📋</div>
+            <span className="stat-label">TOTAL BOOKINGS</span>
           </div>
 
-          {/* TODAY'S PICKUP ORDERS TABLE */}
-          <div className="dashboard-section">
-            <h2>Today's Pickup Orders</h2>
-            <div className="table-wrapper">
-              <table className="bookings-table">
-                <thead>
-                  <tr>
-                    <th>Booking ID</th>
-                    <th>Customer</th>
-                    <th>Service</th>
-                    <th>Weight</th>
-                    <th>Amount</th>
-                    <th>Payment Status</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {todayPickups.length > 0 ? (
-                    todayPickups.map((booking) => (
-                      <tr key={booking.id}>
-                        <td>
-                          <strong>#{booking.booking_id?.slice(-4) || booking.id?.slice(-4)}</strong>
-                        </td>
-                        <td>{booking.customer?.name || "Unknown"}</td>
-                        <td>{booking.service_id || "Service"}</td>
-                        <td>{booking.weight} kg</td>
-                        <td>₱{booking.total_amount}</td>
-                        <td>
-                          <span className={`badge ${booking.payment_status === "Paid" ? "paid" : "pending"}`}>
-                            {booking.payment_status || "Pending"}
+          <h2>{stats.total}</h2>
+
+          <p className="stat-description">
+            All customer bookings
+          </p>
+        </div>
+
+        <div className="staff-stat-card">
+          <div className="stat-card-top">
+            <div className="stat-icon orange">⏳</div>
+            <span className="stat-label">PENDING</span>
+          </div>
+
+          <h2>{stats.pending}</h2>
+
+          <p className="stat-description">
+            Waiting for action
+          </p>
+        </div>
+
+        <div className="staff-stat-card">
+          <div className="stat-card-top">
+            <div className="stat-icon purple">🧺</div>
+            <span className="stat-label">IN PROGRESS</span>
+          </div>
+
+          <h2>{stats.inProgress}</h2>
+
+          <p className="stat-description">
+            Orders being processed
+          </p>
+        </div>
+
+        <div className="staff-stat-card">
+          <div className="stat-card-top">
+            <div className="stat-icon green">✓</div>
+            <span className="stat-label">COMPLETED</span>
+          </div>
+
+          <h2>{stats.completed}</h2>
+
+          <p className="stat-description">
+            Successfully completed
+          </p>
+        </div>
+      </div>
+
+      {/* ======================================
+          QUICK OVERVIEW
+      ====================================== */}
+
+      <div className="staff-overview-card">
+        <div className="overview-content">
+          <div className="overview-icon">🧺</div>
+
+          <div>
+            <h3>Keep every order moving</h3>
+            <p>
+              Update laundry progress so customers can track
+              their orders accurately.
+            </p>
+          </div>
+        </div>
+
+        <div className="overview-progress">
+          <div className="progress-info">
+            <span>Completion progress</span>
+            <strong>
+              {stats.total > 0
+                ? Math.round(
+                    (stats.completed / stats.total) * 100
+                  )
+                : 0}
+              %
+            </strong>
+          </div>
+
+          <div className="progress-bar">
+            <div
+              className="progress-fill"
+              style={{
+                width: `${
+                  stats.total > 0
+                    ? (stats.completed / stats.total) * 100
+                    : 0
+                }%`,
+              }}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* ======================================
+          BOOKINGS SECTION
+      ====================================== */}
+
+      <div className="staff-orders-card">
+        <div className="orders-card-header">
+          <div>
+            <h2>Recent Orders</h2>
+            <p>
+              View and manage the latest customer bookings.
+            </p>
+          </div>
+
+          <span className="orders-count">
+            {filteredBookings.length} order
+            {filteredBookings.length !== 1 ? "s" : ""}
+          </span>
+        </div>
+
+        {/* SEARCH AND FILTERS */}
+
+        <div className="orders-toolbar">
+          <div className="search-box">
+            <span className="search-icon">⌕</span>
+
+            <input
+              type="text"
+              placeholder="Search customer, booking ID, or service..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+
+            {searchTerm && (
+              <button
+                className="clear-search"
+                onClick={() => setSearchTerm("")}
+              >
+                ×
+              </button>
+            )}
+          </div>
+
+          <div className="filter-box">
+            <label htmlFor="statusFilter">Status:</label>
+
+            <select
+              id="statusFilter"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+            >
+              <option value="All">All Status</option>
+
+              {STATUS_FLOW.map((status) => (
+                <option key={status} value={status}>
+                  {status}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* BOOKINGS */}
+
+        {loading ? (
+          <div className="dashboard-empty-state">
+            <div className="loading-spinner" />
+            <p>Loading bookings...</p>
+          </div>
+        ) : filteredBookings.length === 0 ? (
+          <div className="dashboard-empty-state">
+            <div className="empty-icon">📭</div>
+            <h3>No bookings found</h3>
+            <p>
+              {searchTerm || statusFilter !== "All"
+                ? "Try adjusting your search or filter."
+                : "Customer bookings will appear here."}
+            </p>
+          </div>
+        ) : (
+          <div className="orders-table-wrapper">
+            <table className="staff-orders-table">
+              <thead>
+                <tr>
+                  <th>BOOKING</th>
+                  <th>CUSTOMER</th>
+                  <th>SERVICE</th>
+                  <th>SCHEDULE</th>
+                  <th>AMOUNT</th>
+                  <th>STATUS</th>
+                  <th>ACTION</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {filteredBookings.map((booking) => {
+                  const bookingId = getBookingId(booking);
+                  const status = getBookingStatus(booking);
+                  const currentIndex = STATUS_FLOW.indexOf(status);
+                  const isCompleted = status === "Completed";
+
+                  return (
+                    <tr key={bookingId}>
+                      <td>
+                        <div className="booking-id">
+                          #{bookingId}
+                        </div>
+
+                        <span className="booking-date">
+                          {formatDate(getDate(booking))}
+                        </span>
+                      </td>
+
+                      <td>
+                        <div className="customer-cell">
+                          <div className="customer-avatar">
+                            {getCustomerName(booking)
+                              .charAt(0)
+                              .toUpperCase()}
+                          </div>
+
+                          <div>
+                            <strong>
+                              {getCustomerName(booking)}
+                            </strong>
+
+                            <span>
+                              {booking.email ||
+                                booking.customerEmail ||
+                                "Customer"}
+                            </span>
+                          </div>
+                        </div>
+                      </td>
+
+                      <td>
+                        <div className="service-cell">
+                          {getServices(booking)}
+                        </div>
+
+                        {booking.weight && (
+                          <span className="weight-label">
+                            {booking.weight} kg
                           </span>
-                        </td>
-                        <td>
-                          <span className={`status-badge ${getStatusColor(booking.status)}`}>
-                            {booking.status}
-                          </span>
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan="7" className="empty-message">No pickups scheduled for today</td>
+                        )}
+                      </td>
+
+                      <td>
+                        <div className="schedule-cell">
+                          <strong>
+                            {booking.pickup_date ||
+                              booking.pickupDate ||
+                              booking.schedule ||
+                              "Not scheduled"}
+                          </strong>
+
+                          {booking.pickupTime && (
+                            <span>{booking.pickupTime}</span>
+                          )}
+                        </div>
+                      </td>
+
+                      <td>
+                        <strong className="amount-cell">
+                          {formatCurrency(getAmount(booking))}
+                        </strong>
+                      </td>
+
+                      <td>
+                        <span
+                          className={`status-badge ${getStatusClass(
+                            status
+                          )}`}
+                        >
+                          <span className="status-dot" />
+                          {status}
+                        </span>
+                      </td>
+
+                      <td>
+                        <div className="action-cell">
+                          <select
+                            className="status-select"
+                            value={status}
+                            disabled={updatingId === bookingId}
+                            onChange={(e) =>
+                              updateBookingStatus(
+                                bookingId,
+                                e.target.value
+                              )
+                            }
+                          >
+                            {STATUS_FLOW.map((statusOption) => (
+                              <option
+                                key={statusOption}
+                                value={statusOption}
+                              >
+                                {statusOption}
+                              </option>
+                            ))}
+                          </select>
+
+                          {!isCompleted &&
+                            currentIndex !== -1 &&
+                            currentIndex <
+                              STATUS_FLOW.length - 1 && (
+                              <button
+                                className="next-status-btn"
+                                onClick={() =>
+                                  moveToNextStatus(booking)
+                                }
+                                disabled={
+                                  updatingId === bookingId
+                                }
+                                title="Move to next status"
+                              >
+                                →
+                              </button>
+                            )}
+                        </div>
+                      </td>
                     </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
-        </>
-      )}
+        )}
+
+        {/* FOOTER */}
+
+        <div className="orders-card-footer">
+          <span>
+            Last updated:{" "}
+            {lastUpdated.toLocaleTimeString("en-PH", {
+              hour: "numeric",
+              minute: "2-digit",
+            })}
+          </span>
+
+          <span>
+            Showing {filteredBookings.length} of {bookings.length} bookings
+          </span>
+        </div>
+      </div>
     </div>
   );
 }

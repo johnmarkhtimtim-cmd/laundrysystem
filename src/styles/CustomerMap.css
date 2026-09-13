@@ -1,0 +1,546 @@
+/* ==========================================
+   CUSTOMER MAP PAGE
+========================================== */
+
+.customer-map-page {
+  min-height: 100vh;
+  padding: 32px;
+  background: #f5f7fb;
+  color: #172b4d;
+}
+
+/* ==========================================
+   HEADER
+========================================== */
+
+.customer-map-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 28px;
+}
+
+.customer-map-eyebrow {
+  display: block;
+  margin-bottom: 8px;
+  color: #2563eb;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+}
+
+.customer-map-header h1 {
+  margin: 0;
+  color: #102a43;
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: -0.8px;
+}
+
+.customer-map-header p {
+  margin: 8px 0 0;
+  color: #8291a7;
+  font-size: 14px;
+}
+
+.map-header-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 150px;
+  padding: 18px 24px;
+  border: 1px solid #e3eaf5;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 5px 20px rgba(35, 61, 100, 0.04);
+}
+
+.stat-number {
+  color: #2563eb;
+  font-size: 26px;
+  font-weight: 800;
+}
+
+.stat-label {
+  margin-top: 3px;
+  color: #8a98ac;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* ==========================================
+   MAIN LAYOUT
+========================================== */
+
+.customer-map-layout {
+  display: grid;
+  grid-template-columns: 340px minmax(0, 1fr);
+  gap: 22px;
+  min-height: 650px;
+  height: calc(100vh - 190px);
+  max-height: 820px;
+}
+
+/* ==========================================
+   CUSTOMER LIST
+========================================== */
+
+.customer-list-panel {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid #e4eaf3;
+  border-radius: 18px;
+  background: #ffffff;
+  box-shadow: 0 8px 30px rgba(35, 61, 100, 0.04);
+}
+
+.panel-heading {
+  padding: 24px 22px 18px;
+  border-bottom: 1px solid #edf1f6;
+}
+
+.panel-heading h2 {
+  margin: 0;
+  color: #172b4d;
+  font-size: 17px;
+  font-weight: 800;
+}
+
+.panel-heading p {
+  margin: 6px 0 0;
+  color: #94a0b2;
+  font-size: 12px;
+}
+
+.customer-search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 16px;
+  padding: 0 13px;
+  border: 1px solid #e1e8f2;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.customer-search span {
+  color: #8b9ab0;
+  font-size: 24px;
+  line-height: 1;
+  transform: rotate(-20deg);
+}
+
+.customer-search input {
+  width: 100%;
+  height: 42px;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: #172b4d;
+  font-family: inherit;
+  font-size: 12px;
+}
+
+.customer-search input::placeholder {
+  color: #a0acbc;
+}
+
+.customer-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 10px 12px;
+}
+
+.customer-list-item {
+  display: flex;
+  align-items: flex-start;
+  width: 100%;
+  gap: 12px;
+  padding: 15px 12px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.customer-list-item:hover {
+  background: #f5f8ff;
+}
+
+.customer-list-item.selected {
+  border-color: #c9dcff;
+  background: #edf4ff;
+}
+
+.customer-avatar,
+.selected-customer-avatar {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: #eaf2ff;
+  color: #2563eb;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.customer-list-info {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.customer-list-info strong {
+  overflow: hidden;
+  color: #172b4d;
+  font-size: 13px;
+  font-weight: 750;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.customer-booking-id {
+  color: #2563eb;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.customer-list-address {
+  overflow: hidden;
+  color: #8795a9;
+  font-size: 11px;
+  line-height: 1.5;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.customer-list-status {
+  width: fit-content;
+  padding: 3px 8px;
+  border-radius: 20px;
+  background: #fff5dc;
+  color: #b7791f;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.list-arrow {
+  margin-top: 10px;
+  color: #a8b4c5;
+  font-size: 22px;
+}
+
+/* ==========================================
+   MAP PANEL
+========================================== */
+
+.map-panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 650px;
+  height: 100%;
+  overflow: hidden;
+  border: 1px solid #e1e8f2;
+  border-radius: 18px;
+  background: #dce8d5;
+  box-shadow: 0 8px 30px rgba(35, 61, 100, 0.05);
+}
+
+.customer-leaflet-map,
+.leaflet-container {
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  min-height: 650px;
+  flex: 1;
+}
+
+/* Leaflet controls */
+.leaflet-control-zoom {
+  border: none !important;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.12) !important;
+}
+
+.leaflet-control-zoom a {
+  color: #2563eb !important;
+}
+
+/* ==========================================
+   MAP POPUP
+========================================== */
+
+.map-popup {
+  display: flex;
+  min-width: 190px;
+  flex-direction: column;
+  gap: 7px;
+  padding: 4px;
+}
+
+.map-popup strong {
+  color: #172b4d;
+  font-size: 14px;
+}
+
+.map-popup span {
+  color: #66758a;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.map-popup button {
+  margin-top: 5px;
+  padding: 9px 12px;
+  border: none;
+  border-radius: 7px;
+  background: #2563eb;
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.map-popup button:hover {
+  background: #1d4ed8;
+}
+
+/* ==========================================
+   SELECTED CUSTOMER CARD
+========================================== */
+
+.selected-customer-card {
+  position: absolute;
+  z-index: 1000;
+  right: 20px;
+  bottom: 20px;
+  left: 20px;
+  max-width: 580px;
+  padding: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.97);
+  box-shadow: 0 10px 35px rgba(25, 47, 80, 0.18);
+  backdrop-filter: blur(12px);
+}
+
+.selected-customer-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.selected-label {
+  display: block;
+  margin-bottom: 3px;
+  color: #2563eb;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 1px;
+}
+
+.selected-customer-top h3 {
+  margin: 0;
+  color: #172b4d;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.selected-customer-top p {
+  margin: 4px 0 0;
+  color: #8b99ac;
+  font-size: 11px;
+}
+
+.close-selected {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  margin-left: auto;
+  border: none;
+  border-radius: 8px;
+  background: #f1f5f9;
+  color: #7d8da3;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.close-selected:hover {
+  background: #e7edf5;
+}
+
+.selected-customer-details {
+  display: grid;
+  grid-template-columns: 1.5fr 0.7fr 0.8fr;
+  gap: 15px;
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid #edf1f6;
+}
+
+.selected-customer-details div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.selected-customer-details span {
+  color: #96a3b5;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.selected-customer-details strong {
+  overflow: hidden;
+  color: #40536d;
+  font-size: 11px;
+  line-height: 1.5;
+  text-overflow: ellipsis;
+}
+
+.navigate-button {
+  width: 100%;
+  margin-top: 18px;
+  padding: 12px 16px;
+  border: none;
+  border-radius: 9px;
+  background: #2563eb;
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 750;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.navigate-button:hover {
+  background: #1d4ed8;
+  transform: translateY(-1px);
+}
+
+/* ==========================================
+   EMPTY STATE
+========================================== */
+
+.empty-map-list {
+  padding: 45px 20px;
+  text-align: center;
+}
+
+.empty-map-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 54px;
+  height: 54px;
+  margin: 0 auto 15px;
+  border-radius: 50%;
+  background: #f0f5ff;
+  font-size: 24px;
+}
+
+.empty-map-list h3 {
+  margin: 0;
+  color: #40536d;
+  font-size: 14px;
+}
+
+.empty-map-list p {
+  margin: 8px auto 0;
+  max-width: 220px;
+  color: #9aa7b8;
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+/* ==========================================
+   RESPONSIVE
+========================================== */
+
+@media (max-width: 1100px) {
+  .customer-map-layout {
+    grid-template-columns: 290px minmax(0, 1fr);
+  }
+
+  .selected-customer-details {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .selected-customer-details div:first-child {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 850px) {
+  .customer-map-page {
+    padding: 20px;
+  }
+
+  .customer-map-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .customer-list-panel {
+    max-height: 400px;
+  }
+
+  .map-panel {
+    min-height: 600px;
+  }
+
+  .customer-leaflet-map {
+    min-height: 600px;
+  }
+}
+
+@media (max-width: 550px) {
+  .customer-map-page {
+    padding: 14px;
+  }
+
+  .customer-map-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .map-header-stat {
+    align-items: flex-start;
+    width: 100%;
+  }
+
+  .customer-map-header h1 {
+    font-size: 25px;
+  }
+
+  .selected-customer-card {
+    right: 10px;
+    bottom: 10px;
+    left: 10px;
+    padding: 15px;
+  }
+
+  .selected-customer-details {
+    grid-template-columns: 1fr;
+  }
+
+  .selected-customer-details div:first-child {
+    grid-column: auto;
+  }
+}
