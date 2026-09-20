@@ -1379,7 +1379,7 @@ function BookNow() {
             type="submit"
             className="confirm-btn"
           >
-            <span>Proceed to Payment</span>
+            <span>Initial Payment</span>
             <span>→</span>
           </button>
 

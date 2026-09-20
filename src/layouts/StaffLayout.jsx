@@ -89,17 +89,6 @@ function StaffLayout() {
               <span>Transaction</span>
             </NavLink>
 
-            {/* Pickup Management */}
-            <NavLink
-              to="/staff/pickup-management"
-              className={({ isActive }) =>
-                isActive ? "nav-link active" : "nav-link"
-              }
-            >
-              <span className="nav-icon">🛍️</span>
-              <span>Pickup Management</span>
-            </NavLink>
-
             {/* Payments */}
             <NavLink
               to="/staff/payments"

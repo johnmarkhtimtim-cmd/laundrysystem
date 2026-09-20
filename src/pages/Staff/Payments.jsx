@@ -93,40 +93,6 @@ function StaffPayments() {
         <div className="loading-message">Loading payments...</div>
       ) : (
         <>
-          {/* REVENUE SUMMARY */}
-          <div className="revenue-summary">
-            <div className="summary-card">
-              <div className="summary-icon green">💰</div>
-              <div className="summary-content">
-                <span>Total Revenue</span>
-                <strong>₱{summary.total_revenue.toLocaleString()}</strong>
-              </div>
-            </div>
-
-            <div className="summary-card">
-              <div className="summary-icon orange">⏳</div>
-              <div className="summary-content">
-                <span>Pending Revenue</span>
-                <strong>₱{summary.pending_revenue.toLocaleString()}</strong>
-              </div>
-            </div>
-
-            <div className="summary-card">
-              <div className="summary-icon blue">✓</div>
-              <div className="summary-content">
-                <span>Paid Transactions</span>
-                <strong>{summary.paid_count}</strong>
-              </div>
-            </div>
-
-            <div className="summary-card">
-              <div className="summary-icon purple">⏳</div>
-              <div className="summary-content">
-                <span>Pending Transactions</span>
-                <strong>{summary.pending_count}</strong>
-              </div>
-            </div>
-          </div>
 
           {/* FILTERS */}
           <div className="payment-filters">

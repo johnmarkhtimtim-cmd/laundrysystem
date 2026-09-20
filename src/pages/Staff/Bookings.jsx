@@ -579,10 +579,12 @@ function Bookings() {
               <th>Booking ID</th>
               <th>Customer</th>
               <th>Service Type</th>
-              <th>Weight</th>
+              <th>Initial Payment</th>
               <th>
                 GCash Reference No.
               </th>
+               <th>Weight</th>
+                <th>Total Amount </th>
               <th>Pickup Location</th>
               <th>Status</th>
               <th>Pickup Date</th>

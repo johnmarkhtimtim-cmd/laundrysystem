@@ -29,7 +29,6 @@ import StaffDashboard from "../pages/Staff/StaffDashboard";
 import StaffBookings from "../pages/Staff/Bookings";
 import StaffTasks from "../pages/Staff/Tasks";
 import StaffReports from "../pages/Staff/Reports";
-import PickupManagement from "../pages/Staff/PickupManagement";
 import StaffPayments from "../pages/Staff/Payments";
 import StaffNotifications from "../pages/Staff/Notifications";
 import StaffProfile from "../pages/Staff/Profile";
@@ -86,7 +85,6 @@ function AppRoutes() {
           <Route index element={<StaffDashboard />} />
           <Route path="bookings" element={<StaffBookings />} />
           <Route path="CustomerMap" element={<CustomerMap />} />
-          <Route path="pickup-management" element={<PickupManagement />} />
           <Route path="payments" element={<StaffPayments />} />
           <Route path="notifications" element={<StaffNotifications />} />
           <Route path="profile" element={<StaffProfile />} />
