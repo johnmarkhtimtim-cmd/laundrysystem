@@ -26,8 +26,8 @@ function RiderLayout() {
       <div className="rider-body">
         <aside className="rider-sidebar">
           <nav>
-            <NavLink to="/rider" end>📍 <span>Dashboard</span></NavLink>
-            <NavLink to="/rider/pickups">📦 <span>My Pickups</span></NavLink>
+            <NavLink to="/rider/customer-map">🗺️ <span>Customer Map</span></NavLink>
+            <NavLink to="/rider/transactions">💳 <span>Transactions</span></NavLink>
             <NavLink to="/rider/profile">👤 <span>My Profile</span></NavLink>
             <button type="button" onClick={handleLogout}>🚪 <span>Logout</span></button>
           </nav>

@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
+import { useAuth } from "../../context/AuthContext";
+import { getRiderBookings } from "../../services/bookingService";
 import {
   MapContainer,
   TileLayer,
@@ -148,14 +150,25 @@ function MapController({ selectedCustomer }) {
 // CUSTOMER MAP
 // ==========================================
 
-function CustomerMap() {
+function CustomerMap({ assignedOnly = false }) {
+  const { user } = useAuth();
   const [bookings, setBookings] = useState([]);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [search, setSearch] = useState("");
 
   // Load bookings
   useEffect(() => {
-    const loadBookings = () => {
+    const loadBookings = async () => {
+      if (assignedOnly) {
+        try {
+          setBookings(await getRiderBookings(user.uid));
+        } catch (error) {
+          console.error("Error loading rider map assignments:", error);
+          setBookings([]);
+        }
+        return;
+      }
+
       setBookings(readBookings());
     };
 
@@ -181,7 +194,7 @@ function CustomerMap() {
       );
       window.removeEventListener("focus", loadBookings);
     };
-  }, []);
+  }, [assignedOnly, user?.uid]);
 
   // Only bookings with valid coordinates
   const mappedCustomers = useMemo(() => {
