@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+
 import {
   MapContainer,
   TileLayer,
@@ -11,9 +12,68 @@ import {
 import "leaflet/dist/leaflet.css";
 import "../../styles/BookNow.css";
 
-// =====================================
+// ======================================================
+// SERVICE OPTIONS
+// ======================================================
+
+const SERVICE_OPTIONS = [
+  {
+    name: "Wash & Fold",
+    price: 80,
+    icon: "🧺",
+    description: "Clean, dry, and neatly folded.",
+  },
+  {
+    name: "Dry Cleaning",
+    price: 150,
+    icon: "👔",
+    description: "For delicate and special garments.",
+  },
+  {
+    name: "Ironing",
+    price: 60,
+    icon: "♨️",
+    description: "Fresh and wrinkle-free clothes.",
+  },
+  {
+    name: "Bedding Care",
+    price: 200,
+    icon: "🛏️",
+    description: "Professional bedding cleaning.",
+  },
+];
+
+// ======================================================
+// PICKUP OPTIONS
+// ======================================================
+
+const PICKUP_OPTIONS = [
+  {
+    name: "Pickup & Delivery",
+    fee: 50,
+    icon: "🚚",
+    description: "We pick up and deliver your laundry.",
+  },
+  {
+    name: "Pickup Only",
+    fee: 20,
+    icon: "📦",
+    description: "Your laundry will be prepared for pickup.",
+  },
+];
+
+// ======================================================
+// DEFAULT LOCATION
+// ======================================================
+
+const DEFAULT_LOCATION = {
+  latitude: 17.04,
+  longitude: 121.85,
+};
+
+// ======================================================
 // MAP CENTER CONTROLLER
-// =====================================
+// ======================================================
 
 function MapCenterController({ latitude, longitude }) {
   const map = useMapEvents({});
@@ -27,9 +87,9 @@ function MapCenterController({ latitude, longitude }) {
   return null;
 }
 
-// =====================================
-// MAP MARKER
-// =====================================
+// ======================================================
+// MAP LOCATION MARKER
+// ======================================================
 
 function LocationMarker({
   latitude,
@@ -37,10 +97,10 @@ function LocationMarker({
   onLocationChange,
 }) {
   useMapEvents({
-    click(e) {
+    click(event) {
       onLocationChange(
-        e.latlng.lat,
-        e.latlng.lng
+        event.latlng.lat,
+        event.latlng.lng
       );
     },
   });
@@ -50,8 +110,8 @@ function LocationMarker({
       position={[latitude, longitude]}
       draggable={true}
       eventHandlers={{
-        dragend: (e) => {
-          const marker = e.target;
+        dragend: (event) => {
+          const marker = event.target;
           const position = marker.getLatLng();
 
           onLocationChange(
@@ -62,36 +122,31 @@ function LocationMarker({
       }}
     >
       <Popup>
-        <strong>📍 Pickup Location</strong>
+        <strong>Pickup Location</strong>
         <br />
-        Click the map or drag the marker to
-        adjust your pickup location.
+        Drag the marker or click the map to change
+        the location.
       </Popup>
     </Marker>
   );
 }
 
-// =====================================
-// BOOK NOW
-// =====================================
+// ======================================================
+// MAIN COMPONENT
+// ======================================================
 
-function BookNow() {
+export default function BookNow() {
   const navigate = useNavigate();
 
-  // =====================================
-  // BOOKING STATES
-  // =====================================
+  // ====================================================
+  // FORM STATE
+  // ====================================================
 
   const [services, setServices] = useState([]);
+  const [pickup, setPickup] = useState("");
+
   const [schedule, setSchedule] = useState("");
   const [time, setTime] = useState("");
-  const [pickup, setPickup] = useState(
-    "Pickup & Delivery"
-  );
-
-  // =====================================
-  // ADDRESS STATES
-  // =====================================
 
   const [address, setAddress] = useState("");
   const [barangay, setBarangay] = useState("");
@@ -99,157 +154,137 @@ function BookNow() {
   const [province, setProvince] = useState("");
   const [landmark, setLandmark] = useState("");
 
-  // =====================================
-  // MAP STATES
-  // =====================================
-
-  const [showMap, setShowMap] = useState(true);
-
-  const [latitude, setLatitude] = useState(17.0400);
-  const [longitude, setLongitude] = useState(121.8500);
-
-  const [
-    isLoadingAddress,
-    setIsLoadingAddress,
-  ] = useState(false);
-
-  const [mapMessage, setMapMessage] = useState(
-    "Select your exact pickup location"
+  const [latitude, setLatitude] = useState(
+    DEFAULT_LOCATION.latitude
   );
 
-  // =====================================
-  // GPS STATE
-  // =====================================
+  const [longitude, setLongitude] = useState(
+    DEFAULT_LOCATION.longitude
+  );
 
-  const [isLocating, setIsLocating] = useState(false);
   const [gpsAccuracy, setGpsAccuracy] = useState(null);
 
-  // =====================================
-  // UI STATES
-  // =====================================
+  const [showMap, setShowMap] = useState(false);
 
-  const [errorMessage, setErrorMessage] = useState("");
+  const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
 
-  // =====================================
-  // TODAY
-  // =====================================
+  const [isSubmitting, setIsSubmitting] =
+    useState(false);
 
-  const today = new Date()
-    .toISOString()
-    .split("T")[0];
+  const [isLocating, setIsLocating] =
+    useState(false);
 
-  // =====================================
-  // SERVICE PRICES
-  // Fixed price per selected service
-  // =====================================
-
-  const prices = {
-    "Wash & Fold": 80,
-    "Dry Cleaning": 150,
-    Ironing: 60,
-    "Bedding Care": 200,
-  };
-
-  // =====================================
-  // SERVICE OPTIONS
-  // =====================================
-
-  const serviceOptions = [
-    {
-      name: "Wash & Fold",
-      icon: "🧺",
-      description: "Fresh, clean, and neatly folded",
-      price: 80,
-    },
-    {
-      name: "Dry Cleaning",
-      icon: "👔",
-      description: "Professional garment cleaning",
-      price: 150,
-    },
-    {
-      name: "Ironing",
-      icon: "👕",
-      description: "Neatly pressed and wrinkle-free",
-      price: 60,
-    },
-    {
-      name: "Bedding Care",
-      icon: "🛏️",
-      description: "Deep cleaning for bedding",
-      price: 200,
-    },
-  ];
-
-  // =====================================
-  // FEES
-  // =====================================
-
-  const PICKUP_DELIVERY_FEE = 50;
-  const PICKUP_ONLY_FEE = 20;
-
-  const deliveryFee =
-    pickup === "Pickup & Delivery"
-      ? PICKUP_DELIVERY_FEE
-      : pickup === "Pickup Only"
-        ? PICKUP_ONLY_FEE
-        : 0;
-
-  // =====================================
+  // ====================================================
   // PRICE CALCULATION
-  // =====================================
+  // ====================================================
 
   const laundryTotal = services.reduce(
     (total, serviceName) => {
-      return total + (prices[serviceName] || 0);
+      const service = SERVICE_OPTIONS.find(
+        (item) => item.name === serviceName
+      );
+
+      return total + (service?.price || 0);
     },
     0
   );
 
-  const estimatedTotal = laundryTotal + deliveryFee;
+  const selectedPickup = PICKUP_OPTIONS.find(
+    (item) => item.name === pickup
+  );
 
-  // =====================================
-  // CLEAR ERROR
-  // =====================================
+  const deliveryFee = selectedPickup?.fee || 0;
 
-  const clearError = () => {
-    setErrorMessage("");
+  const estimatedTotal =
+    laundryTotal + deliveryFee;
+
+  // ====================================================
+  // HELPERS
+  // ====================================================
+
+  const formatCurrency = (amount) => {
+    return `₱${Number(amount || 0).toFixed(2)}`;
   };
 
-  // =====================================
-  // TOGGLE SERVICE
-  // =====================================
+  const formatDate = (dateValue) => {
+    if (!dateValue) {
+      return "Not selected";
+    }
+
+    const date = new Date(
+      `${dateValue}T00:00:00`
+    );
+
+    if (Number.isNaN(date.getTime())) {
+      return dateValue;
+    }
+
+    return date.toLocaleDateString("en-PH", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  };
+
+  const locationText =
+    [
+      address,
+      barangay,
+      city,
+      province,
+    ]
+      .filter(
+        (item) =>
+          item && item.trim()
+      )
+      .join(", ") ||
+    "Not provided";
+
+  // ====================================================
+  // SELECT SERVICE
+  // ====================================================
 
   const toggleService = (serviceName) => {
+    setError("");
+
     setServices((currentServices) => {
-      if (currentServices.includes(serviceName)) {
+      if (
+        currentServices.includes(serviceName)
+      ) {
         return currentServices.filter(
-          (item) => item !== serviceName
+          (service) =>
+            service !== serviceName
         );
       }
 
-      return [...currentServices, serviceName];
+      return [
+        ...currentServices,
+        serviceName,
+      ];
     });
-
-    clearError();
   };
 
-  // =====================================
-  // REVERSE GEOCODING
-  // MAP → ADDRESS
-  // =====================================
+  // ====================================================
+  // SELECT PICKUP
+  // ====================================================
 
-  const getAddressFromCoordinates = async (
+  const handlePickupChange = (pickupType) => {
+    setError("");
+    setPickup(pickupType);
+  };
+
+  // ====================================================
+  // REVERSE GEOCODING
+  // ====================================================
+
+  const reverseGeocode = async (
     lat,
     lng
   ) => {
     try {
-      setIsLoadingAddress(true);
-
-      setMapMessage("Getting address...");
-
       const response = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&addressdetails=1`,
+        `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`,
         {
           headers: {
             Accept: "application/json",
@@ -258,185 +293,114 @@ function BookNow() {
       );
 
       if (!response.ok) {
-        throw new Error("Unable to find address.");
-      }
-
-      const data = await response.json();
-
-      if (!data.address) {
-        setMapMessage(
-          "No address found. Please enter your address manually."
+        throw new Error(
+          "Unable to retrieve location."
         );
-
-        return;
       }
 
-      const addressData = data.address;
+      const data =
+        await response.json();
 
-      // =================================
-      // COMPLETE ADDRESS
-      // =================================
+      const location =
+        data.address || {};
 
-      const completeAddress = [
-        addressData.house_number,
-        addressData.road ||
-          addressData.street ||
-          addressData.pedestrian ||
-          addressData.neighbour,
-      ]
-        .filter(Boolean)
-        .join(", ");
-
-      // =================================
-      // BARANGAY
-      // =================================
-
-      const barangayName =
-        addressData.village ||
-        addressData.suburb ||
-        addressData.neighbourhood ||
-        addressData.quarter ||
-        addressData.hamlet ||
+      const road =
+        location.road ||
+        location.pedestrian ||
+        location.neighbourhood ||
         "";
 
-      // =================================
-      // CITY / MUNICIPALITY
-      // =================================
-
-      const cityName =
-        addressData.city ||
-        addressData.town ||
-        addressData.municipality ||
-        addressData.city_district ||
+      const barangayValue =
+        location.village ||
+        location.suburb ||
+        location.quarter ||
+        location.hamlet ||
         "";
 
-      // =================================
-      // PROVINCE
-      // =================================
-
-      const provinceName =
-        addressData.province ||
-        addressData.state ||
+      const cityValue =
+        location.city ||
+        location.town ||
+        location.municipality ||
         "";
 
-      // =================================
-      // UPDATE ADDRESS FORM
-      // =================================
+      const provinceValue =
+        location.province ||
+        location.state ||
+        "";
 
-      setAddress(
-        completeAddress ||
-          data.display_name ||
-          ""
-      );
-
-      setBarangay(barangayName);
-      setCity(cityName);
-      setProvince(provinceName);
-
-      setMapMessage(
-        "✓ Address automatically updated."
-      );
-
-      clearError();
+      setAddress(road);
+      setBarangay(barangayValue);
+      setCity(cityValue);
+      setProvince(provinceValue);
     } catch (error) {
       console.error(
         "Reverse geocoding error:",
         error
       );
-      setMapMessage(
-        "Unable to automatically get the address. Please enter it manually."
-      );
-    } finally {
-      setIsLoadingAddress(false);
     }
   };
 
-  // =====================================
-  // MAP LOCATION CHANGE
-  // =====================================
+  // ====================================================
+  // LOCATION CHANGE
+  // ====================================================
 
-  const handleMapLocationChange = async (
+  const handleLocationChange = async (
     lat,
     lng
   ) => {
     setLatitude(lat);
     setLongitude(lng);
-    setGpsAccuracy(null);
 
-    await getAddressFromCoordinates(lat, lng);
+    await reverseGeocode(lat, lng);
   };
 
-  // =====================================
-  // GET CUSTOMER GPS LOCATION
-  // =====================================
+  // ====================================================
+  // CURRENT LOCATION
+  // ====================================================
 
-  const getCurrentLocation = () => {
+  const useCurrentLocation = () => {
+    setError("");
+
     if (!navigator.geolocation) {
-      setMapMessage(
-        "GPS is not supported by your browser."
+      setError(
+        "Geolocation is not supported by your browser."
       );
-
       return;
     }
 
     setIsLocating(true);
-    setIsLoadingAddress(true);
     setShowMap(true);
-
-    setMapMessage(
-      "📡 Getting your current GPS location..."
-    );
 
     navigator.geolocation.getCurrentPosition(
       async (position) => {
-        const lat = position.coords.latitude;
-        const lng = position.coords.longitude;
-        const accuracy = position.coords.accuracy;
+        const lat =
+          position.coords.latitude;
+
+        const lng =
+          position.coords.longitude;
 
         setLatitude(lat);
         setLongitude(lng);
-        setGpsAccuracy(accuracy);
 
-        setMapMessage(
-          "✓ GPS location found. Getting address..."
+        setGpsAccuracy(
+          position.coords.accuracy
         );
 
-        clearError();
-
-        await getAddressFromCoordinates(lat, lng);
+        await reverseGeocode(
+          lat,
+          lng
+        );
 
         setIsLocating(false);
       },
-      (error) => {
-        console.error("GPS error:", error);
+      (geoError) => {
+        console.error(geoError);
+
+        setError(
+          "Unable to get your current location. Please select your location manually."
+        );
 
         setIsLocating(false);
-        setIsLoadingAddress(false);
-
-        switch (error.code) {
-          case error.PERMISSION_DENIED:
-            setMapMessage(
-              "📍 Location permission was denied. Please allow location access in your browser."
-            );
-            break;
-
-          case error.POSITION_UNAVAILABLE:
-            setMapMessage(
-              "📍 Your current GPS location is unavailable."
-            );
-            break;
-
-          case error.TIMEOUT:
-            setMapMessage(
-              "📍 GPS request timed out. Please try again."
-            );
-            break;
-
-          default:
-            setMapMessage(
-              "📍 Unable to get your current location."
-            );
-        }
       },
       {
         enableHighAccuracy: true,
@@ -446,949 +410,1194 @@ function BookNow() {
     );
   };
 
-  // =====================================
+  // ====================================================
   // SUBMIT BOOKING
-  // =====================================
+  // ====================================================
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
+  const handleSubmit = (event) => {
+    event.preventDefault();
 
-    setErrorMessage("");
+    setError("");
+    setMessage("");
 
-    // =====================================
+    // -----------------------------------------------
     // VALIDATION
-    // =====================================
+    // -----------------------------------------------
 
     if (services.length === 0) {
-      setErrorMessage(
+      setError(
         "Please select at least one laundry service."
       );
+      return;
+    }
 
+    if (!pickup) {
+      setError(
+        "Please select a pickup option."
+      );
       return;
     }
 
     if (!schedule) {
-      setErrorMessage(
+      setError(
         "Please select a pickup date."
       );
-
       return;
     }
 
     if (!time) {
-      setErrorMessage(
+      setError(
         "Please select a pickup time."
       );
-
       return;
     }
 
     if (!address.trim()) {
-      setErrorMessage(
-        "Please enter your complete address."
+      setError(
+        "Please enter your pickup address."
       );
-
       return;
     }
 
     if (!barangay.trim()) {
-      setErrorMessage(
+      setError(
         "Please enter your barangay."
       );
-
       return;
     }
 
     if (!city.trim()) {
-      setErrorMessage(
+      setError(
         "Please enter your city or municipality."
       );
-
       return;
     }
 
     if (!province.trim()) {
-      setErrorMessage(
+      setError(
         "Please enter your province."
       );
-
       return;
     }
 
-    // =====================================
-    // BOOKING ID
-    // =====================================
+    if (isSubmitting) {
+      return;
+    }
 
-    const newBookingId = `LM-${Date.now()}`;
-
-    // =====================================
-    // BOOKING RECORD
-    // =====================================
-
-    const booking = {
-      id: newBookingId,
-
-      services: [...services],
-
-      schedule,
-      time,
-
-      pickupType: pickup,
-
-      address: address.trim(),
-      barangay: barangay.trim(),
-      city: city.trim(),
-      province: province.trim(),
-      landmark: landmark.trim(),
-
-      // GPS DATA
-      latitude,
-      longitude,
-      gpsAccuracy,
-
-      laundrySubtotal: laundryTotal,
-      deliveryFee,
-      estimatedTotal,
-
-      status: "Pending",
-
-      createdAt: new Date().toISOString(),
-    };
-
-    // =====================================
-    // PAYMENT RECORD
-    // =====================================
-
-    const paymentRecord = {
-      bookingId: newBookingId,
-
-      services: [...services],
-
-      laundrySubtotal: laundryTotal,
-      deliveryFee,
-
-      totalAmount: estimatedTotal,
-
-      pickupType: pickup,
-
-      schedule,
-      time,
-
-      paymentMethod: "GCash",
-      paymentStatus: "Pending",
-      bookingStatus: "Pending",
-
-      createdAt: new Date().toISOString(),
-    };
-
-    // =====================================
-    // SAVE DATA
-    // =====================================
+    setIsSubmitting(true);
 
     try {
-      // BOOKINGS
-      const existingBookings = JSON.parse(
-        localStorage.getItem(
-          "laundrymateBookings"
-        ) || "[]"
-      );
+      // -----------------------------------------------
+      // BOOKING ID
+      // -----------------------------------------------
+
+      const bookingId =
+        `LM-${Date.now()}`;
+
+      // -----------------------------------------------
+      // BOOKING DATA
+      // -----------------------------------------------
+
+      const booking = {
+        id: bookingId,
+
+        services,
+
+        schedule,
+        time,
+
+        pickupType: pickup,
+
+        address,
+        barangay,
+        city,
+        province,
+        landmark,
+
+        latitude,
+        longitude,
+        gpsAccuracy,
+
+        laundrySubtotal:
+          laundryTotal,
+
+        deliveryFee,
+
+        estimatedTotal,
+
+        status: "Pending",
+
+        createdAt:
+          new Date().toISOString(),
+      };
+
+      // -----------------------------------------------
+      // SAVE BOOKING
+      // -----------------------------------------------
+
+      const existingBookings =
+        JSON.parse(
+          localStorage.getItem(
+            "laundrymateBookings"
+          ) || "[]"
+        );
+
+      existingBookings.push(booking);
 
       localStorage.setItem(
         "laundrymateBookings",
-        JSON.stringify([
-          ...existingBookings,
-          booking,
-        ])
+        JSON.stringify(
+          existingBookings
+        )
       );
 
-      // PAYMENTS
-      const existingPayments = JSON.parse(
-        localStorage.getItem(
-          "laundrymatePayments"
-        ) || "[]"
-      );
+      // -----------------------------------------------
+      // PAYMENT RECORD
+      // -----------------------------------------------
+
+      const payment = {
+        bookingId,
+
+        services,
+
+        laundrySubtotal:
+          laundryTotal,
+
+        deliveryFee,
+
+        totalAmount:
+          estimatedTotal,
+
+        pickupType: pickup,
+
+        schedule,
+        time,
+
+        paymentMethod:
+          "GCash",
+
+        paymentStatus:
+          "Pending",
+
+        bookingStatus:
+          "Pending",
+
+        createdAt:
+          new Date().toISOString(),
+      };
+
+      const existingPayments =
+        JSON.parse(
+          localStorage.getItem(
+            "laundrymatePayments"
+          ) || "[]"
+        );
+
+      existingPayments.push(payment);
 
       localStorage.setItem(
         "laundrymatePayments",
-        JSON.stringify([
-          ...existingPayments,
-          paymentRecord,
-        ])
+        JSON.stringify(
+          existingPayments
+        )
       );
 
-      // LATEST PAYMENT
+      // -----------------------------------------------
+      // BACKWARD COMPATIBILITY
+      // -----------------------------------------------
+
       localStorage.setItem(
         "laundrymatePayment",
-        JSON.stringify(paymentRecord)
+        JSON.stringify(payment)
       );
 
-      navigate("/customer/payments");
+      setMessage(
+        "Booking created successfully."
+      );
+
+      // -----------------------------------------------
+      // PAYMENT PAGE
+      // -----------------------------------------------
+
+      navigate(
+        "/customer/payments"
+      );
+
     } catch (error) {
       console.error(
-        "Booking save error:",
+        "Booking error:",
         error
       );
 
-      setErrorMessage(
-        "Unable to save your booking. Please try again."
+      setError(
+        "Something went wrong while saving your booking. Please try again."
       );
+
+      setIsSubmitting(false);
     }
   };
 
-  // =====================================
+  // ====================================================
   // RENDER
-  // =====================================
+  // ====================================================
 
   return (
     <div className="booknow-page">
 
-      {/* =====================================
-          ERROR MESSAGE
-      ===================================== */}
+      <div className="booknow-container">
 
-      {errorMessage && (
-        <div className="error-message">
-          <span>⚠️</span>
-          <span>{errorMessage}</span>
-        </div>
-      )}
+        {/* ==================================================
+            PAGE HEADER
+        ================================================== */}
 
-      {/* =====================================
-          HEADER
-      ===================================== */}
+        <header className="booknow-header">
 
-      <div className="booknow-header">
-        <div>
-          <p className="booknow-eyebrow">
-            LAUNDRYMATE
-          </p>
+          <span className="page-label">
+            CUSTOMER PORTAL
+          </span>
 
-          <h1>Book a Laundry Service</h1>
+          <h1>
+            Book Laundry Service
+          </h1>
 
           <p>
-            Schedule your laundry service
-            quickly and conveniently.
+            Select your laundry service,
+            pickup schedule, and location.
           </p>
-        </div>
 
-        <div className="booking-icon">
-          🧺
-        </div>
-      </div>
+        </header>
 
-      {/* =====================================
-          MAIN BOOKING LAYOUT
-      ===================================== */}
+        {/* ==================================================
+            ERROR MESSAGE
+        ================================================== */}
 
-      <form
-        className="booking-layout"
-        onSubmit={handleSubmit}
-      >
+        {error && (
+          <div className="form-alert error-alert">
 
-        {/* =====================================
-            LEFT SIDE
-        ===================================== */}
+            <span className="alert-icon">
+              !
+            </span>
 
-        <div className="booking-main">
+            <div>
 
-          {/* =====================================
-              STEP 1
-          ===================================== */}
-
-          <section className="booking-card">
-
-            <div className="section-title">
-              <div className="step-number">
-                1
-              </div>
-
-              <div>
-                <h2>Choose your services</h2>
-
-                <p>
-                  Select one or more laundry
-                  services you need.
-                </p>
-              </div>
-            </div>
-
-            <div className="service-selection">
-              {serviceOptions.map((item) => {
-                const isSelected =
-                  services.includes(item.name);
-
-                return (
-                  <label
-                    key={item.name}
-                    className={`service-card ${
-                      isSelected ? "selected" : ""
-                    }`}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={isSelected}
-                      onChange={() =>
-                        toggleService(item.name)
-                      }
-                    />
-
-                    <div className="service-check">
-                      {isSelected ? "✓" : ""}
-                    </div>
-
-                    <div className="service-icon">
-                      {item.icon}
-                    </div>
-
-                    <div className="service-info">
-                      <strong>{item.name}</strong>
-
-                      <small>
-                        {item.description}
-                      </small>
-                    </div>
-
-                    <div className="service-price">
-                      ₱{item.price}
-                    </div>
-                  </label>
-                );
-              })}
-            </div>
-
-            <div className="service-helper">
-              <span>✓</span>
+              <strong>
+                Please check your booking
+              </strong>
 
               <p>
-                You can select multiple
-                services for the same booking.
+                {error}
               </p>
-            </div>
-
-          </section>
-
-          {/* =====================================
-              STEP 2
-          ===================================== */}
-
-          <section className="booking-card">
-
-            <div className="section-title">
-              <div className="step-number">
-                2
-              </div>
-
-              <div>
-                <h2>Pickup & schedule</h2>
-
-                <p>
-                  Choose how and when we
-                  collect your laundry.
-                </p>
-              </div>
-            </div>
-
-            <div className="form-group">
-              <label>Service type</label>
-
-              <div className="pickup-options">
-
-                <button
-                  type="button"
-                  className={
-                    pickup === "Pickup & Delivery"
-                      ? "pickup-option active"
-                      : "pickup-option"
-                  }
-                  onClick={() => {
-                    setPickup("Pickup & Delivery");
-                    clearError();
-                  }}
-                >
-                  🚚
-                  <span>Pickup & Delivery</span>
-                </button>
-
-                <button
-                  type="button"
-                  className={
-                    pickup === "Pickup Only"
-                      ? "pickup-option active"
-                      : "pickup-option"
-                  }
-                  onClick={() => {
-                    setPickup("Pickup Only");
-                    clearError();
-                  }}
-                >
-                  🏪
-                  <span>Pickup Only</span>
-                </button>
-
-              </div>
-            </div>
-
-            <div className="form-row">
-
-              <div className="form-group">
-                <label htmlFor="schedule">
-                  Pickup date
-                </label>
-
-                <input
-                  id="schedule"
-                  type="date"
-                  min={today}
-                  value={schedule}
-                  onChange={(e) => {
-                    setSchedule(e.target.value);
-                    clearError();
-                  }}
-                />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="time">
-                  Pickup time
-                </label>
-
-                <select
-                  id="time"
-                  value={time}
-                  onChange={(e) => {
-                    setTime(e.target.value);
-                    clearError();
-                  }}
-                >
-                  <option value="">
-                    Select time
-                  </option>
-
-                  <option value="8:00 - 10:00 AM">
-                    8:00 - 10:00 AM
-                  </option>
-
-                  <option value="10:00 - 12:00 PM">
-                    10:00 - 12:00 PM
-                  </option>
-
-                  <option value="1:00 - 3:00 PM">
-                    1:00 - 3:00 PM
-                  </option>
-
-                  <option value="3:00 - 5:00 PM">
-                    3:00 - 5:00 PM
-                  </option>
-                </select>
-              </div>
 
             </div>
 
-          </section>
+          </div>
+        )}
 
-          {/* =====================================
-              STEP 3 - GPS LOCATION
-          ===================================== */}
+        {/* ==================================================
+            SUCCESS MESSAGE
+        ================================================== */}
 
-          <section className="booking-card map-booking-card">
+        {message && (
+          <div className="form-alert success-alert">
 
-            <div className="section-title">
-              <div className="step-number">
-                3
-              </div>
+            <span className="alert-icon">
+              ✓
+            </span>
 
-              <div>
-                <h2>Confirm Pickup Location</h2>
+            <div>
 
-                <p>
-                  Use your GPS location or
-                  pin your exact pickup location
-                  on the map.
-                </p>
-              </div>
+              <strong>
+                Success
+              </strong>
+
+              <p>
+                {message}
+              </p>
+
             </div>
 
-            {/* MAP HEADER */}
+          </div>
+        )}
 
-            <div className="map-location-header">
+        {/* ==================================================
+            BOOKING FORM
+        ================================================== */}
 
-              <div>
-                <div className="map-title">
-                  📍 Your Pickup Location
+        <form
+          className="booking-layout"
+          onSubmit={handleSubmit}
+        >
+
+          {/* ==================================================
+              LEFT CONTENT
+          ================================================== */}
+
+          <main className="booking-content">
+
+            {/* ==================================================
+                STEP 1 - SERVICES
+            ================================================== */}
+
+            <section className="booking-card">
+
+              <div className="card-heading">
+
+                <div className="step-number">
+                  1
                 </div>
 
-                <p>
-                  Use GPS for your current
-                  location, or click the map /
-                  drag the marker.
-                </p>
-              </div>
+                <div>
 
-              <div className="map-actions">
+                  <h2>
+                    Select Laundry Services
+                  </h2>
 
-                {/* GPS BUTTON */}
-
-                <button
-                  type="button"
-                  className="gps-location-btn"
-                  onClick={getCurrentLocation}
-                  disabled={
-                    isLocating ||
-                    isLoadingAddress
-                  }
-                >
-                  {isLocating
-                    ? "📡 Locating..."
-                    : "📍 Use My Current Location"}
-                </button>
-
-                {/* MAP TOGGLE */}
-
-                <button
-                  type="button"
-                  className="map-toggle-btn"
-                  onClick={() =>
-                    setShowMap((current) => !current)
-                  }
-                >
-                  {showMap
-                    ? "Hide Map"
-                    : "📍 Show Map"}
-                </button>
-
-              </div>
-            </div>
-
-            {/* MAP */}
-
-            {showMap && (
-              <div className="booking-map-container">
-
-                <MapContainer
-                  center={[latitude, longitude]}
-                  zoom={17}
-                  scrollWheelZoom={true}
-                  className="booking-map"
-                >
-
-                  <MapCenterController
-                    latitude={latitude}
-                    longitude={longitude}
-                  />
-
-                  <TileLayer
-                    attribution="&copy; Esri, Maxar, Earthstar Geographics"
-                    url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-                  />
-
-                  <LocationMarker
-                    latitude={latitude}
-                    longitude={longitude}
-                    onLocationChange={
-                      handleMapLocationChange
-                    }
-                  />
-
-                </MapContainer>
-
-                {/* MAP INFO */}
-
-                <div className="map-bottom-panel">
-
-                  <div className="map-status">
-                    <div className="map-status-icon">
-                      📍
-                    </div>
-
-                    <div>
-                      <strong>
-                        {isLoadingAddress
-                          ? "Getting address..."
-                          : "Pickup location"}
-                      </strong>
-
-                      <p>
-                        {isLoadingAddress
-                          ? "Please wait..."
-                          : mapMessage}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="map-coordinates">
-
-                    <span>Latitude</span>
-
-                    <strong>
-                      {latitude.toFixed(6)}
-                    </strong>
-
-                    <span>Longitude</span>
-
-                    <strong>
-                      {longitude.toFixed(6)}
-                    </strong>
-
-                    {gpsAccuracy && (
-                      <>
-                        <span>Accuracy</span>
-
-                        <strong>
-                          ±{Math.round(gpsAccuracy)}m
-                        </strong>
-                      </>
-                    )}
-
-                  </div>
-                </div>
-
-              </div>
-            )}
-
-            {/* SELECTED ADDRESS */}
-
-            <div className="selected-location-card">
-
-              <div className="selected-location-icon">
-                📍
-              </div>
-
-              <div className="selected-location-content">
-
-                <span>Selected Pickup Address</span>
-
-                <strong>
-                  {address ||
-                    "Use GPS or select a location on the map"}
-                </strong>
-
-                {(barangay || city || province) && (
                   <p>
-                    {[barangay, city, province]
-                      .filter(Boolean)
-                      .join(", ")}
+                    Choose the services you need.
                   </p>
+
+                </div>
+
+              </div>
+
+              <div className="service-grid">
+
+                {SERVICE_OPTIONS.map(
+                  (service) => {
+
+                    const isSelected =
+                      services.includes(
+                        service.name
+                      );
+
+                    return (
+                      <button
+                        type="button"
+                        key={service.name}
+                        className={`service-card ${
+                          isSelected
+                            ? "selected"
+                            : ""
+                        }`}
+                        onClick={() =>
+                          toggleService(
+                            service.name
+                          )
+                        }
+                      >
+
+                        <div className="service-icon">
+                          {service.icon}
+                        </div>
+
+                        <div className="service-information">
+
+                          <h3>
+                            {service.name}
+                          </h3>
+
+                          <p>
+                            {service.description}
+                          </p>
+
+                          <strong>
+                            {formatCurrency(
+                              service.price
+                            )}
+                          </strong>
+
+                        </div>
+
+                        <div className="service-check">
+                          {isSelected
+                            ? "✓"
+                            : ""}
+                        </div>
+
+                      </button>
+                    );
+                  }
                 )}
 
               </div>
-            </div>
 
-            {/* GPS CONFIRMATION */}
+            </section>
 
-            <div className="map-confirmation">
-              <span>✓</span>
+            {/* ==================================================
+                STEP 2 - PICKUP
+            ================================================== */}
 
-              <p>
-                Your GPS coordinates will be
-                saved with your booking so our
-                pickup staff can easily locate
-                your pickup address.
-              </p>
-            </div>
+            <section className="booking-card">
 
-          </section>
+              <div className="card-heading">
 
-          {/* =====================================
-              STEP 4 - LAUNDRY ADDRESS
-          ===================================== */}
+                <div className="step-number">
+                  2
+                </div>
 
-          <section className="booking-card">
+                <div>
 
-            <div className="section-title">
-              <div className="step-number">
-                4
+                  <h2>
+                    Pickup Option
+                  </h2>
+
+                  <p>
+                    Select how you want your laundry handled.
+                  </p>
+
+                </div>
+
               </div>
 
-              <div>
-                <h2>Laundry Address</h2>
+              <div className="pickup-grid">
 
-                <p>
-                  Enter your pickup address.
-                  You can confirm the exact
-                  location in Step 3.
-                </p>
-              </div>
-            </div>
+                {PICKUP_OPTIONS.map(
+                  (option) => {
 
-            <div className="form-group">
-              <label htmlFor="address">
-                Complete Address
-              </label>
+                    const isSelected =
+                      pickup ===
+                      option.name;
 
-              <input
-                id="address"
-                type="text"
-                placeholder="House/Building No., Street"
-                value={address}
-                onChange={(e) => {
-                  setAddress(e.target.value);
-                  clearError();
-                }}
-              />
-            </div>
+                    return (
+                      <button
+                        type="button"
+                        key={option.name}
+                        className={`pickup-card ${
+                          isSelected
+                            ? "selected"
+                            : ""
+                        }`}
+                        onClick={() =>
+                          handlePickupChange(
+                            option.name
+                          )
+                        }
+                      >
 
-            <div className="form-row">
-
-              <div className="form-group">
-                <label htmlFor="barangay">
-                  Barangay
-                </label>
-
-                <input
-                  id="barangay"
-                  type="text"
-                  placeholder="Enter barangay"
-                  value={barangay}
-                  onChange={(e) => {
-                    setBarangay(e.target.value);
-                    clearError();
-                  }}
-                />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="city">
-                  City / Municipality
-                </label>
-
-                <input
-                  id="city"
-                  type="text"
-                  placeholder="Enter city or municipality"
-                  value={city}
-                  onChange={(e) => {
-                    setCity(e.target.value);
-                    clearError();
-                  }}
-                />
-              </div>
-
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="province">
-                Province
-              </label>
-
-              <input
-                id="province"
-                type="text"
-                placeholder="Enter province"
-                value={province}
-                onChange={(e) => {
-                  setProvince(e.target.value);
-                  clearError();
-                }}
-              />
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="landmark">
-                Landmark / Pickup Instructions
-              </label>
-
-              <textarea
-                id="landmark"
-                rows="4"
-                placeholder="Example: Near the barangay hall, blue gate beside the sari-sari store..."
-                value={landmark}
-                onChange={(e) =>
-                  setLandmark(e.target.value)
-                }
-              />
-            </div>
-
-          </section>
-
-        </div>
-
-        {/* =====================================
-            RIGHT SIDE - BOOKING SUMMARY
-        ===================================== */}
-
-        <aside className="booking-summary">
-
-          <div className="summary-header">
-            <div>
-              <h3>Booking Summary</h3>
-
-              <p>
-                Review your selected services
-                and total amount.
-              </p>
-            </div>
-          </div>
-
-          {/* SERVICES */}
-
-          <div className="summary-services">
-
-            <div className="summary-section-label">
-              Selected Services
-            </div>
-
-            {services.length === 0 ? (
-              <div className="empty-services">
-                <span>🧺</span>
-                <p>No services selected</p>
-              </div>
-            ) : (
-              <div className="summary-service-list">
-
-                {services.map((serviceName) => {
-                  const price =
-                    prices[serviceName] || 0;
-
-                  return (
-                    <div
-                      className="summary-service-row"
-                      key={serviceName}
-                    >
-
-                      <div className="summary-service-left">
-
-                        <div className="summary-service-icon">
-                          🧺
+                        <div className="pickup-icon">
+                          {option.icon}
                         </div>
 
-                        <div>
+                        <div className="pickup-information">
+
+                          <h3>
+                            {option.name}
+                          </h3>
+
+                          <p>
+                            {option.description}
+                          </p>
+
                           <strong>
-                            {serviceName}
+                            {option.fee === 0
+                              ? "Free"
+                              : `${formatCurrency(
+                                  option.fee
+                                )} fee`}
                           </strong>
 
-                          <span>
-                            Service price
-                          </span>
                         </div>
+
+                        <div className="radio-check">
+                          {isSelected
+                            ? "✓"
+                            : ""}
+                        </div>
+
+                      </button>
+                    );
+                  }
+                )}
+
+              </div>
+
+            </section>
+
+            {/* ==================================================
+                STEP 3 - SCHEDULE
+            ================================================== */}
+
+            <section className="booking-card">
+
+              <div className="card-heading">
+
+                <div className="step-number">
+                  3
+                </div>
+
+                <div>
+
+                  <h2>
+                    Pickup Schedule
+                  </h2>
+
+                  <p>
+                    Choose your preferred date and time.
+                  </p>
+
+                </div>
+
+              </div>
+
+              <div className="form-grid two-columns">
+
+                <div className="form-group">
+
+                  <label htmlFor="schedule">
+                    Pickup Date
+                  </label>
+
+                  <input
+                    id="schedule"
+                    type="date"
+                    value={schedule}
+                    min={
+                      new Date()
+                        .toISOString()
+                        .split("T")[0]
+                    }
+                    onChange={(event) =>
+                      setSchedule(
+                        event.target.value
+                      )
+                    }
+                  />
+
+                </div>
+
+                <div className="form-group">
+
+                  <label htmlFor="time">
+                    Pickup Time
+                  </label>
+
+                  <input
+                    id="time"
+                    type="time"
+                    value={time}
+                    onChange={(event) =>
+                      setTime(
+                        event.target.value
+                      )
+                    }
+                  />
+
+                </div>
+
+              </div>
+
+            </section>
+
+            {/* ==================================================
+                STEP 4 - LOCATION
+            ================================================== */}
+
+            <section className="booking-card">
+
+              <div className="card-heading">
+
+                <div className="step-number">
+                  4
+                </div>
+
+                <div>
+
+                  <h2>
+                    Pickup Location
+                  </h2>
+
+                  <p>
+                    Provide the location for your laundry pickup.
+                  </p>
+
+                </div>
+
+              </div>
+
+              <button
+                type="button"
+                className="location-button"
+                onClick={
+                  useCurrentLocation
+                }
+                disabled={
+                  isLocating
+                }
+              >
+
+                <span>
+                  📍
+                </span>
+
+                {isLocating
+                  ? "Getting your location..."
+                  : "Use My Current Location"}
+
+              </button>
+
+              {/* MAP */}
+
+              {showMap && (
+                <div className="map-wrapper">
+
+                  <MapContainer
+                    center={[
+                      latitude,
+                      longitude,
+                    ]}
+                    zoom={17}
+                    scrollWheelZoom={true}
+                    className="location-map"
+                  >
+
+                    <TileLayer
+                      attribution='&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors'
+                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    />
+
+                    <MapCenterController
+                      latitude={latitude}
+                      longitude={longitude}
+                    />
+
+                    <LocationMarker
+                      latitude={latitude}
+                      longitude={longitude}
+                      onLocationChange={
+                        handleLocationChange
+                      }
+                    />
+
+                  </MapContainer>
+
+                  <div className="map-help">
+                    Click the map or drag
+                    the marker to set your
+                    pickup location.
+                  </div>
+
+                </div>
+              )}
+
+              {/* LOCATION FIELDS */}
+
+              <div className="form-grid">
+
+                <div className="form-group">
+
+                  <label htmlFor="address">
+                    Address
+                  </label>
+
+                  <input
+                    id="address"
+                    type="text"
+                    value={address}
+                    placeholder="House number, street"
+                    onChange={(event) =>
+                      setAddress(
+                        event.target.value
+                      )
+                    }
+                  />
+
+                </div>
+
+                <div className="form-group">
+
+                  <label htmlFor="barangay">
+                    Barangay
+                  </label>
+
+                  <input
+                    id="barangay"
+                    type="text"
+                    value={barangay}
+                    placeholder="Enter barangay"
+                    onChange={(event) =>
+                      setBarangay(
+                        event.target.value
+                      )
+                    }
+                  />
+
+                </div>
+
+                <div className="form-group">
+
+                  <label htmlFor="city">
+                    City / Municipality
+                  </label>
+
+                  <input
+                    id="city"
+                    type="text"
+                    value={city}
+                    placeholder="Enter city or municipality"
+                    onChange={(event) =>
+                      setCity(
+                        event.target.value
+                      )
+                    }
+                  />
+
+                </div>
+
+                <div className="form-group">
+
+                  <label htmlFor="province">
+                    Province
+                  </label>
+
+                  <input
+                    id="province"
+                    type="text"
+                    value={province}
+                    placeholder="Enter province"
+                    onChange={(event) =>
+                      setProvince(
+                        event.target.value
+                      )
+                    }
+                  />
+
+                </div>
+
+                <div className="form-group full-width">
+
+                  <label htmlFor="landmark">
+
+                    Landmark
+
+                    <span className="optional">
+                      Optional
+                    </span>
+
+                  </label>
+
+                  <input
+                    id="landmark"
+                    type="text"
+                    value={landmark}
+                    placeholder="Example: Near the public market"
+                    onChange={(event) =>
+                      setLandmark(
+                        event.target.value
+                      )
+                    }
+                  />
+
+                </div>
+
+              </div>
+
+              {gpsAccuracy && (
+                <div className="gps-info">
+                  📍 GPS accuracy: approximately{" "}
+                  {Math.round(
+                    gpsAccuracy
+                  )}{" "}
+                  meters
+                </div>
+              )}
+
+            </section>
+
+          </main>
+
+          {/* ==================================================
+              RIGHT SIDE - BOOKING SUMMARY
+          ================================================== */}
+
+          <aside className="booking-summary">
+
+            <div className="summary-content">
+
+              {/* ==================================================
+                  SELECTED SERVICES
+              ================================================== */}
+
+              <div className="summary-block">
+
+                <div className="summary-section-title">
+
+                  <span className="section-icon">
+                    🧺
+                  </span>
+
+                  <div>
+
+                    <h3>
+                      Selected Services
+                    </h3>
+
+                    <p>
+                      {services.length === 0
+                        ? "No service selected"
+                        : `${services.length} service${
+                            services.length > 1
+                              ? "s"
+                              : ""
+                          } selected`}
+                    </p>
+
+                  </div>
+
+                </div>
+
+                {services.length === 0 ? (
+
+                  <div className="summary-empty">
+
+                    <span className="empty-icon">
+                      🧺
+                    </span>
+
+                    <strong>
+                      No service selected
+                    </strong>
+
+                    <p>
+                      Select a laundry service to continue.
+                    </p>
+
+                  </div>
+
+                ) : (
+
+                  <div className="summary-service-list">
+
+                    {services.map(
+                      (serviceName) => {
+
+                        const service =
+                          SERVICE_OPTIONS.find(
+                            (item) =>
+                              item.name ===
+                              serviceName
+                          );
+
+                        return (
+                          <div
+                            className="summary-service-item"
+                            key={serviceName}
+                          >
+
+                            <div className="summary-service-info">
+
+                              <div className="summary-service-icon">
+                                {service?.icon ||
+                                  "🧺"}
+                              </div>
+
+                              <div className="summary-service-text">
+
+                                <strong>
+                                  {serviceName}
+                                </strong>
+
+                                <span>
+                                  Laundry service
+                                </span>
+
+                              </div>
+
+                            </div>
+
+                            <strong className="summary-service-price">
+                              {formatCurrency(
+                                service?.price ||
+                                  0
+                              )}
+                            </strong>
+
+                          </div>
+                        );
+                      }
+                    )}
+
+                  </div>
+                )}
+
+              </div>
+
+              {/* ==================================================
+                  BOOKING DETAILS
+              ================================================== */}
+
+              <div className="summary-block">
+
+                <div className="summary-section-title">
+
+                  <span className="section-icon">
+                    📋
+                  </span>
+
+                  <div>
+
+                    <h3>
+                      Booking Details
+                    </h3>
+
+                    <p>
+                      Your pickup information
+                    </p>
+
+                  </div>
+
+                </div>
+
+                <div className="summary-details">
+
+                  {/* Pickup Type */}
+
+                  <div className="summary-detail-row">
+
+                    <div className="detail-label">
+
+                      <span className="detail-icon">
+                        🚚
+                      </span>
+
+                      <span>
+                        Pickup Type
+                      </span>
+
+                    </div>
+
+                    <strong>
+                      {pickup ||
+                        "Not selected"}
+                    </strong>
+
+                  </div>
+
+                  {/* Date */}
+
+                  <div className="summary-detail-row">
+
+                    <div className="detail-label">
+
+                      <span className="detail-icon">
+                        📅
+                      </span>
+
+                      <span>
+                        Pickup Date
+                      </span>
+
+                    </div>
+
+                    <strong>
+                      {formatDate(
+                        schedule
+                      )}
+                    </strong>
+
+                  </div>
+
+                  {/* Time */}
+
+                  <div className="summary-detail-row">
+
+                    <div className="detail-label">
+
+                      <span className="detail-icon">
+                        🕐
+                      </span>
+
+                      <span>
+                        Pickup Time
+                      </span>
+
+                    </div>
+
+                    <strong>
+                      {time ||
+                        "Not selected"}
+                    </strong>
+
+                  </div>
+
+                  {/* Location */}
+
+                  <div className="summary-detail-row detail-row-location">
+
+                    <div className="detail-label">
+
+                      <span className="detail-icon">
+                        📍
+                      </span>
+
+                      <span>
+                        Pickup Location
+                      </span>
+
+                    </div>
+
+                    <strong>
+                      {locationText}
+                    </strong>
+
+                  </div>
+
+                  {/* Landmark */}
+
+                  {landmark.trim() && (
+                    <div className="summary-detail-row">
+
+                      <div className="detail-label">
+
+                        <span className="detail-icon">
+                          🏷️
+                        </span>
+
+                        <span>
+                          Landmark
+                        </span>
 
                       </div>
 
-                      <strong className="summary-service-amount">
-                        ₱{price.toFixed(2)}
+                      <strong>
+                        {landmark}
                       </strong>
 
                     </div>
-                  );
-                })}
+                  )}
+
+                </div>
 
               </div>
-            )}
 
-          </div>
+              {/* ==================================================
+                  PAYMENT SUMMARY
+              ================================================== */}
 
-          {/* BREAKDOWN */}
+              <div className="summary-pricing">
 
-          <div className="summary-breakdown">
+                <div className="pricing-title">
+                  Payment Summary
+                </div>
 
-            <div className="summary-line">
-              <span>Laundry Services</span>
+                <div className="price-row">
 
-              <strong>
-                ₱{laundryTotal.toFixed(2)}
-              </strong>
+                  <span>
+                    Services
+                  </span>
+
+                  <strong>
+                    {formatCurrency(
+                      laundryTotal
+                    )}
+                  </strong>
+
+                </div>
+
+                <div className="price-row">
+
+                  <span>
+                    {pickup ===
+                    "Pickup & Delivery"
+                      ? "Pickup & Delivery Fee"
+                      : "Pickup Fee"}
+                  </span>
+
+                  <strong>
+                    {deliveryFee === 0
+                      ? "Free"
+                      : formatCurrency(
+                          deliveryFee
+                        )}
+                  </strong>
+
+                </div>
+
+                <div className="price-divider"></div>
+
+                <div className="total-row">
+
+                  <div>
+
+                    <span>
+                      Total Amount
+                    </span>
+
+                    <small>
+                      Estimated total
+                    </small>
+
+                  </div>
+
+                  <strong>
+                    {formatCurrency(
+                      estimatedTotal
+                    )}
+                  </strong>
+
+                </div>
+
+              </div>
+
+              {/* ==================================================
+                  MESSAGE
+              ================================================== */}
+
+              <div className="summary-message">
+
+                <div className="message-icon">
+                  ✓
+                </div>
+
+                <div>
+
+                  <strong>
+                    Almost ready!
+                  </strong>
+
+                  <p>
+                    Review your booking information
+                    before continuing to payment.
+                  </p>
+
+                </div>
+
+              </div>
+
+              {/* ==================================================
+                  SUBMIT BUTTON
+              ================================================== */}
+
+              <button
+                type="submit"
+                className="summary-submit"
+                disabled={
+                  isSubmitting ||
+                  services.length === 0
+                }
+              >
+
+                <span>
+                  {isSubmitting
+                    ? "Saving booking..."
+                    : "Continue to Payment"}
+                </span>
+
+                {!isSubmitting && (
+                  <span className="submit-arrow">
+                    →
+                  </span>
+                )}
+
+              </button>
+
             </div>
 
-            <div className="summary-line">
-              <span>Service Type</span>
+          </aside>
 
-              <strong>{pickup}</strong>
-            </div>
+        </form>
 
-            <div className="summary-line">
-              <span>Pickup Date</span>
-
-              <strong>
-                {schedule || "Not selected"}
-              </strong>
-            </div>
-
-            <div className="summary-line">
-              <span>Pickup Time</span>
-
-              <strong>
-                {time || "Not selected"}
-              </strong>
-            </div>
-
-            <div className="summary-line">
-              <span>Pickup Location</span>
-
-              <strong>
-                {address
-                  ? `${address}, ${barangay}, ${city}, ${province}`
-                  : "Not provided"}
-              </strong>
-            </div>
-
-            <div className="summary-line">
-              <span>Landmark</span>
-
-              <strong>
-                {landmark || "None"}
-              </strong>
-            </div>
-
-            <div className="summary-line">
-              <span>
-                {pickup === "Pickup & Delivery"
-                  ? "Pickup & Delivery Fee"
-                  : "Pickup Fee"}
-              </span>
-
-              <strong>
-                ₱{deliveryFee.toFixed(2)}
-              </strong>
-            </div>
-
-          </div>
-
-          {/* TOTAL */}
-
-          <div className="summary-total-box">
-
-            <div>
-              <span>Total Amount</span>
-
-              <small>
-                Based on selected services
-                and pickup fee
-              </small>
-            </div>
-
-            <strong>
-              ₱{estimatedTotal.toFixed(2)}
-            </strong>
-
-          </div>
-
-          {/* NOTE */}
-
-          <div className="summary-note">
-            <span>✓</span>
-
-            <p>
-              The total amount is based on
-              your selected laundry services
-              and pickup option.
-            </p>
-          </div>
-
-          {/* CHECKOUT */}
-
-          <button
-            type="submit"
-            className="confirm-btn"
-          >
-            <span>Initial Payment</span>
-            <span>→</span>
-          </button>
-
-        </aside>
-
-      </form>
+      </div>
 
     </div>
   );
 }
-
-export default BookNow;
