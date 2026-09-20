@@ -134,6 +134,28 @@ export const getStaffBookings = async (staffId, status = null) => {
 };
 
 /**
+ * Get bookings assigned to a rider. The Firestore query is scoped by rider_id.
+ */
+export const getRiderBookings = async (riderId) => {
+  try {
+    const q = query(
+      collection(db, "bookings"),
+      where("rider_id", "==", riderId),
+      orderBy("booking_date", "desc")
+    );
+
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map((bookingDoc) => ({
+      id: bookingDoc.id,
+      ...bookingDoc.data(),
+    }));
+  } catch (error) {
+    console.error("Error getting rider bookings:", error);
+    throw error;
+  }
+};
+
+/**
  * Get all pending bookings (for staff to accept)
  * @returns {Promise<array>} Array of pending bookings
  */

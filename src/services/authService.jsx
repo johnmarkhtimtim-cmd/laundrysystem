@@ -21,7 +21,7 @@ export const logout = async () => {
 
 /**
  * Get the navigation path based on user role
- * @param {string} role - User role (admin, customer, staff)
+ * @param {string} role - User role (admin, customer, staff, rider)
  * @returns {string|null} Navigation path or null if invalid role
  */
 export const getNavigationPathByRole = (role) => {
@@ -32,6 +32,8 @@ export const getNavigationPathByRole = (role) => {
             return "/customer";
         case "staff":
             return "/staff";
+        case "rider":
+            return "/rider";
         default:
             return null;
     }
@@ -43,5 +45,5 @@ export const getNavigationPathByRole = (role) => {
  * @returns {boolean} True if role is valid
  */
 export const isValidRole = (role) => {
-    return ["admin", "customer", "staff"].includes(role);
+    return ["admin", "customer", "staff", "rider"].includes(role);
 };

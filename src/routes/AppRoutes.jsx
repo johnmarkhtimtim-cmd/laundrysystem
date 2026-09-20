@@ -29,6 +29,10 @@ import StaffDashboard from "../pages/Staff/StaffDashboard";
 import StaffBookings from "../pages/Staff/Bookings";
 import StaffTasks from "../pages/Staff/Tasks";
 import StaffReports from "../pages/Staff/Reports";
+import RiderLayout from "../layouts/RiderLayout";
+import RiderRoute from "./RiderRoute";
+import RiderDashboard from "../pages/Rider/RiderDashboard";
+import RiderProfile from "../pages/Rider/RiderProfile";
 import StaffPayments from "../pages/Staff/Payments";
 import StaffNotifications from "../pages/Staff/Notifications";
 import StaffProfile from "../pages/Staff/Profile";
@@ -90,6 +94,18 @@ function AppRoutes() {
           <Route path="profile" element={<StaffProfile />} />
           <Route path="tasks" element={<StaffTasks />} />
           <Route path="reports" element={<StaffReports />} />
+        </Route>
+        <Route
+          path="/rider"
+          element={
+            <RiderRoute>
+              <RiderLayout />
+            </RiderRoute>
+          }
+        >
+          <Route index element={<RiderDashboard />} />
+          <Route path="pickups" element={<RiderDashboard />} />
+          <Route path="profile" element={<RiderProfile />} />
         </Route>
       </Routes>
     </BrowserRouter>
