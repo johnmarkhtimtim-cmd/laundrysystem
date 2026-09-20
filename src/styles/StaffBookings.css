@@ -917,6 +917,619 @@
     font-size: 13px;
   }
 }
+/* =========================================================
+   MODERN UPDATE BOOKING STATUS MODAL
+   ========================================================= */
+
+.customer-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 24px;
+
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+
+  animation: modalOverlayIn 0.2s ease;
+}
+
+/* =========================================================
+   MODAL
+   ========================================================= */
+
+.customer-modal {
+  width: min(720px, 100%);
+  max-height: calc(100vh - 48px);
+
+  display: flex;
+  flex-direction: column;
+
+  overflow: hidden;
+
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 20px;
+
+  box-shadow:
+    0 25px 60px rgba(15, 23, 42, 0.18),
+    0 8px 20px rgba(15, 23, 42, 0.08);
+
+  animation: modalSlideIn 0.25s ease;
+}
+
+/* =========================================================
+   HEADER
+   ========================================================= */
+
+.customer-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  padding: 22px 26px;
+
+  background: #ffffff;
+  border-bottom: 1px solid #eef0f3;
+}
+
+.customer-modal-header > div {
+  min-width: 0;
+}
+
+.customer-modal-header h2 {
+  margin: 0;
+
+  color: #111827;
+
+  font-size: 21px;
+  font-weight: 750;
+  line-height: 1.3;
+  letter-spacing: -0.02em;
+}
+
+.customer-modal-header p {
+  margin: 5px 0 0;
+
+  color: #64748b;
+
+  font-size: 13px;
+  font-weight: 500;
+}
+
+/* =========================================================
+   CLOSE BUTTON
+   ========================================================= */
+
+.customer-modal-close {
+  width: 38px;
+  height: 38px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  flex-shrink: 0;
+
+  border: 0;
+  border-radius: 10px;
+
+  background: #f8fafc;
+  color: #64748b;
+
+  font-size: 25px;
+  font-weight: 400;
+  line-height: 1;
+
+  cursor: pointer;
+
+  transition:
+    background 0.2s ease,
+    color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.customer-modal-close:hover {
+  background: #fee2e2;
+  color: #dc2626;
+  transform: rotate(3deg);
+}
+
+.customer-modal-close:active {
+  transform: scale(0.94);
+}
+
+/* =========================================================
+   BODY
+   ========================================================= */
+
+.customer-modal-body {
+  flex: 1;
+
+  overflow-y: auto;
+
+  padding: 26px;
+
+  background: #f8fafc;
+}
+
+/* Custom scrollbar */
+
+.customer-modal-body::-webkit-scrollbar {
+  width: 7px;
+}
+
+.customer-modal-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.customer-modal-body::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 20px;
+}
+
+.customer-modal-body::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* =========================================================
+   FORM GROUP
+   ========================================================= */
+
+.form-group {
+  margin-bottom: 18px;
+}
+
+.form-group label {
+  display: block;
+
+  margin-bottom: 7px;
+
+  color: #334155;
+
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.form-group input,
+.form-group textarea,
+.form-group select {
+  width: 100%;
+  box-sizing: border-box;
+
+  border: 1px solid #dbe2ea;
+  border-radius: 11px;
+
+  background: #ffffff;
+  color: #172033;
+
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+
+  outline: none;
+
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease;
+}
+
+.form-group input,
+.form-group select {
+  height: 46px;
+  padding: 0 13px;
+}
+
+.form-group textarea {
+  min-height: 92px;
+  padding: 12px 13px;
+
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.form-group input::placeholder,
+.form-group textarea::placeholder {
+  color: #a0aec0;
+}
+
+.form-group input:hover,
+.form-group textarea:hover,
+.form-group select:hover {
+  border-color: #b8c4d3;
+}
+
+.form-group input:focus,
+.form-group textarea:focus,
+.form-group select:focus {
+  border-color: #2563eb;
+
+  box-shadow:
+    0 0 0 3px rgba(37, 99, 235, 0.1);
+
+  background: #ffffff;
+}
+
+/* =========================================================
+   TWO COLUMN FORM
+   ========================================================= */
+
+.form-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+/* =========================================================
+   INPUT WITH UNIT
+   ========================================================= */
+
+.input-with-unit {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input-with-unit input {
+  padding-right: 50px;
+}
+
+.input-with-unit > span {
+  position: absolute;
+  right: 14px;
+
+  color: #64748b;
+
+  font-size: 13px;
+  font-weight: 700;
+
+  pointer-events: none;
+}
+
+/* =========================================================
+   INPUT WITH PESO PREFIX
+   ========================================================= */
+
+.input-with-prefix {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input-with-prefix > span {
+  position: absolute;
+  left: 14px;
+
+  color: #2563eb;
+
+  font-size: 14px;
+  font-weight: 800;
+
+  pointer-events: none;
+}
+
+.input-with-prefix input {
+  padding-left: 34px;
+}
+
+/* =========================================================
+   STATUS SELECT
+   ========================================================= */
+
+#status {
+  height: 50px;
+
+  border-color: #bfdbfe;
+
+  background:
+    linear-gradient(
+      90deg,
+      #eff6ff 0%,
+      #ffffff 100%
+    );
+
+  color: #1d4ed8;
+
+  font-weight: 700;
+
+  cursor: pointer;
+}
+
+#status:focus {
+  border-color: #2563eb;
+
+  box-shadow:
+    0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+/* =========================================================
+   BOOKING SUMMARY
+   ========================================================= */
+
+.booking-summary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+
+  gap: 12px;
+
+  margin-top: 24px;
+  padding: 16px;
+
+  border: 1px solid #dbeafe;
+  border-radius: 15px;
+
+  background:
+    linear-gradient(
+      135deg,
+      #eff6ff 0%,
+      #f8fafc 100%
+    );
+}
+
+.summary-item {
+  min-width: 0;
+}
+
+.summary-item span {
+  display: block;
+
+  margin-bottom: 6px;
+
+  color: #64748b;
+
+  font-size: 11px;
+  font-weight: 700;
+
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.summary-item strong {
+  display: block;
+
+  color: #0f172a;
+
+  font-size: 17px;
+  font-weight: 800;
+}
+
+.summary-item:last-child strong {
+  color: #2563eb;
+}
+
+/* =========================================================
+   FOOTER
+   ========================================================= */
+
+.customer-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+
+  gap: 10px;
+
+  padding: 18px 26px;
+
+  border-top: 1px solid #eef0f3;
+
+  background: #ffffff;
+}
+
+/* =========================================================
+   CANCEL BUTTON
+   ========================================================= */
+
+.customer-cancel-btn {
+  min-width: 100px;
+  height: 44px;
+
+  padding: 0 18px;
+
+  border: 1px solid #dbe2ea;
+  border-radius: 10px;
+
+  background: #ffffff;
+  color: #475569;
+
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+
+  cursor: pointer;
+
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.customer-cancel-btn:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  color: #1e293b;
+}
+
+.customer-cancel-btn:active {
+  transform: scale(0.97);
+}
+
+/* =========================================================
+   UPDATE STATUS BUTTON
+   ========================================================= */
+
+.customer-save-btn {
+  min-width: 145px;
+  height: 44px;
+
+  padding: 0 20px;
+
+  border: 0;
+  border-radius: 10px;
+
+  background: #2563eb;
+  color: #ffffff;
+
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 750;
+
+  cursor: pointer;
+
+  box-shadow:
+    0 5px 12px rgba(37, 99, 235, 0.2);
+
+  transition:
+    background 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
+}
+
+.customer-save-btn:hover {
+  background: #1d4ed8;
+
+  box-shadow:
+    0 7px 16px rgba(37, 99, 235, 0.28);
+
+  transform: translateY(-1px);
+}
+
+.customer-save-btn:active {
+  transform: translateY(0) scale(0.98);
+}
+
+/* =========================================================
+   ANIMATIONS
+   ========================================================= */
+
+@keyframes modalOverlayIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* =========================================================
+   TABLET
+   ========================================================= */
+
+@media (max-width: 700px) {
+  .customer-modal-overlay {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .customer-modal {
+    width: 100%;
+    max-height: 94vh;
+
+    border-radius: 20px 20px 0 0;
+
+    animation: modalMobileIn 0.25s ease;
+  }
+
+  .customer-modal-header {
+    padding: 18px 20px;
+  }
+
+  .customer-modal-body {
+    padding: 20px;
+  }
+
+  .customer-modal-footer {
+    padding: 15px 20px;
+  }
+
+  .form-row {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .booking-summary {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .summary-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    padding-bottom: 10px;
+
+    border-bottom: 1px solid #dbeafe;
+  }
+
+  .summary-item:last-child {
+    padding-bottom: 0;
+    border-bottom: 0;
+  }
+
+  .summary-item span {
+    margin: 0;
+  }
+}
+
+@keyframes modalMobileIn {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* =========================================================
+   SMALL MOBILE
+   ========================================================= */
+
+@media (max-width: 420px) {
+  .customer-modal-header h2 {
+    font-size: 18px;
+  }
+
+  .customer-modal-header p {
+    font-size: 12px;
+  }
+
+  .customer-modal-body {
+    padding: 16px;
+  }
+
+  .customer-modal-footer {
+    padding: 14px 16px;
+  }
+
+  .customer-cancel-btn,
+  .customer-save-btn {
+    flex: 1;
+    min-width: 0;
+  }
+}
 /* ==========================================
    CUSTOMER INFORMATION MODAL
    ========================================== */

@@ -10,11 +10,9 @@ const STATUS_FLOW = [
   "Accepted",
   "Ready for Pickup",
   "Picked Up",
-  "Washing",
-  "Drying",
-  "Folding",
-  "Ready for Customer Pickup",
-  "Completed",
+  "In Laundry",
+  "To Deliver",
+  "Delivered",
 ];
 
 // ==========================================
@@ -210,8 +208,6 @@ function getPickupLocation(booking) {
     return "N/A";
   }
 
-  // If a complete pickup address already exists,
-  // use it first.
   if (booking.pickupAddress) {
     return String(booking.pickupAddress);
   }
@@ -244,19 +240,10 @@ function Bookings() {
   const [search, setSearch] = useState("");
 
   // ==========================================
-  // TABLE WEIGHT EDITOR
-  // ==========================================
-
-  const [editingWeight, setEditingWeight] = useState(null);
-
-  const [weightValue, setWeightValue] = useState("");
-
-  // ==========================================
   // UPDATE BOOKING MODAL
   // ==========================================
 
-  const [editingCustomer, setEditingCustomer] =
-    useState(null);
+  const [editingCustomer, setEditingCustomer] = useState(null);
 
   const [customerForm, setCustomerForm] = useState({
     customerName: "",
@@ -294,10 +281,7 @@ function Bookings() {
     );
 
     return () => {
-      window.removeEventListener(
-        "storage",
-        loadBookings
-      );
+      window.removeEventListener("storage", loadBookings);
 
       window.removeEventListener(
         "laundrymateBookingUpdated",
@@ -310,81 +294,6 @@ function Bookings() {
       );
     };
   }, []);
-
-  // ==========================================
-  // EDIT TABLE WEIGHT
-  // ==========================================
-
-  const handleEditWeight = (booking) => {
-    setEditingWeight(booking.id);
-
-    setWeightValue(
-      booking.weight !== undefined &&
-        booking.weight !== null
-        ? String(booking.weight)
-        : ""
-    );
-  };
-
-  // ==========================================
-  // SAVE TABLE WEIGHT
-  // ==========================================
-
-  const handleSaveWeight = (bookingId) => {
-    if (!weightValue.trim()) {
-      alert("Please enter the laundry weight.");
-      return;
-    }
-
-    const weight = Number(weightValue);
-
-    if (Number.isNaN(weight) || weight <= 0) {
-      alert("Weight must be greater than 0 kg.");
-      return;
-    }
-
-    const storedBookings = readBookings();
-
-    const updatedBookings = storedBookings.map(
-      (booking) => {
-        if (
-          String(booking.id) !==
-          String(bookingId)
-        ) {
-          return booking;
-        }
-
-        return {
-          ...booking,
-          weight,
-          updatedAt: new Date().toISOString(),
-        };
-      }
-    );
-
-    localStorage.setItem(
-      "laundrymateBookings",
-      JSON.stringify(updatedBookings)
-    );
-
-    setBookings(updatedBookings);
-
-    setEditingWeight(null);
-    setWeightValue("");
-
-    window.dispatchEvent(
-      new Event("laundrymateBookingUpdated")
-    );
-  };
-
-  // ==========================================
-  // CANCEL TABLE WEIGHT
-  // ==========================================
-
-  const handleCancelWeight = () => {
-    setEditingWeight(null);
-    setWeightValue("");
-  };
 
   // ==========================================
   // OPEN UPDATE BOOKING MODAL
@@ -439,8 +348,7 @@ function Bookings() {
         [name]: value,
       };
 
-      // Automatically calculate balance
-      // when Total Amount or Initial Payment changes.
+      // Automatically calculate remaining balance
       if (
         name === "totalAmount" ||
         name === "initialPayment"
@@ -482,45 +390,38 @@ function Bookings() {
       return;
     }
 
-    // ------------------------------
+    // ==========================================
     // VALIDATE CUSTOMER NAME
-    // ------------------------------
+    // ==========================================
 
     if (!customerForm.customerName.trim()) {
       alert("Please enter the customer name.");
       return;
     }
 
-    // ------------------------------
+    // ==========================================
     // VALIDATE ADDRESS
-    // ------------------------------
+    // ==========================================
 
     if (!customerForm.pickupAddress.trim()) {
       alert("Please enter the pickup address.");
       return;
     }
 
-    // ------------------------------
+    // ==========================================
     // VALIDATE WEIGHT
-    // ------------------------------
+    // ==========================================
 
-    const weight = Number(
-      customerForm.weight
-    );
+    const weight = Number(customerForm.weight);
 
-    if (
-      Number.isNaN(weight) ||
-      weight <= 0
-    ) {
-      alert(
-        "Weight must be greater than 0 kg."
-      );
+    if (Number.isNaN(weight) || weight <= 0) {
+      alert("Weight must be greater than 0 kg.");
       return;
     }
 
-    // ------------------------------
+    // ==========================================
     // VALIDATE TOTAL
-    // ------------------------------
+    // ==========================================
 
     const totalAmount = Number(
       customerForm.totalAmount
@@ -530,15 +431,13 @@ function Bookings() {
       Number.isNaN(totalAmount) ||
       totalAmount < 0
     ) {
-      alert(
-        "Total amount cannot be negative."
-      );
+      alert("Total amount cannot be negative.");
       return;
     }
 
-    // ------------------------------
+    // ==========================================
     // VALIDATE INITIAL PAYMENT
-    // ------------------------------
+    // ==========================================
 
     const initialPayment = Number(
       customerForm.initialPayment
@@ -548,16 +447,13 @@ function Bookings() {
       Number.isNaN(initialPayment) ||
       initialPayment < 0
     ) {
-      alert(
-        "Initial payment cannot be negative."
-      );
+      alert("Initial payment cannot be negative.");
       return;
     }
 
-    // ------------------------------
-    // VALIDATE INITIAL PAYMENT
-    // ------------------------------
-    // Do not allow payment to exceed total.
+    // ==========================================
+    // PAYMENT CANNOT EXCEED TOTAL
+    // ==========================================
 
     if (initialPayment > totalAmount) {
       alert(
@@ -566,27 +462,14 @@ function Bookings() {
       return;
     }
 
-    // ------------------------------
-    // VALIDATE BALANCE
-    // ------------------------------
+    // ==========================================
+    // CALCULATE BALANCE
+    // ==========================================
 
-    let amountToBePaid = Number(
-      customerForm.amountToBePaid
+    const amountToBePaid = Math.max(
+      0,
+      totalAmount - initialPayment
     );
-
-    if (
-      Number.isNaN(amountToBePaid) ||
-      amountToBePaid < 0
-    ) {
-      amountToBePaid = 0;
-    }
-
-    if (amountToBePaid > totalAmount) {
-      alert(
-        "Amount to be paid cannot be greater than the total amount."
-      );
-      return;
-    }
 
     // ==========================================
     // UPDATE LOCAL STORAGE
@@ -606,24 +489,22 @@ function Bookings() {
         return {
           ...booking,
 
-          // ------------------------------
+          // ======================================
           // CUSTOMER
-          // ------------------------------
+          // ======================================
 
           customerName:
             customerForm.customerName.trim(),
 
-          // Keep possible existing name fields
-          // synchronized as well.
           name:
             customerForm.customerName.trim(),
 
           fullName:
             customerForm.customerName.trim(),
 
-          // ------------------------------
+          // ======================================
           // PICKUP ADDRESS
-          // ------------------------------
+          // ======================================
 
           pickupAddress:
             customerForm.pickupAddress.trim(),
@@ -634,15 +515,15 @@ function Bookings() {
           address:
             customerForm.pickupAddress.trim(),
 
-          // ------------------------------
+          // ======================================
           // WEIGHT
-          // ------------------------------
+          // ======================================
 
           weight,
 
-          // ------------------------------
+          // ======================================
           // PAYMENT
-          // ------------------------------
+          // ======================================
 
           totalAmount,
 
@@ -650,18 +531,17 @@ function Bookings() {
 
           amountToBePaid,
 
-          // ------------------------------
+          // ======================================
           // STATUS
-          // ------------------------------
+          // ======================================
 
           status: customerForm.status,
 
-          // ------------------------------
+          // ======================================
           // UPDATED TIME
-          // ------------------------------
+          // ======================================
 
-          updatedAt:
-            new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
         };
       }
     );
@@ -681,6 +561,7 @@ function Bookings() {
     // Close modal
     setEditingCustomer(null);
 
+    // Reset form
     setCustomerForm({
       customerName: "",
       pickupAddress: "",
@@ -691,7 +572,7 @@ function Bookings() {
       status: "Pending",
     });
 
-    // Tell other LaundryMate pages
+    // Notify other LaundryMate pages
     window.dispatchEvent(
       new Event("laundrymateBookingUpdated")
     );
@@ -725,9 +606,7 @@ function Bookings() {
 
   const filteredBookings = bookings
     .filter((booking) => {
-      const query = search
-        .trim()
-        .toLowerCase();
+      const query = search.trim().toLowerCase();
 
       const services = Array.isArray(
         booking.services
@@ -820,9 +699,7 @@ function Bookings() {
       <div className="section-header">
 
         <div>
-          <h1>
-            Assigned Bookings
-          </h1>
+          <h1>Assigned Bookings</h1>
 
           <p>
             Manage customer bookings, laundry
@@ -845,31 +722,6 @@ function Bookings() {
 
       <div className="filters">
 
-        <select
-          className="filter-select"
-          value={statusFilter}
-          onChange={(event) =>
-            setStatusFilter(
-              event.target.value
-            )
-          }
-        >
-
-          <option value="">
-            All Status
-          </option>
-
-          {STATUS_FLOW.map((status) => (
-            <option
-              key={status}
-              value={status}
-            >
-              {status}
-            </option>
-          ))}
-
-        </select>
-
         <div className="search-wrapper">
 
           <span className="search-icon">
@@ -882,9 +734,7 @@ function Bookings() {
             placeholder="Search customer, booking ID, service..."
             value={search}
             onChange={(event) =>
-              setSearch(
-                event.target.value
-              )
+              setSearch(event.target.value)
             }
           />
 
@@ -934,293 +784,172 @@ function Bookings() {
 
             {filteredBookings.length > 0 ? (
 
-              filteredBookings.map(
-                (booking) => {
+              filteredBookings.map((booking) => {
 
-                  const customerName =
-                    getCustomerName(
-                      booking
-                    );
+                const customerName =
+                  getCustomerName(booking);
 
-                  const services =
-                    Array.isArray(
-                      booking.services
-                    )
-                      ? booking.services.join(
-                          ", "
-                        )
-                      : booking.services ||
-                        "Laundry Service";
+                const services =
+                  Array.isArray(
+                    booking.services
+                  )
+                    ? booking.services.join(", ")
+                    : booking.services ||
+                      "Laundry Service";
 
-                  const isEditing =
-                    editingWeight ===
-                    booking.id;
+                const initialPayment =
+                  getInitialPayment(booking);
 
-                  const initialPayment =
-                    getInitialPayment(
-                      booking
-                    );
+                const totalAmount =
+                  getTotalAmount(booking);
 
-                  const totalAmount =
-                    getTotalAmount(
-                      booking
-                    );
+                const amountToBePaid =
+                  getAmountToBePaid(booking);
 
-                  const amountToBePaid =
-                    getAmountToBePaid(
-                      booking
-                    );
+                const location =
+                  getPickupLocation(booking);
 
-                  const location =
-                    getPickupLocation(
-                      booking
-                    );
+                return (
+                  <tr key={booking.id}>
 
-                  return (
-                    <tr
-                      key={booking.id}
-                    >
+                    {/* BOOKING ID */}
 
-                      {/* BOOKING ID */}
+                    <td>
+                      <span className="booking-id">
+                        #{booking.id || "N/A"}
+                      </span>
+                    </td>
 
-                      <td>
-                        <span className="booking-id">
-                          #{booking.id || "N/A"}
-                        </span>
-                      </td>
+                    {/* CUSTOMER */}
 
-                      {/* CUSTOMER */}
+                    <td>
 
-                      <td>
+                      <div className="customer-cell">
 
-                        <div className="customer-cell">
+                        <div className="customer-avatar">
+                          {getInitials(
+                            customerName
+                          )}
+                        </div>
 
-                          <div className="customer-avatar">
-                            {getInitials(
-                              customerName
-                            )}
-                          </div>
+                        <div className="customer-info">
 
-                          <div className="customer-info">
-
-                            <div className="customer-name">
-                              {customerName}
-                            </div>
-
+                          <div className="customer-name">
+                            {customerName}
                           </div>
 
                         </div>
 
-                      </td>
+                      </div>
 
-                      {/* SERVICE */}
+                    </td>
 
-                      <td>
-                        <span className="service-name">
-                          {services}
-                        </span>
-                      </td>
+                    {/* SERVICE */}
 
-                      {/* WEIGHT */}
+                    <td>
+                      <span className="service-name">
+                        {services}
+                      </span>
+                    </td>
 
-                      <td>
+                    {/* WEIGHT - DISPLAY ONLY */}
 
-                        {isEditing ? (
+                    <td>
+                      <span className="weight-value">
+                        {booking.weight
+                          ? `${booking.weight} kg`
+                          : "Not set"}
+                      </span>
+                    </td>
 
-                          <div className="weight-editor">
+                    {/* TOTAL AMOUNT */}
 
-                            <div className="weight-field">
-
-                              <input
-                                type="number"
-                                min="0.5"
-                                step="0.5"
-                                value={
-                                  weightValue
-                                }
-                                onChange={(
-                                  event
-                                ) =>
-                                  setWeightValue(
-                                    event.target.value
-                                  )
-                                }
-                                onKeyDown={(
-                                  event
-                                ) => {
-
-                                  if (
-                                    event.key ===
-                                    "Enter"
-                                  ) {
-                                    handleSaveWeight(
-                                      booking.id
-                                    );
-                                  }
-
-                                  if (
-                                    event.key ===
-                                    "Escape"
-                                  ) {
-                                    handleCancelWeight();
-                                  }
-
-                                }}
-                                className="weight-input"
-                                autoFocus
-                              />
-
-                              <span>
-                                kg
-                              </span>
-
-                            </div>
-
-                            <div className="weight-buttons">
-
-                              <button
-                                type="button"
-                                className="save-weight-btn"
-                                onClick={() =>
-                                  handleSaveWeight(
-                                    booking.id
-                                  )
-                                }
-                              >
-                                Save
-                              </button>
-
-                              <button
-                                type="button"
-                                className="cancel-weight-btn"
-                                onClick={
-                                  handleCancelWeight
-                                }
-                              >
-                                Cancel
-                              </button>
-
-                            </div>
-
-                          </div>
-
-                        ) : (
-
-                          <div className="weight-display">
-
-                            <span className="weight-value">
-                              {booking.weight
-                                ? `${booking.weight} kg`
-                                : "Not set"}
-                            </span>
-
-                            <button
-                              type="button"
-                              className="edit-weight-btn"
-                              onClick={() =>
-                                handleEditWeight(
-                                  booking
-                                )
-                              }
-                            >
-                              Edit
-                            </button>
-
-                          </div>
-
+                    <td>
+                      <span className="total-amount">
+                        {formatCurrency(
+                          totalAmount
                         )}
+                      </span>
+                    </td>
 
-                      </td>
+                    {/* INITIAL PAYMENT */}
 
-                      {/* TOTAL AMOUNT */}
-
-                      <td>
-                        <span className="total-amount">
-                          {formatCurrency(
-                            totalAmount
-                          )}
-                        </span>
-                      </td>
-
-                      {/* INITIAL PAYMENT */}
-
-                      <td>
-                        <span className="payment-amount">
-                          {formatCurrency(
-                            initialPayment
-                          )}
-                        </span>
-                      </td>
-
-                      {/* AMOUNT TO BE PAID */}
-
-                      <td>
-                        <span className="amount-to-be-paid">
-                          {formatCurrency(
-                            amountToBePaid
-                          )}
-                        </span>
-                      </td>
-
-                      {/* PICKUP LOCATION */}
-
-                      <td>
-                        <div className="pickup-location">
-                          {location}
-                        </div>
-                      </td>
-
-                      {/* STATUS */}
-
-                      <td>
-
-                        <span
-                          className={`status ${
-                            booking.status
-                              ?.toLowerCase()
-                              .replaceAll(
-                                " ",
-                                "-"
-                              ) ||
-                            "pending"
-                          }`}
-                        >
-                          {booking.status ||
-                            "Pending"}
-                        </span>
-
-                      </td>
-
-                      {/* PICKUP DATE */}
-
-                      <td>
-                        {formatDate(
-                          booking.schedule
+                    <td>
+                      <span className="payment-amount">
+                        {formatCurrency(
+                          initialPayment
                         )}
-                      </td>
+                      </span>
+                    </td>
 
-                      {/* ACTION */}
+                    {/* AMOUNT TO BE PAID */}
 
-                      <td>
+                    <td>
+                      <span className="amount-to-be-paid">
+                        {formatCurrency(
+                          amountToBePaid
+                        )}
+                      </span>
+                    </td>
 
-                        <button
-                          type="button"
-                          className="update-status-btn"
-                          onClick={() =>
-                            handleEditCustomer(
-                              booking
-                            )
-                          }
-                        >
-                          Update Status
-                        </button>
+                    {/* PICKUP LOCATION */}
 
-                      </td>
+                    <td>
+                      <div className="pickup-location">
+                        {location}
+                      </div>
+                    </td>
 
-                    </tr>
-                  );
-                }
-              )
+                    {/* STATUS */}
+
+                    <td>
+
+                      <span
+                        className={`status ${
+                          booking.status
+                            ?.toLowerCase()
+                            .replaceAll(
+                              " ",
+                              "-"
+                            ) ||
+                          "pending"
+                        }`}
+                      >
+                        {booking.status ||
+                          "Pending"}
+                      </span>
+
+                    </td>
+
+                    {/* PICKUP DATE */}
+
+                    <td>
+                      {formatDate(
+                        booking.schedule
+                      )}
+                    </td>
+
+                    {/* ACTION */}
+
+                    <td>
+
+                      <button
+                        type="button"
+                        className="update-status-btn"
+                        onClick={() =>
+                          handleEditCustomer(
+                            booking
+                          )
+                        }
+                      >
+                        Update Status
+                      </button>
+
+                    </td>
+
+                  </tr>
+                );
+              })
 
             ) : (
 
@@ -1258,7 +987,6 @@ function Bookings() {
 
       {/* ==========================================
           UPDATE BOOKING MODAL
-          ALL FIELDS EDITABLE
       ========================================== */}
 
       {editingCustomer && (
@@ -1266,14 +994,12 @@ function Bookings() {
         <div
           className="customer-modal-overlay"
           onClick={(event) => {
-
             if (
               event.target ===
               event.currentTarget
             ) {
               handleCancelCustomer();
             }
-
           }}
         >
 
@@ -1359,7 +1085,7 @@ function Bookings() {
 
               </div>
 
-              {/* TWO COLUMN ROW */}
+              {/* WEIGHT + TOTAL */}
 
               <div className="form-row">
 
@@ -1406,10 +1132,6 @@ function Bookings() {
 
                   <div className="input-with-prefix">
 
-                    <span>
-                      ₱
-                    </span>
-
                     <input
                       id="totalAmount"
                       name="totalAmount"
@@ -1431,7 +1153,7 @@ function Bookings() {
 
               </div>
 
-              {/* TWO COLUMN ROW */}
+              {/* INITIAL PAYMENT + BALANCE */}
 
               <div className="form-row">
 
@@ -1445,9 +1167,7 @@ function Bookings() {
 
                   <div className="input-with-prefix">
 
-                    <span>
-                      ₱
-                    </span>
+                    
 
                     <input
                       id="initialPayment"
@@ -1478,10 +1198,7 @@ function Bookings() {
 
                   <div className="input-with-prefix">
 
-                    <span>
-                      ₱
-                    </span>
-
+                    
                     <input
                       id="amountToBePaid"
                       name="amountToBePaid"
@@ -1524,14 +1241,12 @@ function Bookings() {
 
                   {STATUS_FLOW.map(
                     (status) => (
-
                       <option
                         key={status}
                         value={status}
                       >
                         {status}
                       </option>
-
                     )
                   )}
 
