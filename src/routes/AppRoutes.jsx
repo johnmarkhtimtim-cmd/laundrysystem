@@ -9,7 +9,6 @@ import Services from "../pages/Admin/Services";
 import Pricing from "../pages/Admin/Pricing";
 import Staff from "../pages/Admin/Staff";
 import PaymentsAdmin from "../pages/Admin/Payments";
-import PickupDelivery from "../pages/Admin/PickupDelivery";
 import Reports from "../pages/Admin/Reports";
 import Notifications from "../pages/Admin/Notifications";
 import Settings from "../pages/Admin/Settings";
@@ -29,7 +28,6 @@ import StaffBookings from "../pages/Staff/Bookings";
 import StaffReports from "../pages/Staff/Reports";
 import RiderLayout from "../layouts/RiderLayout";
 import RiderRoute from "./RiderRoute";
-import RiderCustomerMap from "../pages/Rider/CustomerMap";
 import RiderTransaction from "../pages/Rider/RiderTransactions";
 import RiderProfile from "../pages/Rider/RiderProfile";
 import StaffPayments from "../pages/Staff/Payments";
@@ -55,7 +53,6 @@ function AppRoutes() {
           <Route path="pricing" element={<Pricing />} />
           <Route path="staff" element={<Staff />} />
           <Route path="payments" element={<PaymentsAdmin />} />
-          <Route path="pickup-delivery" element={<PickupDelivery />} />
           <Route path="reports" element={<Reports />} />
           <Route path="notifications" element={<Notifications />} />
           <Route path="settings" element={<Settings />} />
@@ -90,7 +87,6 @@ function AppRoutes() {
           <Route path="transactions" element={<StaffPayments />} />
           <Route path="payments" element={<StaffPayments />} />
           <Route path="notifications" element={<StaffNotifications />} />
-           <Route path="customer-map" element={<StaffCustomerMap />} />
           <Route path="profile" element={<StaffProfile />} />
           <Route path="reports" element={<StaffReports />} />
         </Route>
@@ -102,7 +98,6 @@ function AppRoutes() {
             </RiderRoute>
           }
         >
-          <Route path="customer-map" element={<RiderCustomerMap />} />
           <Route path="transactions" element={<RiderTransaction />} />
           <Route path="profile" element={<RiderProfile />} />
         </Route>

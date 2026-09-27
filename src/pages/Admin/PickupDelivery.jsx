@@ -1,1 +1,0 @@
-import AdminPageHeader from '../../components/admin/AdminPageHeader';import AdminDataTable from '../../components/admin/AdminDataTable';import {adminData}from '../../data/adminData';export default function PickupDelivery(){const config=adminData.delivery;return <><AdminPageHeader {...config}/><AdminDataTable config={config}/></>}

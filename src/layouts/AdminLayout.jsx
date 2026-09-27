@@ -40,7 +40,6 @@ const nav = [
     "Transactions",
     [
       ["Payments", "/admin/payments", CreditCard],
-      ["Pickup & Delivery", "/admin/pickup-delivery", Truck],
     ],
   ],
   ["Analytics", [["SalesReport", "/admin/reports", ChartNoAxesCombined]]],
