@@ -68,16 +68,6 @@ function StaffLayout() {
               <span>Dashboard</span>
             </NavLink>
 
-             <NavLink
-              to="/staff/CustomerMap"
-              className={({ isActive }) =>
-                isActive ? "nav-link active" : "nav-link"
-              }
-            >
-              <span className="nav-icon">🗺️</span>
-              <span>Customer Map</span>
-            </NavLink>
-
             {/* Orders / Bookings */}
             <NavLink
               to="/staff/bookings"

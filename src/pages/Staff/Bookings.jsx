@@ -1,9 +1,33 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import {
+  MapContainer,
+  TileLayer,
+  Marker,
+  Popup,
+} from "react-leaflet";
+import L from "leaflet";
+
+import "leaflet/dist/leaflet.css";
 import "../../styles/StaffBookings.css";
 
-// ==========================================
-// STATUS FLOW
-// ==========================================
+/* =========================================================
+   LEAFLET MARKER FIX
+========================================================= */
+
+delete L.Icon.Default.prototype._getIconUrl;
+
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl:
+    "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+  iconUrl:
+    "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+  shadowUrl:
+    "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+});
+
+/* =========================================================
+   STATUS FLOW
+========================================================= */
 
 const STATUS_FLOW = [
   "Pending",
@@ -15,48 +39,78 @@ const STATUS_FLOW = [
   "Delivered",
 ];
 
-// ==========================================
-// READ BOOKINGS
-// ==========================================
+/* =========================================================
+   SERVICE PRICES
+========================================================= */
+
+const SERVICE_PRICES = {
+  "Wash & Fold": 80,
+  "Dry Cleaning": 150,
+  Ironing: 60,
+  "Bedding Care": 200,
+};
+
+/* =========================================================
+   DELIVERY FEES
+========================================================= */
+
+const DELIVERY_FEES = {
+  "Pickup & Delivery": 30,
+  "Pickup Only": 20,
+};
+
+/* =========================================================
+   STORAGE
+========================================================= */
 
 function readBookings() {
   try {
-    const saved = JSON.parse(
+    const data = JSON.parse(
       localStorage.getItem("laundrymateBookings") || "[]"
     );
 
-    return Array.isArray(saved) ? saved : [];
+    return Array.isArray(data) ? data : [];
   } catch (error) {
-    console.error("Unable to load bookings:", error);
+    console.error("Unable to read bookings:", error);
     return [];
   }
 }
-
-// ==========================================
-// READ PAYMENTS
-// ==========================================
 
 function readPayments() {
   try {
-    const saved = JSON.parse(
+    const data = JSON.parse(
       localStorage.getItem("laundrymatePayments") || "[]"
     );
 
-    return Array.isArray(saved) ? saved : [];
+    return Array.isArray(data) ? data : [];
   } catch (error) {
-    console.error("Unable to load payments:", error);
+    console.error("Unable to read payments:", error);
     return [];
   }
 }
 
-// ==========================================
-// CUSTOMER NAME
-// ==========================================
+/* =========================================================
+   PAYMENT
+========================================================= */
+
+function getPayment(bookingId) {
+  const payments = readPayments();
+
+  return (
+    payments.find(
+      (payment) =>
+        String(payment.bookingId) === String(bookingId) ||
+        String(payment.bookingID) === String(bookingId)
+    ) || null
+  );
+}
+
+/* =========================================================
+   CUSTOMER
+========================================================= */
 
 function getCustomerName(booking) {
-  if (!booking) {
-    return "Unknown Customer";
-  }
+  if (!booking) return "Unknown Customer";
 
   const name =
     booking.customerName ||
@@ -69,10 +123,6 @@ function getCustomerName(booking) {
 
   return name ? String(name).trim() : "Unknown Customer";
 }
-
-// ==========================================
-// INITIALS
-// ==========================================
 
 function getInitials(name) {
   if (!name) return "C";
@@ -92,70 +142,146 @@ function getInitials(name) {
   ).toUpperCase();
 }
 
-// ==========================================
-// FORMAT DATE
-// ==========================================
+/* =========================================================
+   SERVICES
+========================================================= */
 
-function formatDate(value) {
-  if (!value) return "N/A";
+function getServiceArray(booking) {
+  if (!booking) return [];
 
-  const date = new Date(value);
+  if (Array.isArray(booking.services)) {
+    return booking.services;
+  }
 
-  return Number.isNaN(date.getTime())
-    ? "N/A"
-    : date.toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-      });
+  if (typeof booking.services === "string") {
+    return booking.services
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+
+  if (booking.service) {
+    return [booking.service];
+  }
+
+  return [];
 }
 
-// ==========================================
-// PAYMENT REFERENCE
-// ==========================================
+function getServices(booking) {
+  const services = getServiceArray(booking);
 
-function getPaymentReference(bookingId) {
-  const payments = readPayments();
+  return services.length
+    ? services.join(", ")
+    : "Laundry Service";
+}
 
-  const payment = payments.find(
-    (item) =>
-      String(item.bookingId) === String(bookingId) ||
-      String(item.bookingID) === String(bookingId)
-  );
+function getServiceRate(booking) {
+  const services = getServiceArray(booking);
+
+  return services.reduce((total, service) => {
+    return total + (SERVICE_PRICES[service] || 0);
+  }, 0);
+}
+
+/* =========================================================
+   WEIGHT
+========================================================= */
+
+function getWeight(booking) {
+  if (!booking) return "";
 
   return (
-    payment?.referenceNumber ||
-    payment?.gcashReference ||
-    payment?.reference ||
-    "N/A"
+    booking.weight ??
+    booking.laundryWeight ??
+    booking.kg ??
+    ""
   );
 }
 
-// ==========================================
-// INITIAL PAYMENT
-// ==========================================
+/* =========================================================
+   DELIVERY FEE
+========================================================= */
+
+function getDeliveryFee(booking) {
+  if (!booking) return 0;
+
+  if (
+    booking.deliveryFee !== undefined &&
+    booking.deliveryFee !== null &&
+    booking.deliveryFee !== ""
+  ) {
+    const savedFee = Number(booking.deliveryFee);
+
+    if (!Number.isNaN(savedFee)) {
+      return savedFee;
+    }
+  }
+
+  const pickupType =
+    booking.pickupType ||
+    booking.deliveryType ||
+    "Pickup & Delivery";
+
+  return DELIVERY_FEES[pickupType] || 0;
+}
+
+/* =========================================================
+   PRICE CALCULATIONS
+========================================================= */
+
+function calculateLaundrySubtotal(booking, weight) {
+  const kg = Number(weight);
+
+  if (!kg || kg <= 0) return 0;
+
+  return kg * getServiceRate(booking);
+}
+
+function calculateTotalAmount(booking, weight) {
+  return (
+    calculateLaundrySubtotal(booking, weight) +
+    getDeliveryFee(booking)
+  );
+}
+
+/* =========================================================
+   INITIAL PAYMENT
+========================================================= */
 
 function getInitialPayment(booking) {
   if (!booking) return 0;
 
-  const payment = Number(
+  const payment = getPayment(booking.id);
+
+  const amount = Number(
     booking.initialPayment ??
       booking.downPayment ??
       booking.paymentAmount ??
       booking.amountPaid ??
       booking.initialPaid ??
+      payment?.initialPayment ??
+      payment?.amountPaid ??
+      payment?.amount ??
       0
   );
 
-  return Number.isNaN(payment) ? 0 : payment;
+  return Number.isNaN(amount) ? 0 : amount;
 }
 
-// ==========================================
-// TOTAL AMOUNT
-// ==========================================
+/* =========================================================
+   TOTAL
+========================================================= */
 
 function getTotalAmount(booking) {
   if (!booking) return 0;
+
+  const weight = getWeight(booking);
+
+  if (weight !== "" && Number(weight) > 0) {
+    return calculateTotalAmount(booking, weight);
+  }
+
+  const payment = getPayment(booking.id);
 
   const total = Number(
     booking.totalAmount ??
@@ -163,28 +289,118 @@ function getTotalAmount(booking) {
       booking.amount ??
       booking.grandTotal ??
       booking.price ??
+      booking.estimatedTotal ??
+      payment?.totalAmount ??
+      payment?.amount ??
       0
   );
 
   return Number.isNaN(total) ? 0 : total;
 }
 
-// ==========================================
-// AMOUNT TO BE PAID
-// ==========================================
-
 function getAmountToBePaid(booking) {
-  const totalAmount = getTotalAmount(booking);
-  const initialPayment = getInitialPayment(booking);
+  const total = getTotalAmount(booking);
+  const initial = getInitialPayment(booking);
 
-  const balance = totalAmount - initialPayment;
-
-  return balance < 0 ? 0 : balance;
+  return Math.max(0, total - initial);
 }
 
-// ==========================================
-// CURRENCY
-// ==========================================
+/* =========================================================
+   ADDRESS
+========================================================= */
+
+function getPickupLocation(booking) {
+  if (!booking) return "N/A";
+
+  if (booking.pickupAddress) {
+    return String(booking.pickupAddress);
+  }
+
+  if (
+    booking.pickupLocation &&
+    typeof booking.pickupLocation === "string"
+  ) {
+    return booking.pickupLocation;
+  }
+
+  return (
+    [
+      booking.address,
+      booking.barangay,
+      booking.city,
+      booking.province,
+      booking.landmark,
+    ]
+      .filter(Boolean)
+      .join(", ") || "N/A"
+  );
+}
+
+/* =========================================================
+   CONTACT
+========================================================= */
+
+function getContactNumber(booking) {
+  if (!booking) return "N/A";
+
+  return (
+    booking.contactNumber ||
+    booking.phone ||
+    booking.mobileNumber ||
+    booking.phoneNumber ||
+    booking.customer?.contactNumber ||
+    booking.customer?.phone ||
+    "N/A"
+  );
+}
+
+/* =========================================================
+   COORDINATES
+========================================================= */
+
+function getCoordinates(booking) {
+  if (!booking) return null;
+
+  const latitude = Number(
+    booking.latitude ??
+      booking.lat ??
+      booking.location?.latitude ??
+      booking.pickupLocation?.latitude
+  );
+
+  const longitude = Number(
+    booking.longitude ??
+      booking.lng ??
+      booking.lon ??
+      booking.location?.longitude ??
+      booking.pickupLocation?.longitude
+  );
+
+  if (
+    Number.isNaN(latitude) ||
+    Number.isNaN(longitude)
+  ) {
+    return null;
+  }
+
+  if (
+    latitude < -90 ||
+    latitude > 90 ||
+    longitude < -180 ||
+    longitude > 180
+  ) {
+    return null;
+  }
+
+  return {
+    latitude,
+    longitude,
+  };
+}
+
+/* =========================================================
+   FORMATTERS
+========================================================= */
 
 function formatCurrency(value) {
   const amount = Number(value);
@@ -199,511 +415,641 @@ function formatCurrency(value) {
   })}`;
 }
 
-// ==========================================
-// PICKUP LOCATION
-// ==========================================
+function formatDate(value) {
+  if (!value) return "N/A";
 
-function getPickupLocation(booking) {
-  if (!booking) {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
     return "N/A";
   }
 
-  if (booking.pickupAddress) {
-    return String(booking.pickupAddress);
-  }
+  return date.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+}
 
-  if (booking.pickupLocation) {
-    return String(booking.pickupLocation);
-  }
+function getPaymentReference(bookingId) {
+  const payment = getPayment(bookingId);
 
   return (
-    [
-      booking.address,
-      booking.barangay,
-      booking.city,
-      booking.province,
-    ]
-      .filter(Boolean)
-      .join(", ") || "N/A"
+    payment?.referenceNumber ||
+    payment?.gcashReference ||
+    payment?.reference ||
+    "N/A"
   );
 }
 
-// ==========================================
-// MAIN COMPONENT
-// ==========================================
+/* =========================================================
+   MAIN COMPONENT
+========================================================= */
 
 function Bookings() {
   const [bookings, setBookings] = useState(readBookings);
-
-  const [statusFilter, setStatusFilter] = useState("");
-
   const [search, setSearch] = useState("");
 
-  // ==========================================
-  // UPDATE BOOKING MODAL
-  // ==========================================
+  const [showStatusModal, setShowStatusModal] =
+    useState(false);
 
-  const [editingCustomer, setEditingCustomer] = useState(null);
+  const [selectedBooking, setSelectedBooking] =
+    useState(null);
 
-  const [customerForm, setCustomerForm] = useState({
-    customerName: "",
-    pickupAddress: "",
-    weight: "",
-    totalAmount: "",
-    initialPayment: "",
-    amountToBePaid: "",
-    status: "Pending",
-  });
+  const [editableWeight, setEditableWeight] =
+    useState("");
 
-  // ==========================================
-  // LOAD BOOKINGS
-  // ==========================================
+  const [notification, setNotification] =
+    useState("");
+
+  const [updating, setUpdating] =
+    useState(false);
+
+  /* =======================================================
+     LOAD BOOKINGS
+  ======================================================= */
 
   const loadBookings = () => {
     setBookings(readBookings());
   };
 
-  // ==========================================
-  // LISTEN FOR UPDATES
-  // ==========================================
-
   useEffect(() => {
-    window.addEventListener("storage", loadBookings);
+    const handleUpdate = () => {
+      loadBookings();
+    };
+
+    window.addEventListener(
+      "storage",
+      handleUpdate
+    );
 
     window.addEventListener(
       "laundrymateBookingUpdated",
-      loadBookings
+      handleUpdate
     );
 
     window.addEventListener(
       "laundrymatePaymentUpdated",
-      loadBookings
+      handleUpdate
     );
 
     return () => {
-      window.removeEventListener("storage", loadBookings);
+      window.removeEventListener(
+        "storage",
+        handleUpdate
+      );
 
       window.removeEventListener(
         "laundrymateBookingUpdated",
-        loadBookings
+        handleUpdate
       );
 
       window.removeEventListener(
         "laundrymatePaymentUpdated",
-        loadBookings
+        handleUpdate
       );
     };
   }, []);
 
-  // ==========================================
-  // OPEN UPDATE BOOKING MODAL
-  // ==========================================
+  /* =======================================================
+     NOTIFICATION
+  ======================================================= */
 
-  const handleEditCustomer = (booking) => {
-    const totalAmount = getTotalAmount(booking);
-    const initialPayment = getInitialPayment(booking);
+  useEffect(() => {
+    if (!notification) return;
 
-    setEditingCustomer(booking);
+    const timer = setTimeout(() => {
+      setNotification("");
+    }, 3500);
 
-    setCustomerForm({
-      customerName: getCustomerName(booking),
+    return () => clearTimeout(timer);
+  }, [notification]);
 
-      pickupAddress:
-        booking.pickupAddress ||
-        booking.pickupLocation ||
-        getPickupLocation(booking),
+  /* =======================================================
+     OPEN STATUS MODAL
+  ======================================================= */
 
-      weight:
-        booking.weight !== undefined &&
-        booking.weight !== null
-          ? String(booking.weight)
-          : "",
+  const handleUpdateStatus = (booking) => {
+    setSelectedBooking(booking);
 
-      totalAmount: String(totalAmount),
-
-      initialPayment: String(initialPayment),
-
-      amountToBePaid: String(
-        getAmountToBePaid(booking)
-      ),
-
-      status:
-        booking.status &&
-        STATUS_FLOW.includes(booking.status)
-          ? booking.status
-          : "Pending",
-    });
-  };
-
-  // ==========================================
-  // HANDLE FORM CHANGE
-  // ==========================================
-
-  const handleCustomerFormChange = (event) => {
-    const { name, value } = event.target;
-
-    setCustomerForm((previous) => {
-      const updated = {
-        ...previous,
-        [name]: value,
-      };
-
-      // Automatically calculate remaining balance
-      if (
-        name === "totalAmount" ||
-        name === "initialPayment"
-      ) {
-        const total = Number(
-          name === "totalAmount"
-            ? value
-            : previous.totalAmount
-        );
-
-        const initial = Number(
-          name === "initialPayment"
-            ? value
-            : previous.initialPayment
-        );
-
-        if (
-          !Number.isNaN(total) &&
-          !Number.isNaN(initial)
-        ) {
-          const balance = total - initial;
-
-          updated.amountToBePaid = String(
-            balance < 0 ? 0 : balance
-          );
-        }
-      }
-
-      return updated;
-    });
-  };
-
-  // ==========================================
-  // SAVE ALL BOOKING CHANGES
-  // ==========================================
-
-  const handleSaveCustomer = () => {
-    if (!editingCustomer) {
-      return;
-    }
-
-    // ==========================================
-    // VALIDATE CUSTOMER NAME
-    // ==========================================
-
-    if (!customerForm.customerName.trim()) {
-      alert("Please enter the customer name.");
-      return;
-    }
-
-    // ==========================================
-    // VALIDATE ADDRESS
-    // ==========================================
-
-    if (!customerForm.pickupAddress.trim()) {
-      alert("Please enter the pickup address.");
-      return;
-    }
-
-    // ==========================================
-    // VALIDATE WEIGHT
-    // ==========================================
-
-    const weight = Number(customerForm.weight);
-
-    if (Number.isNaN(weight) || weight <= 0) {
-      alert("Weight must be greater than 0 kg.");
-      return;
-    }
-
-    // ==========================================
-    // VALIDATE TOTAL
-    // ==========================================
-
-    const totalAmount = Number(
-      customerForm.totalAmount
+    setEditableWeight(
+      getWeight(booking)
+        ? String(getWeight(booking))
+        : ""
     );
 
-    if (
-      Number.isNaN(totalAmount) ||
-      totalAmount < 0
-    ) {
-      alert("Total amount cannot be negative.");
-      return;
-    }
+    setShowStatusModal(true);
+  };
 
-    // ==========================================
-    // VALIDATE INITIAL PAYMENT
-    // ==========================================
+  /* =======================================================
+     CLOSE MODAL
+  ======================================================= */
 
-    const initialPayment = Number(
-      customerForm.initialPayment
-    );
+  const closeStatusModal = () => {
+    if (updating) return;
 
-    if (
-      Number.isNaN(initialPayment) ||
-      initialPayment < 0
-    ) {
-      alert("Initial payment cannot be negative.");
-      return;
-    }
+    setShowStatusModal(false);
+    setSelectedBooking(null);
+    setEditableWeight("");
+  };
 
-    // ==========================================
-    // PAYMENT CANNOT EXCEED TOTAL
-    // ==========================================
+  /* =======================================================
+     UPDATE STATUS
+  ======================================================= */
 
-    if (initialPayment > totalAmount) {
-      alert(
-        "Initial payment cannot be greater than the total amount."
+  const updateBookingStatus = (
+    bookingId,
+    newStatus
+  ) => {
+    setUpdating(true);
+
+    try {
+      const storedBookings = readBookings();
+
+      const updatedBookings =
+        storedBookings.map((booking) => {
+          if (
+            String(booking.id) !==
+            String(bookingId)
+          ) {
+            return booking;
+          }
+
+          return {
+            ...booking,
+            status: newStatus,
+            updatedAt:
+              new Date().toISOString(),
+          };
+        });
+
+      localStorage.setItem(
+        "laundrymateBookings",
+        JSON.stringify(updatedBookings)
       );
+
+      /* Update payment status */
+
+      const payments = readPayments();
+
+      const updatedPayments =
+        payments.map((payment) => {
+          if (
+            String(payment.bookingId) !==
+              String(bookingId) &&
+            String(payment.bookingID) !==
+              String(bookingId)
+          ) {
+            return payment;
+          }
+
+          return {
+            ...payment,
+            bookingStatus: newStatus,
+            updatedAt:
+              new Date().toISOString(),
+          };
+        });
+
+      localStorage.setItem(
+        "laundrymatePayments",
+        JSON.stringify(updatedPayments)
+      );
+
+      const updatedBooking =
+        updatedBookings.find(
+          (booking) =>
+            String(booking.id) ===
+            String(bookingId)
+        );
+
+      setBookings(updatedBookings);
+      setSelectedBooking(updatedBooking);
+
+      window.dispatchEvent(
+        new Event("laundrymateBookingUpdated")
+      );
+
+      window.dispatchEvent(
+        new Event("laundrymatePaymentUpdated")
+      );
+
+      setNotification(
+        `Booking status updated to "${newStatus}".`
+      );
+
+      return updatedBooking;
+    } catch (error) {
+      console.error(error);
+
+      setNotification(
+        "Unable to update booking status."
+      );
+
+      return null;
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  /* =======================================================
+     ACCEPT
+  ======================================================= */
+
+  const handleAcceptBooking = () => {
+    if (!selectedBooking) return;
+
+    updateBookingStatus(
+      selectedBooking.id,
+      "Accepted"
+    );
+  };
+
+  /* =======================================================
+     DECLINE
+  ======================================================= */
+
+  const handleDeclineBooking = () => {
+    if (!selectedBooking) return;
+
+    const confirmed = window.confirm(
+      "Are you sure you want to decline this booking?"
+    );
+
+    if (!confirmed) return;
+
+    updateBookingStatus(
+      selectedBooking.id,
+      "Declined"
+    );
+  };
+
+  /* =======================================================
+     READY FOR PICKUP
+  ======================================================= */
+
+  const handleReadyForPickup = () => {
+    if (!selectedBooking) return;
+
+    updateBookingStatus(
+      selectedBooking.id,
+      "Ready for Pickup"
+    );
+  };
+
+  /* =======================================================
+     PICKED UP
+  ======================================================= */
+
+  const handlePickedUp = () => {
+    if (!selectedBooking) return;
+
+    const weight = Number(
+      getWeight(selectedBooking)
+    );
+
+    if (!weight || weight <= 0) {
+      setNotification(
+        "Please enter and save the laundry weight first."
+      );
+
       return;
     }
 
-    // ==========================================
-    // CALCULATE BALANCE
-    // ==========================================
+    updateBookingStatus(
+      selectedBooking.id,
+      "In Laundry"
+    );
+  };
 
-    const amountToBePaid = Math.max(
-      0,
-      totalAmount - initialPayment
+  /* =======================================================
+     DELIVER
+     
+     IN LAUNDRY → TO DELIVER
+  ======================================================= */
+
+  const handleDeliver = () => {
+    if (!selectedBooking) return;
+
+    updateBookingStatus(
+      selectedBooking.id,
+      "To Deliver"
+    );
+  };
+
+  /* =======================================================
+     DELIVERED
+     
+     TO DELIVER → DELIVERED
+  ======================================================= */
+
+  const handleDelivered = () => {
+    if (!selectedBooking) return;
+
+    const confirmed = window.confirm(
+      "Are you sure this laundry order has been delivered to the customer?"
     );
 
-    // ==========================================
-    // UPDATE LOCAL STORAGE
-    // ==========================================
+    if (!confirmed) return;
 
-    const storedBookings = readBookings();
+    updateBookingStatus(
+      selectedBooking.id,
+      "Delivered"
+    );
+  };
 
-    const updatedBookings = storedBookings.map(
-      (booking) => {
-        if (
-          String(booking.id) !==
-          String(editingCustomer.id)
-        ) {
-          return booking;
-        }
+  /* =======================================================
+     SAVE WEIGHT
+  ======================================================= */
 
-        return {
-          ...booking,
+  const handleSaveWeight = () => {
+    if (!selectedBooking) return;
 
-          // ======================================
-          // CUSTOMER
-          // ======================================
+    const weight = Number(
+      editableWeight
+    );
 
-          customerName:
-            customerForm.customerName.trim(),
+    if (
+      editableWeight === "" ||
+      Number.isNaN(weight) ||
+      weight <= 0
+    ) {
+      setNotification(
+        "Please enter a valid weight greater than 0 kg."
+      );
 
-          name:
-            customerForm.customerName.trim(),
+      return;
+    }
 
-          fullName:
-            customerForm.customerName.trim(),
+    setUpdating(true);
 
-          // ======================================
-          // PICKUP ADDRESS
-          // ======================================
+    try {
+      const storedBookings = readBookings();
 
-          pickupAddress:
-            customerForm.pickupAddress.trim(),
+      const currentBooking =
+        storedBookings.find(
+          (booking) =>
+            String(booking.id) ===
+            String(selectedBooking.id)
+        );
 
-          pickupLocation:
-            customerForm.pickupAddress.trim(),
+      if (!currentBooking) {
+        setNotification(
+          "Booking could not be found."
+        );
 
-          address:
-            customerForm.pickupAddress.trim(),
-
-          // ======================================
-          // WEIGHT
-          // ======================================
-
-          weight,
-
-          // ======================================
-          // PAYMENT
-          // ======================================
-
-          totalAmount,
-
-          initialPayment,
-
-          amountToBePaid,
-
-          // ======================================
-          // STATUS
-          // ======================================
-
-          status: customerForm.status,
-
-          // ======================================
-          // UPDATED TIME
-          // ======================================
-
-          updatedAt: new Date().toISOString(),
-        };
+        return;
       }
-    );
 
-    // ==========================================
-    // SAVE
-    // ==========================================
+      const serviceRate =
+        getServiceRate(currentBooking);
 
-    localStorage.setItem(
-      "laundrymateBookings",
-      JSON.stringify(updatedBookings)
-    );
+      const laundrySubtotal =
+        calculateLaundrySubtotal(
+          currentBooking,
+          weight
+        );
 
-    // Update current page
-    setBookings(updatedBookings);
-
-    // Close modal
-    setEditingCustomer(null);
-
-    // Reset form
-    setCustomerForm({
-      customerName: "",
-      pickupAddress: "",
-      weight: "",
-      totalAmount: "",
-      initialPayment: "",
-      amountToBePaid: "",
-      status: "Pending",
-    });
-
-    // Notify other LaundryMate pages
-    window.dispatchEvent(
-      new Event("laundrymateBookingUpdated")
-    );
-
-    alert(
-      "Booking information updated successfully."
-    );
-  };
-
-  // ==========================================
-  // CANCEL MODAL
-  // ==========================================
-
-  const handleCancelCustomer = () => {
-    setEditingCustomer(null);
-
-    setCustomerForm({
-      customerName: "",
-      pickupAddress: "",
-      weight: "",
-      totalAmount: "",
-      initialPayment: "",
-      amountToBePaid: "",
-      status: "Pending",
-    });
-  };
-
-  // ==========================================
-  // FILTER + SORT
-  // ==========================================
-
-  const filteredBookings = bookings
-    .filter((booking) => {
-      const query = search.trim().toLowerCase();
-
-      const services = Array.isArray(
-        booking.services
-      )
-        ? booking.services.join(", ")
-        : booking.services || "";
-
-      const referenceNumber =
-        getPaymentReference(booking.id);
-
-      const customerName =
-        getCustomerName(booking);
-
-      const weight =
-        booking.weight ?? "";
-
-      const initialPayment =
-        getInitialPayment(booking);
+      const deliveryFee =
+        getDeliveryFee(currentBooking);
 
       const totalAmount =
-        getTotalAmount(booking);
+        laundrySubtotal + deliveryFee;
+
+      const initialPayment =
+        getInitialPayment(currentBooking);
 
       const amountToBePaid =
-        getAmountToBePaid(booking);
+        Math.max(
+          0,
+          totalAmount - initialPayment
+        );
 
-      const searchableText = [
-        booking.id,
-        customerName,
-        booking.address,
-        booking.pickupAddress,
-        booking.pickupLocation,
-        booking.barangay,
-        booking.city,
-        booking.province,
-        weight,
-        initialPayment,
-        totalAmount,
-        amountToBePaid,
-        services,
-        referenceNumber,
-        booking.status,
-      ]
-        .filter(
-          (value) =>
-            value !== undefined &&
-            value !== null &&
-            value !== ""
-        )
-        .join(" ")
-        .toLowerCase();
+      const updatedBookings =
+        storedBookings.map((booking) => {
+          if (
+            String(booking.id) !==
+            String(selectedBooking.id)
+          ) {
+            return booking;
+          }
 
-      return (
-        (!statusFilter ||
-          booking.status === statusFilter) &&
-        (!query ||
-          searchableText.includes(query))
+          return {
+            ...booking,
+
+            weight,
+            laundryWeight: weight,
+            kg: weight,
+
+            serviceRate,
+
+            laundrySubtotal,
+
+            deliveryFee,
+
+            totalAmount,
+
+            estimatedTotal: totalAmount,
+
+            amountToBePaid,
+
+            updatedAt:
+              new Date().toISOString(),
+          };
+        });
+
+      localStorage.setItem(
+        "laundrymateBookings",
+        JSON.stringify(updatedBookings)
       );
-    })
-    .sort((a, b) => {
-      const dateA = new Date(
-        a.createdAt ||
-          a.created_at ||
-          a.updatedAt ||
-          a.schedule ||
-          0
-      ).getTime();
 
-      const dateB = new Date(
-        b.createdAt ||
-          b.created_at ||
-          b.updatedAt ||
-          b.schedule ||
-          0
-      ).getTime();
+      /* Update payment */
 
-      return dateB - dateA;
-    });
+      const payments = readPayments();
 
-  // ==========================================
-  // RENDER
-  // ==========================================
+      const updatedPayments =
+        payments.map((payment) => {
+          if (
+            String(payment.bookingId) !==
+              String(selectedBooking.id) &&
+            String(payment.bookingID) !==
+              String(selectedBooking.id)
+          ) {
+            return payment;
+          }
+
+          return {
+            ...payment,
+
+            weight,
+            laundryWeight: weight,
+            kg: weight,
+
+            serviceRate,
+
+            laundrySubtotal,
+
+            deliveryFee,
+
+            totalAmount,
+
+            amount: totalAmount,
+
+            amountToBePaid,
+
+            bookingStatus:
+              currentBooking.status,
+
+            updatedAt:
+              new Date().toISOString(),
+          };
+        });
+
+      localStorage.setItem(
+        "laundrymatePayments",
+        JSON.stringify(updatedPayments)
+      );
+
+      const updatedBooking =
+        updatedBookings.find(
+          (booking) =>
+            String(booking.id) ===
+            String(selectedBooking.id)
+        );
+
+      setBookings(updatedBookings);
+      setSelectedBooking(updatedBooking);
+
+      window.dispatchEvent(
+        new Event("laundrymateBookingUpdated")
+      );
+
+      window.dispatchEvent(
+        new Event("laundrymatePaymentUpdated")
+      );
+
+      setNotification(
+        `Weight updated to ${weight} kg. Total amount is ${formatCurrency(
+          totalAmount
+        )}.`
+      );
+    } catch (error) {
+      console.error(error);
+
+      setNotification(
+        "Unable to update weight."
+      );
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  /* =======================================================
+     FILTER
+  ======================================================= */
+
+  const filteredBookings = useMemo(() => {
+    return bookings
+      .filter((booking) => {
+        const query =
+          search.trim().toLowerCase();
+
+        const searchableText = [
+          booking.id,
+          getCustomerName(booking),
+          getServices(booking),
+          getPickupLocation(booking),
+          getContactNumber(booking),
+          getWeight(booking),
+          booking.status,
+        ]
+          .filter(
+            (value) =>
+              value !== undefined &&
+              value !== null
+          )
+          .join(" ")
+          .toLowerCase();
+
+        return (
+          !query ||
+          searchableText.includes(query)
+        );
+      })
+      .sort((a, b) => {
+        const dateA = new Date(
+          a.createdAt ||
+            a.updatedAt ||
+            a.schedule ||
+            0
+        ).getTime();
+
+        const dateB = new Date(
+          b.createdAt ||
+            b.updatedAt ||
+            b.schedule ||
+            0
+        ).getTime();
+
+        return dateB - dateA;
+      });
+  }, [bookings, search]);
+
+  /* =======================================================
+     STATUS CLASS
+  ======================================================= */
+
+  const getStatusClass = (status) => {
+    return (
+      status
+        ?.toLowerCase()
+        .replaceAll(" ", "-") ||
+      "pending"
+    );
+  };
+
+  /* =======================================================
+     RENDER
+  ======================================================= */
 
   return (
     <div className="staff-bookings">
 
-      {/* ====================================
+      {/* =================================================
+          NOTIFICATION
+      ================================================= */}
+
+      {notification && (
+        <div className="booking-notification">
+          <span className="notification-check">
+            ✓
+          </span>
+
+          <span>{notification}</span>
+
+          <button
+            type="button"
+            onClick={() =>
+              setNotification("")
+            }
+          >
+            ×
+          </button>
+        </div>
+      )}
+
+      {/* =================================================
           HEADER
-      ==================================== */}
+      ================================================= */}
 
       <div className="section-header">
-
         <div>
           <h1>Assigned Bookings</h1>
 
           <p>
-            Manage customer bookings, laundry
-            details, payments, and status
+            Manage customer bookings,
+            laundry details, payments,
+            and pickup status.
           </p>
         </div>
 
@@ -713,17 +1059,14 @@ function Bookings() {
             ? "Booking"
             : "Bookings"}
         </div>
-
       </div>
 
-      {/* ====================================
-          FILTERS
-      ==================================== */}
+      {/* =================================================
+          SEARCH
+      ================================================= */}
 
       <div className="filters">
-
         <div className="search-wrapper">
-
           <span className="search-icon">
             ⌕
           </span>
@@ -737,95 +1080,50 @@ function Bookings() {
               setSearch(event.target.value)
             }
           />
-
         </div>
-
       </div>
 
-      {/* ====================================
+      {/* =================================================
           TABLE
-      ==================================== */}
+      ================================================= */}
 
       <div className="table-container">
-
         <table className="bookings-table">
-
           <thead>
-
             <tr>
-
               <th>Booking ID</th>
-
               <th>Customer</th>
-
               <th>Service Type</th>
-
               <th>Weight</th>
-
               <th>Total Amount</th>
-
               <th>Initial Payment</th>
-
               <th>Amount to be Paid</th>
-
               <th>Pickup Location</th>
-
               <th>Status</th>
-
               <th>Pickup Date</th>
-
               <th>Action</th>
-
             </tr>
-
           </thead>
 
           <tbody>
-
             {filteredBookings.length > 0 ? (
-
               filteredBookings.map((booking) => {
-
                 const customerName =
                   getCustomerName(booking);
 
-                const services =
-                  Array.isArray(
-                    booking.services
-                  )
-                    ? booking.services.join(", ")
-                    : booking.services ||
-                      "Laundry Service";
-
-                const initialPayment =
-                  getInitialPayment(booking);
-
-                const totalAmount =
-                  getTotalAmount(booking);
-
-                const amountToBePaid =
-                  getAmountToBePaid(booking);
-
-                const location =
-                  getPickupLocation(booking);
+                const weight =
+                  getWeight(booking);
 
                 return (
                   <tr key={booking.id}>
-
-                    {/* BOOKING ID */}
-
                     <td>
                       <span className="booking-id">
                         #{booking.id || "N/A"}
                       </span>
                     </td>
 
-                    {/* CUSTOMER */}
-
                     <td>
-
                       <div className="customer-cell">
-
                         <div className="customer-avatar">
                           {getInitials(
                             customerName
@@ -833,95 +1131,75 @@ function Bookings() {
                         </div>
 
                         <div className="customer-info">
-
                           <div className="customer-name">
                             {customerName}
                           </div>
-
                         </div>
-
                       </div>
-
                     </td>
-
-                    {/* SERVICE */}
 
                     <td>
                       <span className="service-name">
-                        {services}
+                        {getServices(booking)}
                       </span>
                     </td>
 
-                    {/* WEIGHT - DISPLAY ONLY */}
-
                     <td>
                       <span className="weight-value">
-                        {booking.weight
-                          ? `${booking.weight} kg`
+                        {weight
+                          ? `${weight} kg`
                           : "Not set"}
                       </span>
                     </td>
 
-                    {/* TOTAL AMOUNT */}
-
                     <td>
                       <span className="total-amount">
                         {formatCurrency(
-                          totalAmount
+                          getTotalAmount(
+                            booking
+                          )
                         )}
                       </span>
                     </td>
-
-                    {/* INITIAL PAYMENT */}
 
                     <td>
                       <span className="payment-amount">
                         {formatCurrency(
-                          initialPayment
+                          getInitialPayment(
+                            booking
+                          )
                         )}
                       </span>
                     </td>
-
-                    {/* AMOUNT TO BE PAID */}
 
                     <td>
                       <span className="amount-to-be-paid">
                         {formatCurrency(
-                          amountToBePaid
+                          getAmountToBePaid(
+                            booking
+                          )
                         )}
                       </span>
                     </td>
 
-                    {/* PICKUP LOCATION */}
-
                     <td>
                       <div className="pickup-location">
-                        {location}
+                        {getPickupLocation(
+                          booking
+                        )}
                       </div>
                     </td>
 
-                    {/* STATUS */}
-
                     <td>
-
                       <span
-                        className={`status ${
+                        className={`status ${getStatusClass(
                           booking.status
-                            ?.toLowerCase()
-                            .replaceAll(
-                              " ",
-                              "-"
-                            ) ||
-                          "pending"
-                        }`}
+                        )}`}
                       >
                         {booking.status ||
                           "Pending"}
                       </span>
-
                     </td>
-
-                    {/* PICKUP DATE */}
 
                     <td>
                       {formatDate(
@@ -929,37 +1207,28 @@ function Bookings() {
                       )}
                     </td>
 
-                    {/* ACTION */}
-
                     <td>
-
                       <button
                         type="button"
                         className="update-status-btn"
                         onClick={() =>
-                          handleEditCustomer(
+                          handleUpdateStatus(
                             booking
                           )
                         }
                       >
                         Update Status
                       </button>
-
                     </td>
-
                   </tr>
                 );
               })
-
             ) : (
-
               <tr>
-
                 <td
                   colSpan="11"
                   className="empty-state"
                 >
-
                   <div className="empty-icon">
                     📋
                   </div>
@@ -969,372 +1238,1024 @@ function Bookings() {
                   </strong>
 
                   <span>
-                    Try changing your search
-                    or status filter.
+                    Try changing your search.
                   </span>
-
                 </td>
-
               </tr>
-
             )}
-
           </tbody>
-
         </table>
-
       </div>
 
-      {/* ==========================================
-          UPDATE BOOKING MODAL
-      ========================================== */}
+      {/* =================================================
+          STATUS MODAL
+      ================================================= */}
 
-      {editingCustomer && (
+      {showStatusModal &&
+        selectedBooking && (
+          <div
+            className="status-modal-overlay"
+            onClick={(event) => {
+              if (
+                event.target ===
+                event.currentTarget
+              ) {
+                closeStatusModal();
+              }
+            }}
+          >
+            <div className="status-modal">
 
-        <div
-          className="customer-modal-overlay"
-          onClick={(event) => {
-            if (
-              event.target ===
-              event.currentTarget
-            ) {
-              handleCancelCustomer();
-            }
-          }}
-        >
+              {/* =================================================
+                  MODAL HEADER
+              ================================================= */}
 
-          <div className="customer-modal">
+              <div className="status-modal-header">
+                <div>
+                  <h2>
+                    {selectedBooking.status ||
+                      "Booking Status"}
+                  </h2>
 
-            {/* MODAL HEADER */}
-
-            <div className="customer-modal-header">
-
-              <div>
-
-                <h2>
-                  Update Booking Status
-                </h2>
-
-                <p>
-                  Booking #
-                  {editingCustomer.id}
-                </p>
-
-              </div>
-
-              <button
-                type="button"
-                className="customer-modal-close"
-                onClick={
-                  handleCancelCustomer
-                }
-                aria-label="Close"
-              >
-                ×
-              </button>
-
-            </div>
-
-            {/* MODAL BODY */}
-
-            <div className="customer-modal-body">
-
-              {/* CUSTOMER NAME */}
-
-              <div className="form-group">
-
-                <label htmlFor="customerName">
-                  Customer Name
-                </label>
-
-                <input
-                  id="customerName"
-                  name="customerName"
-                  type="text"
-                  value={
-                    customerForm.customerName
-                  }
-                  onChange={
-                    handleCustomerFormChange
-                  }
-                  placeholder="Enter customer name"
-                />
-
-              </div>
-
-              {/* PICKUP ADDRESS */}
-
-              <div className="form-group">
-
-                <label htmlFor="pickupAddress">
-                  Pickup Address
-                </label>
-
-                <textarea
-                  id="pickupAddress"
-                  name="pickupAddress"
-                  value={
-                    customerForm.pickupAddress
-                  }
-                  onChange={
-                    handleCustomerFormChange
-                  }
-                  placeholder="Enter pickup address"
-                  rows="3"
-                />
-
-              </div>
-
-              {/* WEIGHT + TOTAL */}
-
-              <div className="form-row">
-
-                {/* WEIGHT */}
-
-                <div className="form-group">
-
-                  <label htmlFor="weight">
-                    Weight
-                  </label>
-
-                  <div className="input-with-unit">
-
-                    <input
-                      id="weight"
-                      name="weight"
-                      type="number"
-                      min="0.5"
-                      step="0.5"
-                      value={
-                        customerForm.weight
-                      }
-                      onChange={
-                        handleCustomerFormChange
-                      }
-                      placeholder="0"
-                    />
-
-                    <span>
-                      kg
-                    </span>
-
-                  </div>
-
+                  <p>
+                    Booking #
+                    {selectedBooking.id}
+                  </p>
                 </div>
 
-                {/* TOTAL AMOUNT */}
-
-                <div className="form-group">
-
-                  <label htmlFor="totalAmount">
-                    Total Amount
-                  </label>
-
-                  <div className="input-with-prefix">
-
-                    <input
-                      id="totalAmount"
-                      name="totalAmount"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={
-                        customerForm.totalAmount
-                      }
-                      onChange={
-                        handleCustomerFormChange
-                      }
-                      placeholder="0.00"
-                    />
-
-                  </div>
-
-                </div>
-
-              </div>
-
-              {/* INITIAL PAYMENT + BALANCE */}
-
-              <div className="form-row">
-
-                {/* INITIAL PAYMENT */}
-
-                <div className="form-group">
-
-                  <label htmlFor="initialPayment">
-                    Initial Payment
-                  </label>
-
-                  <div className="input-with-prefix">
-
-                    
-
-                    <input
-                      id="initialPayment"
-                      name="initialPayment"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={
-                        customerForm.initialPayment
-                      }
-                      onChange={
-                        handleCustomerFormChange
-                      }
-                      placeholder="0.00"
-                    />
-
-                  </div>
-
-                </div>
-
-                {/* AMOUNT TO BE PAID */}
-
-                <div className="form-group">
-
-                  <label htmlFor="amountToBePaid">
-                    Amount to be Paid
-                  </label>
-
-                  <div className="input-with-prefix">
-
-                    
-                    <input
-                      id="amountToBePaid"
-                      name="amountToBePaid"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={
-                        customerForm.amountToBePaid
-                      }
-                      onChange={
-                        handleCustomerFormChange
-                      }
-                      placeholder="0.00"
-                    />
-
-                  </div>
-
-                </div>
-
-              </div>
-
-              {/* STATUS */}
-
-              <div className="form-group">
-
-                <label htmlFor="status">
-                  Booking Status
-                </label>
-
-                <select
-                  id="status"
-                  name="status"
-                  value={
-                    customerForm.status
+                <button
+                  type="button"
+                  className="status-close-btn"
+                  onClick={
+                    closeStatusModal
                   }
-                  onChange={
-                    handleCustomerFormChange
-                  }
+                  disabled={updating}
                 >
-
-                  {STATUS_FLOW.map(
-                    (status) => (
-                      <option
-                        key={status}
-                        value={status}
-                      >
-                        {status}
-                      </option>
-                    )
-                  )}
-
-                </select>
-
+                  ×
+                </button>
               </div>
 
-              {/* PAYMENT SUMMARY */}
+              <div className="status-divider" />
 
-              <div className="booking-summary">
+              {/* =================================================
+                  PENDING
+              ================================================= */}
 
-                <div className="summary-item">
+              {selectedBooking.status ===
+                "Pending" && (
+                <>
+                  <div className="status-details">
+                    <Detail
+                      label="Customer Name"
+                      value={getCustomerName(
+                        selectedBooking
+                      )}
+                    />
 
-                  <span>
-                    Total Amount
-                  </span>
+                    <Detail
+                      label="Service Type"
+                      value={getServices(
+                        selectedBooking
+                      )}
+                    />
 
-                  <strong>
-                    {formatCurrency(
-                      customerForm.totalAmount
+                    <Detail
+                      label="Initial Payment"
+                      value={formatCurrency(
+                        getInitialPayment(
+                          selectedBooking
+                        )
+                      )}
+                    />
+
+                    <Detail
+                      label="Reference Number"
+                      value={getPaymentReference(
+                        selectedBooking.id
+                      )}
+                    />
+
+                    <Detail
+                      label="Pickup Address"
+                      value={getPickupLocation(
+                        selectedBooking
+                      )}
+                      full
+                    />
+
+                    <Detail
+                      label="Contact Number"
+                      value={getContactNumber(
+                        selectedBooking
+                      )}
+                    />
+
+                    <Detail
+                      label="Status"
+                      value="Pending"
+                      className="pending-status-text"
+                    />
+                  </div>
+
+                  <div className="status-actions">
+                    <button
+                      type="button"
+                      className="accept-btn"
+                      onClick={
+                        handleAcceptBooking
+                      }
+                      disabled={updating}
+                    >
+                      {updating
+                        ? "Updating..."
+                        : "Accept"}
+                    </button>
+
+                    <button
+                      type="button"
+                      className="decline-btn"
+                      onClick={
+                        handleDeclineBooking
+                      }
+                      disabled={updating}
+                    >
+                      Decline
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {/* =================================================
+                  ACCEPTED
+              ================================================= */}
+
+              {selectedBooking.status ===
+                "Accepted" && (
+                <>
+                  <div className="status-details">
+                    <Detail
+                      label="Customer Name"
+                      value={getCustomerName(
+                        selectedBooking
+                      )}
+                    />
+
+                    <Detail
+                      label="Service Type"
+                      value={getServices(
+                        selectedBooking
+                      )}
+                    />
+
+                    <Detail
+                      label="Initial Payment"
+                      value={formatCurrency(
+                        getInitialPayment(
+                          selectedBooking
+                        )
+                      )}
+                    />
+
+                    <Detail
+                      label="Reference Number"
+                      value={getPaymentReference(
+                        selectedBooking.id
+                      )}
+                    />
+
+                    <Detail
+                      label="Pickup Address"
+                      value={getPickupLocation(
+                        selectedBooking
+                      )}
+                      full
+                    />
+
+                    <Detail
+                      label="Contact Number"
+                      value={getContactNumber(
+                        selectedBooking
+                      )}
+                    />
+
+                    <Detail
+                      label="Status"
+                      value="Accepted"
+                      className="accepted-status-text"
+                    />
+                  </div>
+
+                  <div className="status-actions">
+                    <button
+                      type="button"
+                      className="pickup-btn"
+                      onClick={
+                        handleReadyForPickup
+                      }
+                      disabled={updating}
+                    >
+                      Ready for Pickup
+                    </button>
+
+                    <button
+                      type="button"
+                      className="secondary-btn"
+                      onClick={
+                        closeStatusModal
+                      }
+                      disabled={updating}
+                    >
+                      Close
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {/* =================================================
+                  READY FOR PICKUP
+              ================================================= */}
+
+              {selectedBooking.status ===
+                "Ready for Pickup" && (
+                <>
+                  <div className="status-details">
+                    <Detail
+                      label="Customer Name"
+                      value={getCustomerName(
+                        selectedBooking
+                      )}
+                    />
+
+                    <Detail
+                      label="Service Type"
+                      value={getServices(
+                        selectedBooking
+                      )}
+                    />
+
+                    <Detail
+                      label="Contact Number"
+                      value={getContactNumber(
+                        selectedBooking
+                      )}
+                    />
+
+                    <Detail
+                      label="Pickup Address"
+                      value={getPickupLocation(
+                        selectedBooking
+                      )}
+                      full
+                    />
+
+                    <Detail
+                      label="Status"
+                      value="Ready for Pickup"
+                      className="ready-status-text"
+                    />
+                  </div>
+
+                  {/* MAP */}
+
+                  <div className="pickup-map-section">
+                    <div className="pickup-map-header">
+                      <div>
+                        <h3>
+                          Pickup Location
+                        </h3>
+
+                        <p>
+                          Customer pickup location
+                        </p>
+                      </div>
+
+                      <span className="map-location-badge">
+                        📍 GPS
+                      </span>
+                    </div>
+
+                    {getCoordinates(
+                      selectedBooking
+                    ) ? (
+                      <div className="pickup-map-wrapper">
+                        <MapContainer
+                          center={[
+                            getCoordinates(
+                              selectedBooking
+                            ).latitude,
+                            getCoordinates(
+                              selectedBooking
+                            ).longitude,
+                          ]}
+                          zoom={16}
+                          scrollWheelZoom
+                          className="pickup-status-map"
+                        >
+                          <TileLayer
+                            attribution="&copy; OpenStreetMap contributors"
+                            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                          />
+
+                          <Marker
+                            position={[
+                              getCoordinates(
+                                selectedBooking
+                              ).latitude,
+                              getCoordinates(
+                                selectedBooking
+                              ).longitude,
+                            ]}
+                          >
+                            <Popup>
+                              <div className="map-popup">
+                                <strong>
+                                  {getCustomerName(
+                                    selectedBooking
+                                  )}
+                                </strong>
+
+                                <span>
+                                  {getPickupLocation(
+                                    selectedBooking
+                                  )}
+                                </span>
+                              </div>
+                            </Popup>
+                          </Marker>
+                        </MapContainer>
+                      </div>
+                    ) : (
+                      <div className="pickup-map-empty">
+                        <div>📍</div>
+
+                        <strong>
+                          Map unavailable
+                        </strong>
+
+                        <span>
+                          Customer coordinates
+                          were not saved.
+                        </span>
+                      </div>
                     )}
-                  </strong>
+                  </div>
+
+                  {/* WEIGHT */}
+
+                  <div className="pickup-summary">
+                    <div className="pickup-summary-title">
+                      Payment Calculation
+                    </div>
+
+                    <div className="weight-editor">
+                      <label>
+                        Actual Laundry Weight
+                      </label>
+
+                      <div className="weight-input-row">
+                        <input
+                          type="number"
+                          min="0.1"
+                          step="0.1"
+                          value={
+                            editableWeight
+                          }
+                          onChange={(event) =>
+                            setEditableWeight(
+                              event.target.value
+                            )
+                          }
+                          placeholder="Enter weight"
+                          disabled={updating}
+                        />
+
+                        <span>kg</span>
+                      </div>
+
+                      <small>
+                        Service rate:{" "}
+                        {formatCurrency(
+                          getServiceRate(
+                            selectedBooking
+                          )
+                        )}
+                        /kg
+                      </small>
+                    </div>
+
+                    <PaymentRow
+                      label="Weight"
+                      value={
+                        editableWeight
+                          ? `${editableWeight} kg`
+                          : "Not set"
+                      }
+                    />
+
+                    <PaymentRow
+                      label="Laundry Subtotal"
+                      value={formatCurrency(
+                        calculateLaundrySubtotal(
+                          selectedBooking,
+                          editableWeight
+                        )
+                      )}
+                    />
+
+                    <PaymentRow
+                      label="Delivery Fee"
+                      value={formatCurrency(
+                        getDeliveryFee(
+                          selectedBooking
+                        )
+                      )}
+                    />
+
+                    <PaymentRow
+                      label="Total Amount"
+                      value={formatCurrency(
+                        calculateTotalAmount(
+                          selectedBooking,
+                          editableWeight
+                        )
+                      )}
+                      highlight
+                    />
+
+                    <PaymentRow
+                      label="Initial Payment"
+                      value={formatCurrency(
+                        getInitialPayment(
+                          selectedBooking
+                        )
+                      )}
+                    />
+
+                    <PaymentRow
+                      label="Amount to be Paid"
+                      value={formatCurrency(
+                        Math.max(
+                          0,
+                          calculateTotalAmount(
+                            selectedBooking,
+                            editableWeight
+                          ) -
+                            getInitialPayment(
+                              selectedBooking
+                            )
+                        )
+                      )}
+                      balance
+                    />
+
+                    <button
+                      type="button"
+                      className="save-weight-btn"
+                      onClick={
+                        handleSaveWeight
+                      }
+                      disabled={updating}
+                    >
+                      {updating
+                        ? "Updating..."
+                        : "Update Weight & Amount"}
+                    </button>
+                  </div>
+
+                  <div className="status-actions">
+                    <button
+                      type="button"
+                      className="pickup-btn"
+                      onClick={
+                        handlePickedUp
+                      }
+                      disabled={
+                        updating ||
+                        !getWeight(
+                          selectedBooking
+                        )
+                      }
+                    >
+                      Picked Up
+                    </button>
+
+                    <button
+                      type="button"
+                      className="secondary-btn"
+                      onClick={
+                        closeStatusModal
+                      }
+                      disabled={updating}
+                    >
+                      Close
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {/* =================================================
+                  IN LAUNDRY
+                  
+                  CLICK DELIVER → TO DELIVER
+              ================================================= */}
+
+              {selectedBooking.status ===
+                "In Laundry" && (
+                <div className="in-laundry-screen">
+
+                  <div className="laundry-info-list">
+                    <InfoLine
+                      label="Customer Name"
+                      value={getCustomerName(
+                        selectedBooking
+                      )}
+                    />
+
+                    <InfoLine
+                      label="Service Type"
+                      value={getServices(
+                        selectedBooking
+                      )}
+                    />
+
+                    <InfoLine
+                      label="Weight"
+                      value={
+                        getWeight(
+                          selectedBooking
+                        )
+                          ? `${getWeight(
+                              selectedBooking
+                            )} kg`
+                          : "Not set"
+                      }
+                    />
+
+                    <InfoLine
+                      label="Total Amount"
+                      value={formatCurrency(
+                        getTotalAmount(
+                          selectedBooking
+                        )
+                      )}
+                    />
+
+                    <InfoLine
+                      label="Pickup Address"
+                      value={getPickupLocation(
+                        selectedBooking
+                      )}
+                    />
+
+                    <InfoLine
+                      label="Contact Number"
+                      value={getContactNumber(
+                        selectedBooking
+                      )}
+                    />
+
+                    <InfoLine
+                      label="Status"
+                      value="In Laundry"
+                      status
+                    />
+                  </div>
+
+                  <div className="image-style-action">
+                    <button
+                      type="button"
+                      className="deliver-btn"
+                      onClick={
+                        handleDeliver
+                      }
+                      disabled={updating}
+                    >
+                      {updating
+                        ? "Updating..."
+                        : "Deliver"}
+                    </button>
+                  </div>
+
+                  <button
+                    type="button"
+                    className="secondary-btn full-btn"
+                    onClick={
+                      closeStatusModal
+                    }
+                    disabled={updating}
+                  >
+                    Close
+                  </button>
+                </div>
+              )}
+
+              {/* =================================================
+                  TO DELIVER
+                  
+                  THIS IS THE SCREEN FROM YOUR IMAGE
+              ================================================= */}
+
+              {selectedBooking.status ===
+                "To Deliver" && (
+                <div className="to-deliver-screen">
+
+                  {/* CUSTOMER INFORMATION */}
+
+                  <div className="delivery-info-list">
+
+                    <InfoLine
+                      label="Customer Name"
+                      value={getCustomerName(
+                        selectedBooking
+                      )}
+                    />
+
+                    <InfoLine
+                      label="Service Type"
+                      value={getServices(
+                        selectedBooking
+                      )}
+                    />
+
+                    <InfoLine
+                      label="Weight"
+                      value={
+                        getWeight(
+                          selectedBooking
+                        )
+                          ? `${getWeight(
+                              selectedBooking
+                            )} kg`
+                          : "Not set"
+                      }
+                    />
+
+                    <InfoLine
+                      label="Total Amount"
+                      value={formatCurrency(
+                        getTotalAmount(
+                          selectedBooking
+                        )
+                      )}
+                    />
+
+                    <InfoLine
+                      label="Pickup Address"
+                      value={getPickupLocation(
+                        selectedBooking
+                      )}
+                    />
+
+                    <InfoLine
+                      label="Contact Number"
+                      value={getContactNumber(
+                        selectedBooking
+                      )}
+                    />
+
+                    <InfoLine
+                      label="Status"
+                      value="To Deliver"
+                      status
+                    />
+
+                  </div>
+
+                  {/* =================================================
+                      DELIVERY MAP
+                  ================================================= */}
+
+                  <div className="delivery-map-section">
+
+                    {getCoordinates(
+                      selectedBooking
+                    ) ? (
+                      <div className="delivery-map-wrapper">
+
+                        <MapContainer
+                          center={[
+                            getCoordinates(
+                              selectedBooking
+                            ).latitude,
+                            getCoordinates(
+                              selectedBooking
+                            ).longitude,
+                          ]}
+                          zoom={16}
+                          scrollWheelZoom
+                          className="delivery-map"
+                        >
+
+                          <TileLayer
+                            attribution="&copy; OpenStreetMap contributors"
+                            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                          />
+
+                          <Marker
+                            position={[
+                              getCoordinates(
+                                selectedBooking
+                              ).latitude,
+                              getCoordinates(
+                                selectedBooking
+                              ).longitude,
+                            ]}
+                          >
+
+                            <Popup>
+                              <div className="map-popup">
+                                <strong>
+                                  Deliver To
+                                </strong>
+
+                                <span>
+                                  {getCustomerName(
+                                    selectedBooking
+                                  )}
+                                </span>
+
+                                <span>
+                                  {getPickupLocation(
+                                    selectedBooking
+                                  )}
+                                </span>
+
+                                <span>
+                                  {getContactNumber(
+                                    selectedBooking
+                                  )}
+                                </span>
+                              </div>
+                            </Popup>
+
+                          </Marker>
+
+                        </MapContainer>
+
+                        <div className="delivery-map-overlay">
+                          <span>📍</span>
+
+                          <div>
+                            <strong>
+                              Customer Location
+                            </strong>
+
+                            <small>
+                              Tap the marker for
+                              delivery details
+                            </small>
+                          </div>
+                        </div>
+
+                      </div>
+                    ) : (
+                      <div className="delivery-map-empty">
+
+                        <div className="map-empty-icon">
+                          📍
+                        </div>
+
+                        <strong>
+                          Map Location Unavailable
+                        </strong>
+
+                        <span>
+                          No GPS coordinates were
+                          saved for this booking.
+                        </span>
+
+                      </div>
+                    )}
+
+                  </div>
+
+                  {/* =================================================
+                      DELIVERED BUTTON
+                  ================================================= */}
+
+                  <div className="delivery-action">
+
+                    <button
+                      type="button"
+                      className="delivered-btn"
+                      onClick={
+                        handleDelivered
+                      }
+                      disabled={updating}
+                    >
+                      {updating
+                        ? "Updating..."
+                        : "Delivered"}
+                    </button>
+
+                  </div>
+
+                  <button
+                    type="button"
+                    className="secondary-btn full-btn"
+                    onClick={
+                      closeStatusModal
+                    }
+                    disabled={updating}
+                  >
+                    Close
+                  </button>
 
                 </div>
+              )}
 
-                <div className="summary-item">
+              {/* =================================================
+                  DELIVERED
+              ================================================= */}
 
-                  <span>
-                    Initial Payment
-                  </span>
+              {selectedBooking.status ===
+                "Delivered" && (
+                <>
+                  <div className="completed-message">
 
-                  <strong>
-                    {formatCurrency(
-                      customerForm.initialPayment
-                    )}
-                  </strong>
+                    <div className="completed-icon">
+                      ✓
+                    </div>
 
-                </div>
+                    <h3>
+                      Booking Completed
+                    </h3>
 
-                <div className="summary-item">
+                    <p>
+                      The laundry order has
+                      been successfully
+                      delivered to the
+                      customer.
+                    </p>
 
-                  <span>
-                    Remaining Balance
-                  </span>
+                    <div className="completed-payment">
 
-                  <strong>
-                    {formatCurrency(
-                      customerForm.amountToBePaid
-                    )}
-                  </strong>
+                      <div>
+                        <span>
+                          Total Amount
+                        </span>
 
-                </div>
+                        <strong>
+                          {formatCurrency(
+                            getTotalAmount(
+                              selectedBooking
+                            )
+                          )}
+                        </strong>
+                      </div>
 
-              </div>
+                      <div>
+                        <span>
+                          Amount to be Paid
+                        </span>
+
+                        <strong>
+                          {formatCurrency(
+                            getAmountToBePaid(
+                              selectedBooking
+                            )
+                          )}
+                        </strong>
+                      </div>
+
+                    </div>
+
+                  </div>
+
+                  <div className="status-actions">
+
+                    <button
+                      type="button"
+                      className="secondary-btn full-btn"
+                      onClick={
+                        closeStatusModal
+                      }
+                    >
+                      Close
+                    </button>
+
+                  </div>
+                </>
+              )}
+
+              {/* =================================================
+                  DECLINED
+              ================================================= */}
+
+              {selectedBooking.status ===
+                "Declined" && (
+                <>
+                  <div className="status-details">
+
+                    <Detail
+                      label="Customer Name"
+                      value={getCustomerName(
+                        selectedBooking
+                      )}
+                    />
+
+                    <Detail
+                      label="Status"
+                      value="Declined"
+                      className="declined-status-text"
+                    />
+
+                  </div>
+
+                  <div className="status-actions">
+
+                    <button
+                      type="button"
+                      className="secondary-btn full-btn"
+                      onClick={
+                        closeStatusModal
+                      }
+                    >
+                      Close
+                    </button>
+
+                  </div>
+                </>
+              )}
 
             </div>
-
-            {/* MODAL FOOTER */}
-
-            <div className="customer-modal-footer">
-
-              <button
-                type="button"
-                className="customer-cancel-btn"
-                onClick={
-                  handleCancelCustomer
-                }
-              >
-                Cancel
-              </button>
-
-              <button
-                type="button"
-                className="customer-save-btn"
-                onClick={
-                  handleSaveCustomer
-                }
-              >
-                Update Status
-              </button>
-
-            </div>
-
           </div>
+        )}
+    </div>
+  );
+}
 
-        </div>
+/* =========================================================
+   DETAIL COMPONENT
+========================================================= */
 
-      )}
+function Detail({
+  label,
+  value,
+  full = false,
+  className = "",
+}) {
+  return (
+    <div
+      className={`status-detail ${
+        full ? "full-width" : ""
+      }`}
+    >
+      <span>{label}:</span>
+
+      <strong className={className}>
+        {value}
+      </strong>
+    </div>
+  );
+}
+
+/* =========================================================
+   PAYMENT ROW
+========================================================= */
+
+function PaymentRow({
+  label,
+  value,
+  highlight = false,
+  balance = false,
+}) {
+  return (
+    <div
+      className={`pickup-summary-row ${
+        highlight ? "highlight-row" : ""
+      } ${balance ? "balance-row" : ""}`}
+    >
+      <span>{label}:</span>
+
+      <strong>{value}</strong>
+    </div>
+  );
+}
+
+/* =========================================================
+   INFORMATION LINE
+========================================================= */
+
+function InfoLine({
+  label,
+  value,
+  status = false,
+}) {
+  return (
+    <div className="image-info-line">
+
+      <span>{label}:</span>
+
+      <strong
+        className={
+          status
+            ? "image-status-text"
+            : ""
+        }
+      >
+        {value}
+      </strong>
 
     </div>
   );
