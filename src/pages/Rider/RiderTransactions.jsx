@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   MapContainer,
   TileLayer,
   Marker,
   Popup,
+  useMap,
 } from "react-leaflet";
 import L from "leaflet";
 
@@ -24,6 +25,51 @@ L.Icon.Default.mergeOptions({
   shadowUrl:
     "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
 });
+
+const riderLocationIcon = L.icon({
+  iconRetinaUrl:
+    "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+  iconUrl:
+    "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+  shadowUrl:
+    "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  tooltipAnchor: [16, -28],
+  shadowSize: [41, 41],
+  className: "rider-location-marker",
+});
+
+function FitPickupAndRider({ pickupCoordinates, riderLocation }) {
+  const map = useMap();
+  const hasFittedLocations = useRef(false);
+
+  useEffect(() => {
+    if (hasFittedLocations.current || !riderLocation) return;
+
+    const locations = [
+      pickupCoordinates,
+      riderLocation,
+    ].filter(Boolean).map(({ latitude, longitude }) => [
+      latitude,
+      longitude,
+    ]);
+
+    if (locations.length > 1) {
+      map.fitBounds(locations, {
+        padding: [32, 32],
+        maxZoom: 16,
+      });
+    } else {
+      map.setView(locations[0], 16);
+    }
+
+    hasFittedLocations.current = true;
+  }, [map, pickupCoordinates, riderLocation]);
+
+  return null;
+}
 
 /* =========================================================
    STATUS FLOW
@@ -465,6 +511,12 @@ function RiderTransactions() {
   const [updating, setUpdating] =
     useState(false);
 
+  const [riderLocation, setRiderLocation] =
+    useState(null);
+
+  const [riderLocationError, setRiderLocationError] =
+    useState("");
+
   /* =======================================================
      LOAD BOOKINGS
   ======================================================= */
@@ -525,11 +577,59 @@ function RiderTransactions() {
     return () => clearTimeout(timer);
   }, [notification]);
 
+  useEffect(() => {
+    if (
+      !showStatusModal ||
+      !["Ready for Pickup", "To Deliver"].includes(
+        selectedBooking?.status
+      )
+    ) {
+      return undefined;
+    }
+
+    if (!navigator.geolocation) {
+      return undefined;
+    }
+
+    const watchId = navigator.geolocation.watchPosition(
+      ({ coords }) => {
+        setRiderLocation({
+          latitude: coords.latitude,
+          longitude: coords.longitude,
+        });
+        setRiderLocationError("");
+      },
+      (error) => {
+        const messages = {
+          1: "Allow location access to show your live position.",
+          2: "Your current location is unavailable.",
+          3: "Location request timed out. Trying again...",
+        };
+
+        setRiderLocationError(
+          messages[error.code] ||
+            "Unable to access your live location."
+        );
+      },
+      {
+        enableHighAccuracy: true,
+        maximumAge: 5000,
+        timeout: 15000,
+      }
+    );
+
+    return () => {
+      navigator.geolocation.clearWatch(watchId);
+    };
+  }, [selectedBooking?.status, showStatusModal]);
+
   /* =======================================================
      OPEN STATUS MODAL
   ======================================================= */
 
   const handleUpdateStatus = (booking) => {
+    setRiderLocation(null);
+    setRiderLocationError("");
     setSelectedBooking(booking);
 
     setEditableWeight(
@@ -548,6 +648,8 @@ function RiderTransactions() {
   const closeStatusModal = () => {
     if (updating) return;
 
+    setRiderLocation(null);
+    setRiderLocationError("");
     setShowStatusModal(false);
     setSelectedBooking(null);
     setEditableWeight("");
@@ -622,6 +724,11 @@ function RiderTransactions() {
             String(booking.id) ===
             String(bookingId)
         );
+
+      if (newStatus !== "Ready for Pickup") {
+        setRiderLocation(null);
+        setRiderLocationError("");
+      }
 
       setBookings(updatedBookings);
       setSelectedBooking(updatedBooking);
@@ -1007,6 +1114,13 @@ function RiderTransactions() {
       "pending"
     );
   };
+
+  const pickupCoordinates = selectedBooking
+    ? getCoordinates(selectedBooking)
+    : null;
+
+  const mapCenter =
+    pickupCoordinates || riderLocation;
 
   /* =======================================================
      RENDER
@@ -1534,54 +1648,68 @@ function RiderTransactions() {
                       </span>
                     </div>
 
-                    {getCoordinates(
-                      selectedBooking
-                    ) ? (
+                    {mapCenter ? (
                       <div className="pickup-map-wrapper">
                         <MapContainer
                           center={[
-                            getCoordinates(
-                              selectedBooking
-                            ).latitude,
-                            getCoordinates(
-                              selectedBooking
-                            ).longitude,
+                            mapCenter.latitude,
+                            mapCenter.longitude,
                           ]}
                           zoom={16}
                           scrollWheelZoom
                           className="pickup-status-map"
                         >
+                          <FitPickupAndRider
+                            pickupCoordinates={pickupCoordinates}
+                            riderLocation={riderLocation}
+                          />
+
                           <TileLayer
                             attribution="&copy; OpenStreetMap contributors"
                             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                           />
 
-                          <Marker
-                            position={[
-                              getCoordinates(
-                                selectedBooking
-                              ).latitude,
-                              getCoordinates(
-                                selectedBooking
-                              ).longitude,
-                            ]}
-                          >
-                            <Popup>
-                              <div className="map-popup">
-                                <strong>
-                                  {getCustomerName(
-                                    selectedBooking
-                                  )}
-                                </strong>
+                          {pickupCoordinates && (
+                            <Marker
+                              position={[
+                                pickupCoordinates.latitude,
+                                pickupCoordinates.longitude,
+                              ]}
+                            >
+                              <Popup>
+                                <div className="map-popup">
+                                  <strong>
+                                    {getCustomerName(
+                                      selectedBooking
+                                    )}
+                                  </strong>
 
-                                <span>
-                                  {getPickupLocation(
-                                    selectedBooking
-                                  )}
-                                </span>
-                              </div>
-                            </Popup>
-                          </Marker>
+                                  <span>
+                                    {getPickupLocation(
+                                      selectedBooking
+                                    )}
+                                  </span>
+                                </div>
+                              </Popup>
+                            </Marker>
+                          )}
+
+                          {riderLocation && (
+                            <Marker
+                              position={[
+                                riderLocation.latitude,
+                                riderLocation.longitude,
+                              ]}
+                              icon={riderLocationIcon}
+                            >
+                              <Popup>
+                                <div className="map-popup">
+                                  <strong>Your live location</strong>
+                                  <span>Updated as you move</span>
+                                </div>
+                              </Popup>
+                            </Marker>
+                          )}
                         </MapContainer>
                       </div>
                     ) : (
@@ -1593,11 +1721,30 @@ function RiderTransactions() {
                         </strong>
 
                         <span>
-                          Customer coordinates
-                          were not saved.
+                          Customer coordinates were not saved.
                         </span>
                       </div>
                     )}
+
+                    <div
+                      className={`rider-location-status ${
+                        riderLocation
+                          ? "is-live"
+                          : "is-waiting"
+                      }`}
+                      role="status"
+                    >
+                      <span aria-hidden="true">
+                        {riderLocation ? "●" : "○"}
+                      </span>
+                      {riderLocation
+                        ? "Your live location is shown on the map."
+                        : riderLocationError ||
+                          (!navigator.geolocation
+                            ? "Live location is not supported by this browser."
+                            : null) ||
+                          "Waiting for your live location..."}
+                    </div>
                   </div>
 
                   {/* WEIGHT */}
@@ -1927,68 +2074,82 @@ function RiderTransactions() {
 
                   <div className="delivery-map-section">
 
-                    {getCoordinates(
-                      selectedBooking
-                    ) ? (
+                    {mapCenter ? (
                       <div className="delivery-map-wrapper">
 
                         <MapContainer
                           center={[
-                            getCoordinates(
-                              selectedBooking
-                            ).latitude,
-                            getCoordinates(
-                              selectedBooking
-                            ).longitude,
+                            mapCenter.latitude,
+                            mapCenter.longitude,
                           ]}
                           zoom={16}
                           scrollWheelZoom
                           className="delivery-map"
                         >
 
+                          <FitPickupAndRider
+                            pickupCoordinates={pickupCoordinates}
+                            riderLocation={riderLocation}
+                          />
+
                           <TileLayer
                             attribution="&copy; OpenStreetMap contributors"
                             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                           />
 
-                          <Marker
-                            position={[
-                              getCoordinates(
-                                selectedBooking
-                              ).latitude,
-                              getCoordinates(
-                                selectedBooking
-                              ).longitude,
-                            ]}
-                          >
+                          {pickupCoordinates && (
+                            <Marker
+                              position={[
+                                pickupCoordinates.latitude,
+                                pickupCoordinates.longitude,
+                              ]}
+                            >
 
-                            <Popup>
-                              <div className="map-popup">
-                                <strong>
-                                  Deliver To
-                                </strong>
+                              <Popup>
+                                <div className="map-popup">
+                                  <strong>
+                                    Deliver To
+                                  </strong>
 
-                                <span>
-                                  {getCustomerName(
-                                    selectedBooking
-                                  )}
-                                </span>
+                                  <span>
+                                    {getCustomerName(
+                                      selectedBooking
+                                    )}
+                                  </span>
 
-                                <span>
-                                  {getPickupLocation(
-                                    selectedBooking
-                                  )}
-                                </span>
+                                  <span>
+                                    {getPickupLocation(
+                                      selectedBooking
+                                    )}
+                                  </span>
 
-                                <span>
-                                  {getContactNumber(
-                                    selectedBooking
-                                  )}
-                                </span>
-                              </div>
-                            </Popup>
+                                  <span>
+                                    {getContactNumber(
+                                      selectedBooking
+                                    )}
+                                  </span>
+                                </div>
+                              </Popup>
 
-                          </Marker>
+                            </Marker>
+                          )}
+
+                          {riderLocation && (
+                            <Marker
+                              position={[
+                                riderLocation.latitude,
+                                riderLocation.longitude,
+                              ]}
+                              icon={riderLocationIcon}
+                            >
+                              <Popup>
+                                <div className="map-popup">
+                                  <strong>Your live location</strong>
+                                  <span>Updated as you move</span>
+                                </div>
+                              </Popup>
+                            </Marker>
+                          )}
 
                         </MapContainer>
 
@@ -2026,6 +2187,26 @@ function RiderTransactions() {
 
                       </div>
                     )}
+
+                    <div
+                      className={`rider-location-status ${
+                        riderLocation
+                          ? "is-live"
+                          : "is-waiting"
+                      }`}
+                      role="status"
+                    >
+                      <span aria-hidden="true">
+                        {riderLocation ? "●" : "○"}
+                      </span>
+                      {riderLocation
+                        ? "Your live location is shown on the map."
+                        : riderLocationError ||
+                          (!navigator.geolocation
+                            ? "Live location is not supported by this browser."
+                            : null) ||
+                          "Waiting for your live location..."}
+                    </div>
 
                   </div>
 

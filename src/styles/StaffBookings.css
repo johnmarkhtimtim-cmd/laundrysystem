@@ -630,6 +630,27 @@
   height: 100%;
 }
 
+.rider-location-marker {
+  filter: hue-rotate(140deg) saturate(1.5);
+}
+
+.rider-location-status {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 8px;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.rider-location-status.is-live {
+  color: #15803d;
+}
+
+.rider-location-status.is-live span {
+  font-size: 10px;
+}
+
 .pickup-map-empty {
   min-height: 220px;
   display: flex;
