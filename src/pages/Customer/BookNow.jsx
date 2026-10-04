@@ -50,7 +50,7 @@ const SERVICE_OPTIONS = [
 const PICKUP_OPTIONS = [
   {
     name: "Pickup & Delivery",
-    fee: 50,
+    fee: 30,
     icon: "🚚",
     description: "We pick up and deliver your laundry.",
   },
