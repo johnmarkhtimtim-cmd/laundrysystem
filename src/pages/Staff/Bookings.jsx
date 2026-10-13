@@ -10,6 +10,7 @@ import L from "leaflet";
 
 import "leaflet/dist/leaflet.css";
 import "../../styles/StaffBookings.css";
+import { notifyBookingStatusChanged } from "../../services/notificationService";
 
 /* =========================================================
    LEAFLET MARKER FIX
@@ -659,7 +660,7 @@ function Bookings() {
      UPDATE STATUS
   ======================================================= */
 
-  const updateBookingStatus = (
+  const updateBookingStatus = async (
     bookingId,
     newStatus
   ) => {
@@ -741,9 +742,43 @@ function Bookings() {
         new Event("laundrymatePaymentUpdated")
       );
 
-      setNotification(
-        `Booking status updated to "${newStatus}".`
+      const relatedPayment = payments.find(
+        (payment) =>
+          String(payment.bookingId) === String(bookingId) ||
+          String(payment.bookingID) === String(bookingId)
       );
+      const customerId =
+        updatedBooking?.userId ||
+        updatedBooking?.customerId ||
+        updatedBooking?.customer_id ||
+        updatedBooking?.customer?.uid ||
+        relatedPayment?.userId ||
+        relatedPayment?.customerId;
+
+      if (customerId) {
+        try {
+          await notifyBookingStatusChanged(
+            customerId,
+            bookingId,
+            newStatus
+          );
+          setNotification(
+            `Booking status updated to "${newStatus}" and customer notified.`
+          );
+        } catch (error) {
+          console.error("Unable to notify customer of booking status:", error);
+          setNotification(
+            `Booking status updated to "${newStatus}", but the customer notification could not be sent.`
+          );
+        }
+      } else {
+        console.warn(
+          `Booking ${bookingId} has no customer user ID; status notification was not sent.`
+        );
+        setNotification(
+          `Booking status updated to "${newStatus}", but the customer could not be identified for notification.`
+        );
+      }
 
       return updatedBooking;
     } catch (error) {

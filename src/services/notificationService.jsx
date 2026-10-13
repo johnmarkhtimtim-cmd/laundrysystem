@@ -7,6 +7,8 @@ import {
   where,
   orderBy,
   updateDoc,
+  onSnapshot,
+  limit as firestoreLimit,
   serverTimestamp
 } from "firebase/firestore";
 import { db } from "./firebase";
@@ -74,6 +76,35 @@ export const getUserNotifications = async (userId, limit = 20) => {
     console.error("Error getting user notifications:", error);
     throw error;
   }
+};
+
+/**
+ * Subscribe to notifications for a user.
+ * @param {string} userId - User ID
+ * @param {Function} onNotifications - Called with the user's notifications
+ * @param {Function} onError - Called when the Firestore listener fails
+ * @returns {Function} Unsubscribe function
+ */
+export const subscribeToUserNotifications = (userId, onNotifications, onError) => {
+  const q = query(
+    collection(db, "notifications"),
+    where("user_id", "==", userId),
+    orderBy("created_at", "desc"),
+    firestoreLimit(50)
+  );
+
+  return onSnapshot(
+    q,
+    (querySnapshot) => {
+      onNotifications(
+        querySnapshot.docs.map((notificationDoc) => ({
+          id: notificationDoc.id,
+          ...notificationDoc.data(),
+        }))
+      );
+    },
+    onError
+  );
 };
 
 /**
@@ -250,6 +281,92 @@ export const notifyBookingCompleted = async (customerId, bookingId) => {
     "status",
     "🎉 Booking Completed",
     `Your booking #${bookingId} has been completed. Thank you for using LaundryMate!`,
+    bookingId
+  );
+};
+
+/**
+ * Notify a customer when staff changes a booking's status.
+ * @param {string} customerId - Customer ID
+ * @param {string} bookingId - Booking ID
+ * @param {string} status - New booking status
+ * @returns {Promise<string>} Notification ID
+ */
+export const notifyBookingStatusChanged = async (customerId, bookingId, status) => {
+  const statusDetails = {
+    Accepted: {
+      type: "booking",
+      title: "✓ Booking Accepted",
+      message: `Your booking #${bookingId} has been accepted by our staff.`,
+    },
+    Declined: {
+      type: "booking",
+      title: "Booking Declined",
+      message: `Your booking #${bookingId} has been declined. Please contact us if you need assistance.`,
+    },
+    "Ready for Pickup": {
+      type: "pickup",
+      title: "✅ Ready for Pickup",
+      message: `Your laundry from booking #${bookingId} is ready for pickup.`,
+    },
+    "Picked Up": {
+      type: "pickup",
+      title: "🧺 Laundry Picked Up",
+      message: `Your laundry from booking #${bookingId} has been picked up.`,
+    },
+    "In Laundry": {
+      type: "progress",
+      title: "Laundry In Progress",
+      message: `Your laundry from booking #${bookingId} is now being processed.`,
+    },
+    Washing: {
+      type: "progress",
+      title: "🌊 Washing Started",
+      message: `Your laundry from booking #${bookingId} is now being washed.`,
+    },
+    Drying: {
+      type: "progress",
+      title: "🌬️ Drying Started",
+      message: `Your laundry from booking #${bookingId} is now being dried.`,
+    },
+    Folding: {
+      type: "progress",
+      title: "📦 Folding Started",
+      message: `Your laundry from booking #${bookingId} is now being folded.`,
+    },
+    "To Deliver": {
+      type: "progress",
+      title: "Laundry Out for Delivery",
+      message: `Your laundry from booking #${bookingId} is on its way to you.`,
+    },
+    "Ready for Customer Pickup": {
+      type: "pickup",
+      title: "✅ Ready for Pickup",
+      message: `Your laundry from booking #${bookingId} is ready for you to collect.`,
+    },
+    Delivered: {
+      type: "status",
+      title: "Laundry Delivered",
+      message: `Your laundry from booking #${bookingId} has been delivered.`,
+    },
+    Completed: {
+      type: "status",
+      title: "🎉 Booking Completed",
+      message: `Your booking #${bookingId} has been completed. Thank you for using LaundryMate!`,
+    },
+  };
+
+  const details = statusDetails[status] || {
+    type: "status",
+    title: `${status} Update`,
+    message: `Your booking #${bookingId} status has been updated to ${status}.`,
+  };
+
+  return createNotification(
+    customerId,
+    details.type,
+    details.title,
+    details.message,
     bookingId
   );
 };

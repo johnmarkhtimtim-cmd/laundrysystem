@@ -1,9 +1,37 @@
 import { useEffect, useMemo, useState } from "react";
+import { useAuth } from "../../context/AuthContext";
+import {
+  markAllNotificationsAsRead as markAllFirestoreNotificationsAsRead,
+  markNotificationAsRead,
+  subscribeToUserNotifications,
+} from "../../services/notificationService";
 import "../../styles/Notifications.css";
 
 function Notification() {
+  const { user } = useAuth();
   const [filter, setFilter] = useState("All");
-  const [notifications, setNotifications] = useState([]);
+  const [localNotifications, setLocalNotifications] = useState([]);
+  const [firestoreNotifications, setFirestoreNotifications] = useState([]);
+  const [firestoreNotificationsUserId, setFirestoreNotificationsUserId] = useState("");
+  const notifications = useMemo(
+    () =>
+      [
+        ...localNotifications,
+        ...(user?.uid === firestoreNotificationsUserId
+          ? firestoreNotifications
+          : []),
+      ].sort(
+        (a, b) =>
+          new Date(b.createdAt || 0).getTime() -
+          new Date(a.createdAt || 0).getTime()
+      ),
+    [
+      localNotifications,
+      firestoreNotifications,
+      firestoreNotificationsUserId,
+      user?.uid,
+    ]
+  );
 
   // =========================================
   // LOAD NOTIFICATIONS
@@ -236,14 +264,14 @@ function Notification() {
           new Date(a.createdAt || 0)
       );
 
-      setNotifications(generatedNotifications);
+      setLocalNotifications(generatedNotifications);
     } catch (error) {
       console.error(
         "Failed to load notifications:",
         error
       );
 
-      setNotifications([]);
+      setLocalNotifications([]);
     }
   };
 
@@ -252,7 +280,46 @@ function Notification() {
   // =========================================
 
   useEffect(() => {
-    loadNotifications();
+    const initialLoad = window.setTimeout(loadNotifications, 0);
+
+    let unsubscribe = () => {};
+
+    if (user?.uid) {
+      unsubscribe = subscribeToUserNotifications(
+        user.uid,
+        (firestoreItems) => {
+          setFirestoreNotificationsUserId(user.uid);
+          setFirestoreNotifications(
+            firestoreItems.map((item) => {
+              const rawCreatedAt = item.created_at;
+              const parsedCreatedAt = rawCreatedAt?.toDate
+                ? rawCreatedAt.toDate()
+                : rawCreatedAt;
+              const createdAt =
+                parsedCreatedAt instanceof Date
+                  ? parsedCreatedAt.toISOString()
+                  : parsedCreatedAt || new Date().toISOString();
+
+              return {
+                id: item.id,
+                type: item.type || "status",
+                title: item.title || "LaundryMate Update",
+                message: item.message || "",
+                time: formatRelativeTime(createdAt),
+                date: formatDate(createdAt),
+                booking: item.booking_id || item.bookingId || "N/A",
+                createdAt,
+                unread: item.read !== true,
+                firestore: true,
+              };
+            })
+          );
+        },
+        (error) => {
+          console.error("Failed to subscribe to customer notifications:", error);
+        }
+      );
+    }
 
     const handleUpdate = () => {
       loadNotifications();
@@ -288,8 +355,10 @@ function Notification() {
         "storage",
         handleUpdate
       );
+      window.clearTimeout(initialLoad);
+      unsubscribe();
     };
-  }, []);
+  }, [user?.uid]);
 
   // =========================================
   // UNREAD COUNT
@@ -318,7 +387,23 @@ function Notification() {
   // MARK AS READ
   // =========================================
 
-  const markAsRead = (id) => {
+  const markAsRead = async (id) => {
+    const notification = notifications.find((item) => item.id === id);
+
+    if (notification?.firestore) {
+      try {
+        await markNotificationAsRead(id);
+        setFirestoreNotifications((current) =>
+          current.map((item) =>
+            item.id === id ? { ...item, unread: false } : item
+          )
+        );
+      } catch (error) {
+        console.error("Failed to mark customer notification as read:", error);
+      }
+      return;
+    }
+
     const savedReadStatus = JSON.parse(
       localStorage.getItem(
         "laundrymateNotificationRead"
@@ -332,7 +417,7 @@ function Notification() {
       JSON.stringify(savedReadStatus)
     );
 
-    setNotifications((current) =>
+    setLocalNotifications((current) =>
       current.map((notification) =>
         notification.id === id
           ? {
@@ -348,7 +433,22 @@ function Notification() {
   // MARK ALL AS READ
   // =========================================
 
-  const markAllAsRead = () => {
+  const markAllAsRead = async () => {
+    if (user?.uid) {
+      try {
+        await markAllFirestoreNotificationsAsRead(user.uid);
+        setFirestoreNotifications((current) =>
+          current.map((notification) => ({
+            ...notification,
+            unread: false,
+          }))
+        );
+      } catch (error) {
+        console.error("Failed to mark all customer notifications as read:", error);
+        return;
+      }
+    }
+
     const savedReadStatus = JSON.parse(
       localStorage.getItem(
         "laundrymateNotificationRead"
@@ -364,7 +464,7 @@ function Notification() {
       JSON.stringify(savedReadStatus)
     );
 
-    setNotifications((current) =>
+    setLocalNotifications((current) =>
       current.map((notification) => ({
         ...notification,
         unread: false,

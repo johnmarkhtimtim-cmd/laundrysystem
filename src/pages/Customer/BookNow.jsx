@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { subscribeToServices } from "../../services/laundryService";
+import { useAuth } from "../../context/AuthContext";
 
 import {
   MapContainer,
@@ -107,6 +108,7 @@ function LocationMarker({
 
 export default function BookNow() {
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   // ====================================================
   // FORM STATE
@@ -527,6 +529,7 @@ export default function BookNow() {
 
       const booking = {
         id: bookingId,
+        userId: user?.uid || "",
 
         services,
 
