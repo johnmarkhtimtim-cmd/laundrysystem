@@ -1,43 +1,18 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import {
+  addService,
+  deleteService,
+  ensureDefaultServices,
+  subscribeToServices,
+  updateService,
+} from "../../services/laundryService";
 import "../../styles/AdminServices.css";
 
-const initialServices = [
-  {
-    id: 1,
-    name: "Wash & Fold",
-    description: "Professional washing, drying, and folding service.",
-    price: 80,
-    icon: "🧺",
-    status: "Active",
-  },
-  {
-    id: 2,
-    name: "Dry Cleaning",
-    description: "Gentle cleaning for delicate and special garments.",
-    price: 150,
-    icon: "👔",
-    status: "Active",
-  },
-  {
-    id: 3,
-    name: "Ironing",
-    description: "Neat and professional ironing for your clothes.",
-    price: 60,
-    icon: "👕",
-    status: "Active",
-  },
-  {
-    id: 4,
-    name: "Bedding Care",
-    description: "Special cleaning service for blankets and bedding.",
-    price: 200,
-    icon: "🛏️",
-    status: "Inactive",
-  },
-];
-
 function Services() {
-  const [services, setServices] = useState(initialServices);
+  const [services, setServices] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState("");
   const [search, setSearch] = useState("");
 
   const [showModal, setShowModal] = useState(false);
@@ -49,6 +24,48 @@ function Services() {
     price: "",
     icon: "🧺",
   });
+
+  useEffect(() => {
+    let isMounted = true;
+    let unsubscribe;
+
+    const loadServices = async () => {
+      try {
+        await ensureDefaultServices();
+
+        if (!isMounted) return;
+
+        unsubscribe = subscribeToServices(
+          (nextServices) => {
+            if (!isMounted) return;
+
+            setServices(nextServices);
+            setIsLoading(false);
+          },
+          (loadError) => {
+            if (!isMounted) return;
+
+            console.error("Error loading services:", loadError);
+            setError("Unable to load services. Please refresh and try again.");
+            setIsLoading(false);
+          }
+        );
+      } catch (loadError) {
+        if (!isMounted) return;
+
+        console.error("Error initializing services:", loadError);
+        setError("Unable to load services. Please refresh and try again.");
+        setIsLoading(false);
+      }
+    };
+
+    loadServices();
+
+    return () => {
+      isMounted = false;
+      unsubscribe?.();
+    };
+  }, []);
 
   // =====================================
   // OPEN ADD MODAL
@@ -101,7 +118,7 @@ function Services() {
   // SAVE SERVICE
   // =====================================
 
-  const handleSave = (e) => {
+  const handleSave = async (e) => {
     e.preventDefault();
 
     if (
@@ -113,70 +130,75 @@ function Services() {
       return;
     }
 
-    if (editingService) {
-      setServices((prev) =>
-        prev.map((service) =>
-          service.id === editingService.id
-            ? {
-                ...service,
-                name: formData.name,
-                description: formData.description,
-                price: Number(formData.price),
-                icon: formData.icon,
-              }
-            : service
-        )
-      );
-    } else {
-      const newService = {
-        id: Date.now(),
-        name: formData.name,
-        description: formData.description,
-        price: Number(formData.price),
-        icon: formData.icon,
-        status: "Active",
-      };
+    const price = Number(formData.price);
 
-      setServices((prev) => [...prev, newService]);
+    if (!Number.isFinite(price) || price < 0) {
+      alert("Please enter a valid service price.");
+      return;
     }
 
-    setShowModal(false);
+    setIsSaving(true);
+    setError("");
+
+    try {
+      const serviceData = {
+        name: formData.name,
+        description: formData.description,
+        price,
+        icon: formData.icon,
+      };
+
+      if (editingService) {
+        await updateService(editingService.id, serviceData);
+      } else {
+        await addService({ ...serviceData, status: "Active" });
+      }
+
+      setShowModal(false);
+    } catch (saveError) {
+      console.error("Error saving service:", saveError);
+      setError("Unable to save this service. Please try again.");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   // =====================================
   // DELETE SERVICE
   // =====================================
 
-  const handleDelete = (id) => {
+  const handleDelete = async (id) => {
     const confirmDelete = window.confirm(
       "Are you sure you want to delete this service?"
     );
 
     if (!confirmDelete) return;
 
-    setServices((prev) =>
-      prev.filter((service) => service.id !== id)
-    );
+    setError("");
+
+    try {
+      await deleteService(id);
+    } catch (deleteError) {
+      console.error("Error deleting service:", deleteError);
+      setError("Unable to delete this service. Please try again.");
+    }
   };
 
   // =====================================
   // TOGGLE STATUS
   // =====================================
 
-  const toggleStatus = (id) => {
-    setServices((prev) =>
-      prev.map((service) =>
-        service.id === id
-          ? {
-              ...service,
-              status:
-                service.status === "Active"
-                  ? "Inactive"
-                  : "Active",
-            }
-          : service
-      )
-    );
+  const toggleStatus = async (service) => {
+    setError("");
+
+    try {
+      await updateService(service.id, {
+        status: service.status === "Active" ? "Inactive" : "Active",
+      });
+    } catch (updateError) {
+      console.error("Error updating service status:", updateError);
+      setError("Unable to update this service. Please try again.");
+    }
   };
 
   // =====================================
@@ -212,6 +234,12 @@ function Services() {
             Manage the laundry services available to your customers.
           </p>
         </div>
+
+        {error && (
+          <div className="service-error" role="alert">
+            {error}
+          </div>
+        )}
 
         <button
           className="add-service-btn"
@@ -293,7 +321,11 @@ function Services() {
 
         <div className="service-list">
 
-          {filteredServices.length > 0 ? (
+          {isLoading ? (
+            <div className="empty-services">
+              <h3>Loading services...</h3>
+            </div>
+          ) : filteredServices.length > 0 ? (
             filteredServices.map((service) => (
 
               <div
@@ -330,9 +362,7 @@ function Services() {
                     className={`status-badge ${
                       service.status.toLowerCase()
                     }`}
-                    onClick={() =>
-                      toggleStatus(service.id)
-                    }
+                    onClick={() => toggleStatus(service)}
                   >
                     <span></span>
                     {service.status}
@@ -548,8 +578,11 @@ function Services() {
                 <button
                   type="submit"
                   className="save-btn"
+                  disabled={isSaving}
                 >
-                  {editingService
+                  {isSaving
+                    ? "Saving..."
+                    : editingService
                     ? "Save Changes"
                     : "Add Service"}
                 </button>

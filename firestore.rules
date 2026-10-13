@@ -30,6 +30,15 @@ service cloud.firestore {
       allow delete: if admin();
     }
 
+    match /services/{serviceId} {
+      allow read: if admin() || userRole('customer');
+      allow create, update, delete: if admin();
+    }
+
+    match /systemMetadata/{metadataId} {
+      allow read, write: if admin();
+    }
+
     match /bookings/{bookingId} {
       allow create: if signedIn() && request.resource.data.customer_id == request.auth.uid;
       allow read: if admin()

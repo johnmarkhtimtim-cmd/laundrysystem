@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { subscribeToServices } from "../../services/laundryService";
 
 import {
   MapContainer,
@@ -11,37 +12,6 @@ import {
 
 import "leaflet/dist/leaflet.css";
 import "../../styles/BookNow.css";
-
-// ======================================================
-// SERVICE OPTIONS
-// ======================================================
-
-const SERVICE_OPTIONS = [
-  {
-    name: "Wash & Fold",
-    price: 80,
-    icon: "🧺",
-    description: "Clean, dry, and neatly folded.",
-  },
-  {
-    name: "Dry Cleaning",
-    price: 150,
-    icon: "👔",
-    description: "For delicate and special garments.",
-  },
-  {
-    name: "Ironing",
-    price: 60,
-    icon: "♨️",
-    description: "Fresh and wrinkle-free clothes.",
-  },
-  {
-    name: "Bedding Care",
-    price: 200,
-    icon: "🛏️",
-    description: "Professional bedding cleaning.",
-  },
-];
 
 // ======================================================
 // PICKUP OPTIONS
@@ -143,6 +113,9 @@ export default function BookNow() {
   // ====================================================
 
   const [services, setServices] = useState([]);
+  const [serviceOptions, setServiceOptions] = useState([]);
+  const [isLoadingServices, setIsLoadingServices] = useState(true);
+  const [serviceLoadError, setServiceLoadError] = useState("");
   const [pickup, setPickup] = useState("");
 
   const [schedule, setSchedule] = useState("");
@@ -181,11 +154,11 @@ export default function BookNow() {
 
   const laundryTotal = services.reduce(
     (total, serviceName) => {
-      const service = SERVICE_OPTIONS.find(
+      const service = serviceOptions.find(
         (item) => item.name === serviceName
       );
 
-      return total + (service?.price || 0);
+      return total + (Number(service?.price) || 0);
     },
     0
   );
@@ -198,6 +171,60 @@ export default function BookNow() {
 
   const estimatedTotal =
     laundryTotal + deliveryFee;
+
+  useEffect(() => {
+    let isMounted = true;
+    let unsubscribe;
+
+    Promise.resolve().then(() => {
+      if (!isMounted) return;
+
+      try {
+        unsubscribe = subscribeToServices(
+          (allServices) => {
+            if (!isMounted) return;
+
+            const activeServices = allServices.filter(
+              (service) => service.status === "Active"
+            );
+
+            setServiceOptions(activeServices);
+            setServices((selectedServices) =>
+              selectedServices.filter((selectedName) =>
+                activeServices.some(
+                  (service) => service.name === selectedName
+                )
+              )
+            );
+            setIsLoadingServices(false);
+            setServiceLoadError("");
+          },
+          (loadError) => {
+            if (!isMounted) return;
+
+            console.error("Error loading booking services:", loadError);
+            setServiceLoadError(
+              "Unable to load available services. Please refresh and try again."
+            );
+            setIsLoadingServices(false);
+          }
+        );
+      } catch (loadError) {
+        if (!isMounted) return;
+
+        console.error("Error initializing booking services:", loadError);
+        setServiceLoadError(
+          "Unable to load available services. Please refresh and try again."
+        );
+        setIsLoadingServices(false);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      unsubscribe?.();
+    };
+  }, []);
 
   // ====================================================
   // HELPERS
@@ -667,6 +694,16 @@ export default function BookNow() {
 
         </header>
 
+        {serviceLoadError && (
+          <div className="form-alert error-alert" role="alert">
+            <span className="alert-icon">!</span>
+            <div>
+              <strong>Services unavailable</strong>
+              <p>{serviceLoadError}</p>
+            </div>
+          </div>
+        )}
+
         {/* ==================================================
             ERROR MESSAGE
         ================================================== */}
@@ -762,7 +799,11 @@ export default function BookNow() {
 
               <div className="service-grid">
 
-                {SERVICE_OPTIONS.map(
+                {isLoadingServices ? (
+                  <p>Loading available services...</p>
+                ) : serviceOptions.length === 0 ? (
+                  <p>No services are currently available.</p>
+                ) : serviceOptions.map(
                   (service) => {
 
                     const isSelected =
@@ -1271,7 +1312,7 @@ export default function BookNow() {
                       (serviceName) => {
 
                         const service =
-                          SERVICE_OPTIONS.find(
+                          serviceOptions.find(
                             (item) =>
                               item.name ===
                               serviceName
