@@ -3,7 +3,6 @@ import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import {
   Bell,
   ChartNoAxesCombined,
-  ChevronDown,
   CreditCard,
   LayoutDashboard,
   LogOut,
@@ -11,8 +10,6 @@ import {
   Settings,
   ShieldCheck,
   Sparkles,
-  Tags,
-  Truck,
   Users,
   UserRoundCog,
   UserRound,
@@ -50,7 +47,6 @@ export default function AdminPortalLayout() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [drawer, setDrawer] = useState(false);
-  const [profile, setProfile] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const name = user?.displayName || user?.email?.split("@")[0] || "Admin";
   const signOut = async () => {
@@ -127,22 +123,13 @@ export default function AdminPortalLayout() {
             <i>3</i>
           </NavLink>
           <div className="portal-profile">
-            <button onClick={() => setProfile(!profile)}>
+            <div className="portal-profile-identity">
               <b>{name[0].toUpperCase()}</b>
               <span>
                 <strong>{name}</strong>
                 <small>Administrator</small>
               </span>
-              <ChevronDown size={16} />
-            </button>
-            {profile && (
-              <div>
-                <NavLink to="/admin/profile">My profile</NavLink>
-                <button type="button" onClick={signOut} disabled={loggingOut}>
-                  {loggingOut ? "Logging out..." : "Sign out"}
-                </button>
-              </div>
-            )}
+            </div>
           </div>
         </header>
         <main className="portal-main">
