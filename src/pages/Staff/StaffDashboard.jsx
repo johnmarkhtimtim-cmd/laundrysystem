@@ -11,10 +11,9 @@ const STATUS_FLOW = [
   "Accepted",
   "Ready for Pickup",
   "Picked Up",
-  "Washing",
-  "Drying",
-  "Folding",
-  "Ready for Customer Pickup",
+  "In Laundry",
+  "To Deliver",
+  "Delivered",
   "Completed",
 ];
 
@@ -40,12 +39,21 @@ function saveBookings(bookings) {
 }
 
 function getBookingStatus(booking) {
-  return (
+  const status =
     booking.status ||
     booking.bookingStatus ||
     booking.orderStatus ||
     "Pending"
-  );
+
+  if (["Washing", "Drying", "Folding"].includes(status)) {
+    return "In Laundry";
+  }
+
+  if (status === "Ready for Customer Pickup") {
+    return "To Deliver";
+  }
+
+  return status;
 }
 
 function getBookingId(booking) {
@@ -204,10 +212,9 @@ function StaffDashboard() {
         "Accepted",
         "Ready for Pickup",
         "Picked Up",
-        "Washing",
-        "Drying",
-        "Folding",
-        "Ready for Customer Pickup",
+        "In Laundry",
+        "To Deliver",
+        "Delivered",
       ].includes(getBookingStatus(booking))
     ).length;
 

@@ -58,7 +58,7 @@ function StaffReports() {
           <tbody>
             <tr>
               <td>2025-08-16 14:30</td>
-              <td>Completed Washing</td>
+              <td>Completed In Laundry</td>
               <td>#BK001</td>
               <td><span className="status completed">Done</span></td>
             </tr>
@@ -70,7 +70,7 @@ function StaffReports() {
             </tr>
             <tr>
               <td>2025-08-16 10:00</td>
-              <td>Started Washing</td>
+              <td>Started In Laundry</td>
               <td>#BK003</td>
               <td><span className="status in-progress">In Progress</span></td>
             </tr>

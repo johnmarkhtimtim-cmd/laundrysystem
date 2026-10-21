@@ -367,7 +367,12 @@ function Report() {
 
       staffName: getStaffName(booking),
 
-      status: booking.status || "Pending",
+      status:
+        ["Washing", "Drying", "Folding"].includes(booking.status)
+          ? "In Laundry"
+          : booking.status === "Ready for Customer Pickup"
+          ? "To Deliver"
+          : booking.status || "Pending",
 
       paymentStatus: getPaymentStatus(booking),
 
@@ -785,20 +790,16 @@ function Report() {
               Picked Up
             </option>
 
-            <option value="Washing">
-              Washing
+            <option value="In Laundry">
+              In Laundry
             </option>
 
-            <option value="Drying">
-              Drying
+            <option value="To Deliver">
+              To Deliver
             </option>
 
-            <option value="Folding">
-              Folding
-            </option>
-
-            <option value="Ready for Customer Pickup">
-              Ready for Customer Pickup
+            <option value="Delivered">
+              Delivered
             </option>
 
             <option value="Completed">

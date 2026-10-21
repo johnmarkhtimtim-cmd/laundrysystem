@@ -97,10 +97,23 @@ function Notification() {
 
         if (
           bookingStatus.toLowerCase() === "processing" ||
-          bookingStatus.toLowerCase() === "in progress"
+          bookingStatus.toLowerCase() === "in progress" ||
+          ["in laundry", "washing", "drying", "folding"].includes(
+            bookingStatus.toLowerCase()
+          )
         ) {
           title = "Laundry In Progress";
           message = `Your laundry is currently being processed by our staff.`;
+        }
+
+        if (bookingStatus.toLowerCase() === "to deliver") {
+          title = "Laundry Out for Delivery";
+          message = `Your laundry from booking ${bookingId} is on its way to you.`;
+        }
+
+        if (bookingStatus.toLowerCase() === "delivered") {
+          title = "Laundry Delivered";
+          message = `Your laundry from booking ${bookingId} has been delivered.`;
         }
 
         if (
@@ -130,7 +143,10 @@ function Notification() {
           id: notificationId,
           type:
             bookingStatus.toLowerCase() === "processing" ||
-            bookingStatus.toLowerCase() === "in progress"
+            bookingStatus.toLowerCase() === "in progress" ||
+            ["in laundry", "washing", "drying", "folding"].includes(
+              bookingStatus.toLowerCase()
+            )
               ? "progress"
               : "booking",
           title,

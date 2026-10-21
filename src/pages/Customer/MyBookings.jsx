@@ -3,6 +3,18 @@ import { useAuth } from "../../context/AuthContext";
 import { getCustomerBookings } from "../../services/bookingService";
 import "../../styles/MyBookings.css";
 
+function normalizeBookingStatus(status) {
+  if (["Washing", "Drying", "Folding"].includes(status)) {
+    return "In Laundry";
+  }
+
+  if (status === "Ready for Customer Pickup") {
+    return "To Deliver";
+  }
+
+  return status || "Pending";
+}
+
 function getTimestampValue(timestamp) {
   if (!timestamp) {
     return 0;
@@ -39,10 +51,9 @@ function MyBooking() {
     "Accepted",
     "Ready for Pickup",
     "Picked Up",
-    "Washing",
-    "Drying",
-    "Folding",
-    "Ready for Customer Pickup",
+    "In Laundry",
+    "To Deliver",
+    "Delivered",
     "Completed",
   ];
 
@@ -186,7 +197,9 @@ function MyBooking() {
   // =====================================
 
   const getStatusIndex = (status) => {
-    const index = statusWorkflow.indexOf(status);
+    const index = statusWorkflow.indexOf(
+      normalizeBookingStatus(status)
+    );
 
     return index >= 0 ? index : 0;
   };
@@ -201,10 +214,9 @@ function MyBooking() {
       Accepted: "✓",
       "Ready for Pickup": "🛍️",
       "Picked Up": "📦",
-      Washing: "🌊",
-      Drying: "🌬️",
-      Folding: "📂",
-      "Ready for Customer Pickup": "✅",
+      "In Laundry": "🧺",
+      "To Deliver": "🚚",
+      Delivered: "✅",
       Completed: "🎉",
     };
 
@@ -316,11 +328,10 @@ function MyBooking() {
         "Accepted",
         "Ready for Pickup",
         "Picked Up",
-        "Washing",
-        "Drying",
-        "Folding",
-        "Ready for Customer Pickup",
-      ].includes(booking.status)
+        "In Laundry",
+        "To Deliver",
+        "Delivered",
+      ].includes(normalizeBookingStatus(booking.status))
   ).length;
 
   const completedBookings = bookings.filter(
@@ -551,8 +562,7 @@ function MyBooking() {
 
             {bookings.map((booking) => {
 
-              const status =
-                booking.status || "Pending";
+              const status = normalizeBookingStatus(booking.status);
 
               const statusIndex =
                 getStatusIndex(status);
@@ -828,9 +838,9 @@ function MyBooking() {
                           Step{" "}
                           {Math.min(
                             statusIndex + 1,
-                            9
+                            statusWorkflow.length
                           )}{" "}
-                          of 9
+                          of {statusWorkflow.length}
                         </span>
 
                       </div>
