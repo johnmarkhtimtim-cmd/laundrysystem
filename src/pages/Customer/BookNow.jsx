@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { subscribeToServices } from "../../services/laundryService";
 import { useAuth } from "../../context/AuthContext";
 
@@ -41,6 +41,10 @@ const DEFAULT_LOCATION = {
   latitude: 17.04,
   longitude: 121.85,
 };
+
+function createBookingId() {
+  return `LM-${Date.now()}`;
+}
 
 // ======================================================
 // MAP CENTER CONTROLLER
@@ -108,13 +112,17 @@ function LocationMarker({
 
 export default function BookNow() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user } = useAuth();
 
   // ====================================================
   // FORM STATE
   // ====================================================
 
-  const [services, setServices] = useState([]);
+  const [services, setServices] = useState(() => {
+    const requestedService = searchParams.get("service");
+    return requestedService ? [requestedService] : [];
+  });
   const [serviceOptions, setServiceOptions] = useState([]);
   const [isLoadingServices, setIsLoadingServices] = useState(true);
   const [serviceLoadError, setServiceLoadError] = useState("");
@@ -520,8 +528,7 @@ export default function BookNow() {
       // BOOKING ID
       // -----------------------------------------------
 
-      const bookingId =
-        `LM-${Date.now()}`;
+      const bookingId = createBookingId();
 
       // -----------------------------------------------
       // BOOKING DATA
@@ -580,6 +587,9 @@ export default function BookNow() {
           existingBookings
         )
       );
+      window.dispatchEvent(
+        new Event("laundrymateBookingUpdated")
+      );
 
       // -----------------------------------------------
       // PAYMENT RECORD
@@ -630,6 +640,9 @@ export default function BookNow() {
         JSON.stringify(
           existingPayments
         )
+      );
+      window.dispatchEvent(
+        new Event("laundrymatePaymentUpdated")
       );
 
       // -----------------------------------------------

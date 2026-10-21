@@ -1300,3 +1300,160 @@
     padding: 9px 6px;
   }
 }
+
+/* =========================================================
+   LIVE DASHBOARD CONTENT
+========================================================= */
+
+.customer-dashboard .stats-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.customer-dashboard .stat-change {
+  line-height: 1.5;
+}
+
+.customer-dashboard .order-item,
+.customer-dashboard .service-item {
+  width: 100%;
+  border: 0;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.customer-dashboard .order-item {
+  background: transparent;
+}
+
+.customer-dashboard .order-item:hover {
+  background: #f8fafc;
+}
+
+.customer-dashboard .order-item:focus-visible,
+.customer-dashboard .service-item:focus-visible,
+.customer-dashboard .primary-btn:focus-visible,
+.customer-dashboard .secondary-btn:focus-visible,
+.customer-dashboard .text-btn:focus-visible {
+  outline: 3px solid rgba(37, 99, 235, 0.35);
+  outline-offset: 2px;
+}
+
+.customer-dashboard .order-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.customer-dashboard .order-title {
+  overflow: hidden;
+  color: #344054;
+  font-size: 12px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.customer-dashboard .order-detail {
+  overflow: hidden;
+  color: #929aaa;
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.customer-dashboard .status-pill.in-progress {
+  background: #fff7ed;
+  color: #c2410c;
+}
+
+.customer-dashboard .dashboard-feedback {
+  margin: 0;
+  padding: 22px 10px;
+  color: #667085;
+  font-size: 13px;
+  line-height: 1.6;
+  text-align: center;
+}
+
+.customer-dashboard .dashboard-empty > span {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 25px;
+}
+
+.customer-dashboard .dashboard-empty p,
+.customer-dashboard .dashboard-error p {
+  margin: 0 0 8px;
+}
+
+.customer-dashboard .dashboard-error {
+  color: #b42318;
+}
+
+.customer-dashboard .service-item {
+  background: transparent;
+}
+
+.customer-dashboard .service-item:hover {
+  background: #f8fafc;
+}
+
+.customer-dashboard .service-title,
+.customer-dashboard .service-description {
+  display: block;
+}
+
+.customer-dashboard .service-title {
+  margin-bottom: 3px;
+  color: #344054;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.customer-dashboard .service-description {
+  overflow: hidden;
+  color: #929aaa;
+  font-size: 9px;
+  line-height: 1.45;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 750px) {
+  .customer-dashboard .stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .customer-dashboard .dashboard-hero {
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 560px) {
+  .customer-dashboard .stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .customer-dashboard .order-item {
+    flex-wrap: wrap;
+  }
+
+  .customer-dashboard .order-info {
+    flex: 1 1 calc(100% - 54px);
+  }
+
+  .customer-dashboard .status-pill {
+    margin-left: 46px;
+  }
+
+  .customer-dashboard .order-arrow {
+    display: none;
+  }
+}
+
+@media (max-width: 400px) {
+  .customer-dashboard .stats-grid {
+    grid-template-columns: 1fr;
+  }
+}

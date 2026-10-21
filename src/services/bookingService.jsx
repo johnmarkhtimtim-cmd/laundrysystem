@@ -8,10 +8,18 @@ import {
   query, 
   where,
   orderBy,
-  Timestamp,
   serverTimestamp
 } from "firebase/firestore";
 import { db } from "./firebase";
+
+const getTimestampMilliseconds = (value) => {
+  if (!value) return 0;
+  if (typeof value.toDate === "function") return value.toDate().getTime();
+  if (typeof value.seconds === "number") return value.seconds * 1000;
+
+  const timestamp = new Date(value).getTime();
+  return Number.isNaN(timestamp) ? 0 : timestamp;
+};
 
 /**
  * Create a new booking
@@ -78,16 +86,21 @@ export const getCustomerBookings = async (customerId) => {
   try {
     const q = query(
       collection(db, "bookings"),
-      where("customer_id", "==", customerId),
-      orderBy("booking_date", "desc")
+      where("customer_id", "==", customerId)
     );
     
     const querySnapshot = await getDocs(q);
-    const bookings = [];
-    querySnapshot.forEach((doc) => {
-      bookings.push({ id: doc.id, ...doc.data() });
-    });
-    
+    const bookings = querySnapshot.docs.map((bookingDoc) => ({
+      id: bookingDoc.id,
+      ...bookingDoc.data(),
+    }));
+
+    bookings.sort(
+      (a, b) =>
+        getTimestampMilliseconds(b.booking_date || b.createdAt) -
+        getTimestampMilliseconds(a.booking_date || a.createdAt)
+    );
+
     return bookings;
   } catch (error) {
     console.error("Error getting customer bookings:", error);

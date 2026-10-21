@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Outlet, useNavigate, NavLink } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { logout } from "../services/authService";
@@ -20,7 +20,22 @@ function CustomerLayout() {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(
+    () => window.innerWidth > 700
+  );
+
+  useEffect(() => {
+    const collapseSidebarForViewport = () => {
+      if (window.innerWidth <= 700) {
+        setSidebarOpen(false);
+      }
+    };
+
+    window.addEventListener("resize", collapseSidebarForViewport);
+    return () => {
+      window.removeEventListener("resize", collapseSidebarForViewport);
+    };
+  }, []);
 
   const toggleSidebar = () => {
     setSidebarOpen((previous) => !previous);

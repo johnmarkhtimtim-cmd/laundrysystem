@@ -3,6 +3,26 @@ import { useAuth } from "../../context/AuthContext";
 import { getCustomerBookings } from "../../services/bookingService";
 import "../../styles/MyBookings.css";
 
+function getTimestampValue(timestamp) {
+  if (!timestamp) {
+    return 0;
+  }
+
+  if (timestamp.toDate) {
+    return timestamp.toDate().getTime();
+  }
+
+  if (timestamp.seconds) {
+    return timestamp.seconds * 1000;
+  }
+
+  const date = new Date(timestamp);
+
+  return isNaN(date.getTime())
+    ? 0
+    : date.getTime();
+}
+
 function MyBooking() {
   const { user } = useAuth();
 
@@ -57,67 +77,109 @@ function MyBooking() {
   // =====================================
 
   useEffect(() => {
+    let isMounted = true;
+
     const fetchBookings = async () => {
+      setLoading(true);
+
       try {
+        let localBookings = [];
         if (user?.uid) {
-          const customerBookings =
-            await getCustomerBookings(user.uid);
+          try {
+            const savedBookings = JSON.parse(
+              localStorage.getItem("laundrymateBookings") || "[]"
+            );
 
-          // Newest booking first
-          const sortedBookings = [...customerBookings].sort(
-            (a, b) => {
-              const dateA = getTimestampValue(
-                a.booking_date || a.createdAt
-              );
-
-              const dateB = getTimestampValue(
-                b.booking_date || b.createdAt
-              );
-
-              return dateB - dateA;
+            if (!Array.isArray(savedBookings)) {
+              throw new Error("Saved bookings must be a list.");
             }
-          );
 
+            localBookings = savedBookings.filter(
+              (booking) =>
+                booking.userId === user.uid ||
+                booking.customerId === user.uid ||
+                booking.customer_id === user.uid
+            );
+          } catch (error) {
+            console.error("Error reading locally saved bookings:", error);
+          }
+        }
+
+        let customerBookings = [];
+        if (user?.uid) {
+          try {
+            customerBookings = await getCustomerBookings(user.uid);
+          } catch (error) {
+            console.error("Error fetching Firestore bookings:", error);
+            if (localBookings.length === 0) {
+              throw error;
+            }
+          }
+        }
+
+        const bookingsById = new Map();
+        customerBookings.forEach((booking) => {
+          bookingsById.set(String(booking.id), booking);
+        });
+        localBookings.forEach((booking) => {
+          const bookingId = booking.id || booking.bookingId || booking.booking_id;
+          if (bookingId) {
+            bookingsById.set(String(bookingId), {
+              ...bookingsById.get(String(bookingId)),
+              ...booking,
+              id: String(bookingId),
+            });
+          }
+        });
+
+        const sortedBookings = [...bookingsById.values()].sort(
+          (a, b) => {
+            const dateA = getTimestampValue(
+              a.booking_date || a.createdAt
+            );
+
+            const dateB = getTimestampValue(
+              b.booking_date || b.createdAt
+            );
+
+            return dateB - dateA;
+          }
+        );
+
+        if (isMounted) {
           setBookings(sortedBookings);
-        } else {
-          setBookings([]);
         }
       } catch (error) {
         console.error(
           "Error fetching bookings:",
           error
         );
+        if (isMounted) {
+          setBookings([]);
+        }
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
 
-    fetchBookings();
+    const handleStorage = (event) => {
+      if (!event.key || event.key === "laundrymateBookings") {
+        fetchBookings();
+      }
+    };
+    const initialLoad = window.setTimeout(fetchBookings, 0);
+    window.addEventListener("storage", handleStorage);
+    window.addEventListener("laundrymateBookingUpdated", fetchBookings);
+
+    return () => {
+      isMounted = false;
+      window.clearTimeout(initialLoad);
+      window.removeEventListener("storage", handleStorage);
+      window.removeEventListener("laundrymateBookingUpdated", fetchBookings);
+    };
   }, [user?.uid]);
-
-  // =====================================
-  // TIMESTAMP HELPER
-  // =====================================
-
-  function getTimestampValue(timestamp) {
-    if (!timestamp) {
-      return 0;
-    }
-
-    if (timestamp.toDate) {
-      return timestamp.toDate().getTime();
-    }
-
-    if (timestamp.seconds) {
-      return timestamp.seconds * 1000;
-    }
-
-    const date = new Date(timestamp);
-
-    return isNaN(date.getTime())
-      ? 0
-      : date.getTime();
-  }
 
   // =====================================
   // STATUS INDEX
