@@ -479,61 +479,6 @@ function Payment() {
   };
 
   // =========================================================
-  // PAYMENT STATISTICS
-  // =========================================================
-
-  const totalPayments = payments.reduce(
-    (total, payment) =>
-      total +
-      Number(
-        payment.totalAmount ??
-          payment.amount ??
-          0
-      ),
-    0
-  );
-
-  const paidPayments = payments
-    .filter(
-      (payment) =>
-        String(
-          payment.paymentStatus ||
-            payment.status ||
-            ""
-        ).toLowerCase() === "paid"
-    )
-    .reduce(
-      (total, payment) =>
-        total +
-        Number(
-          payment.totalAmount ??
-            payment.amount ??
-            0
-        ),
-      0
-    );
-
-  const pendingPayments = payments
-    .filter(
-      (payment) =>
-        String(
-          payment.paymentStatus ||
-            payment.status ||
-            ""
-        ).toLowerCase() === "pending"
-    )
-    .reduce(
-      (total, payment) =>
-        total +
-        Number(
-          payment.totalAmount ??
-            payment.amount ??
-            0
-        ),
-      0
-    );
-
-  // =========================================================
   // PAYMENT METHOD
   // =========================================================
 

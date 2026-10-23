@@ -73,20 +73,6 @@ function FitPickupAndRider({ pickupCoordinates, riderLocation }) {
 }
 
 /* =========================================================
-   STATUS FLOW
-========================================================= */
-
-const STATUS_FLOW = [
-  "Pending",
-  "Accepted",
-  "Ready for Pickup",
-  "Picked Up",
-  "In Laundry",
-  "To Deliver",
-  "Delivered",
-];
-
-/* =========================================================
    SERVICE PRICES
 ========================================================= */
 

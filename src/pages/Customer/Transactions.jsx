@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "../../context/AuthContext";
 import "../../styles/Transactions.css";
 
@@ -116,69 +116,6 @@ function Transactions() {
       minute: "2-digit",
     });
   };
-
-  // =========================================================
-  // STATISTICS
-  // =========================================================
-
-  const totalAmount = useMemo(() => {
-    return transactions.reduce(
-      (total, transaction) =>
-        total +
-        Number(
-          transaction.totalAmount ??
-            transaction.amount ??
-            0
-        ),
-      0
-    );
-  }, [transactions]);
-
-  const paidAmount = useMemo(() => {
-    return transactions
-      .filter((transaction) => {
-        const status = String(
-          transaction.paymentStatus ||
-            transaction.status ||
-            ""
-        ).toLowerCase();
-
-        return status === "paid";
-      })
-      .reduce(
-        (total, transaction) =>
-          total +
-          Number(
-            transaction.totalAmount ??
-              transaction.amount ??
-              0
-          ),
-        0
-      );
-  }, [transactions]);
-
-  const pendingAmount = useMemo(() => {
-    return transactions
-      .filter((transaction) => {
-        const status = String(
-          transaction.paymentStatus ||
-            transaction.status ||
-            ""
-        ).toLowerCase();
-
-        return status === "pending";
-      })
-      .reduce(
-        (total, transaction) =>
-          total +
-          Number(
-            transaction.totalAmount ??
-              transaction.amount ??
-              0
-          ),
-        0
-      );
-  }, [transactions]);
 
   // =========================================================
   // GET STATUS

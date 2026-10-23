@@ -1,16 +1,10 @@
 import { useEffect, useState } from "react";
-import { getAllPayments, updatePaymentStatus, getRevenueSummary } from "../../services/paymentService";
+import { getAllPayments, updatePaymentStatus } from "../../services/paymentService";
 import "../../styles/StaffPayments.css";
 
 function StaffPayments() {
   const [loading, setLoading] = useState(true);
   const [payments, setPayments] = useState([]);
-  const [summary, setSummary] = useState({
-    total_revenue: 0,
-    pending_revenue: 0,
-    paid_count: 0,
-    pending_count: 0,
-  });
   const [filterStatus, setFilterStatus] = useState("All");
   const [searchTerm, setSearchTerm] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
@@ -21,8 +15,6 @@ function StaffPayments() {
         const paymentList = await getAllPayments();
         setPayments(paymentList);
 
-        const revenueSummary = await getRevenueSummary();
-        setSummary(revenueSummary);
       } catch (error) {
         console.error("Error fetching payments:", error);
       } finally {
@@ -52,10 +44,6 @@ function StaffPayments() {
         p.id === paymentId ? { ...p, payment_status: "Paid" } : p
       );
       setPayments(updatedPayments);
-
-      // Update summary
-      const newSummary = await getRevenueSummary();
-      setSummary(newSummary);
 
       alert("Payment status updated successfully!");
     } catch (error) {

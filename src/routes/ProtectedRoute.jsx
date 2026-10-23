@@ -1,5 +1,4 @@
 import { Navigate } from "react-router-dom";
-import { auth } from "../services/firebase";
 import { useAuth } from "../context/AuthContext";
 
 
