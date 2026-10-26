@@ -5,13 +5,20 @@ import {
   getDocs,
   query,
   where,
-  orderBy,
   updateDoc,
   onSnapshot,
-  limit as firestoreLimit,
   serverTimestamp
 } from "firebase/firestore";
 import { db } from "./firebase";
+
+const getTimestampMilliseconds = (value) => {
+  if (!value) return 0;
+  if (typeof value.toDate === "function") return value.toDate().getTime();
+  if (typeof value.seconds === "number") return value.seconds * 1000;
+
+  const timestamp = new Date(value).getTime();
+  return Number.isNaN(timestamp) ? 0 : timestamp;
+};
 
 /**
  * Create a notification
@@ -56,22 +63,21 @@ export const getUserNotifications = async (userId, limit = 20) => {
   try {
     const q = query(
       collection(db, "notifications"),
-      where("user_id", "==", userId),
-      orderBy("created_at", "desc")
+      where("user_id", "==", userId)
     );
     
     const querySnapshot = await getDocs(q);
-    const notifications = [];
-    let count = 0;
-    
-    querySnapshot.forEach((doc) => {
-      if (count < limit) {
-        notifications.push({ id: doc.id, ...doc.data() });
-        count++;
-      }
-    });
-    
-    return notifications;
+    return querySnapshot.docs
+      .map((notificationDoc) => ({
+        id: notificationDoc.id,
+        ...notificationDoc.data(),
+      }))
+      .sort(
+        (a, b) =>
+          getTimestampMilliseconds(b.created_at) -
+          getTimestampMilliseconds(a.created_at)
+      )
+      .slice(0, limit);
   } catch (error) {
     console.error("Error getting user notifications:", error);
     throw error;
@@ -88,20 +94,22 @@ export const getUserNotifications = async (userId, limit = 20) => {
 export const subscribeToUserNotifications = (userId, onNotifications, onError) => {
   const q = query(
     collection(db, "notifications"),
-    where("user_id", "==", userId),
-    orderBy("created_at", "desc"),
-    firestoreLimit(50)
+    where("user_id", "==", userId)
   );
 
   return onSnapshot(
     q,
     (querySnapshot) => {
-      onNotifications(
-        querySnapshot.docs.map((notificationDoc) => ({
+      const notifications = querySnapshot.docs.map((notificationDoc) => ({
           id: notificationDoc.id,
           ...notificationDoc.data(),
-        }))
+        }));
+      notifications.sort(
+        (a, b) =>
+          getTimestampMilliseconds(b.created_at) -
+          getTimestampMilliseconds(a.created_at)
       );
+      onNotifications(notifications.slice(0, 50));
     },
     onError
   );
@@ -134,13 +142,14 @@ export const markAllNotificationsAsRead = async (userId) => {
   try {
     const q = query(
       collection(db, "notifications"),
-      where("user_id", "==", userId),
-      where("read", "==", false)
+      where("user_id", "==", userId)
     );
     
     const querySnapshot = await getDocs(q);
     
-    for (const docSnapshot of querySnapshot.docs) {
+    for (const docSnapshot of querySnapshot.docs.filter(
+      (snapshot) => snapshot.data().read !== true
+    )) {
       await updateDoc(doc(db, "notifications", docSnapshot.id), {
         read: true,
         updated_at: serverTimestamp(),
@@ -161,12 +170,13 @@ export const getUnreadNotificationsCount = async (userId) => {
   try {
     const q = query(
       collection(db, "notifications"),
-      where("user_id", "==", userId),
-      where("read", "==", false)
+      where("user_id", "==", userId)
     );
     
     const querySnapshot = await getDocs(q);
-    return querySnapshot.size;
+    return querySnapshot.docs.filter(
+      (docSnapshot) => docSnapshot.data().read !== true
+    ).length;
   } catch (error) {
     console.error("Error getting unread notifications count:", error);
     throw error;
@@ -293,6 +303,18 @@ export const notifyBookingCompleted = async (customerId, bookingId) => {
  * @returns {Promise<string>} Notification ID
  */
 export const notifyBookingStatusChanged = async (customerId, bookingId, status) => {
+  const details = getBookingStatusNotificationDetails(bookingId, status);
+
+  return createNotification(
+    customerId,
+    details.type,
+    details.title,
+    details.message,
+    bookingId
+  );
+};
+
+export const getBookingStatusNotificationDetails = (bookingId, status) => {
   const statusDetails = {
     Accepted: {
       type: "booking",
@@ -362,13 +384,7 @@ export const notifyBookingStatusChanged = async (customerId, bookingId, status) 
     message: `Your booking #${bookingId} status has been updated to ${status}.`,
   };
 
-  return createNotification(
-    customerId,
-    details.type,
-    details.title,
-    details.message,
-    bookingId
-  );
+  return details;
 };
 
 /**

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { subscribeToServices } from "../../services/laundryService";
+import { createBooking } from "../../services/bookingService";
 import { useAuth } from "../../context/AuthContext";
 
 import {
@@ -41,10 +42,6 @@ const DEFAULT_LOCATION = {
   latitude: 17.04,
   longitude: 121.85,
 };
-
-function createBookingId() {
-  return `LM-${Date.now()}`;
-}
 
 // ======================================================
 // MAP CENTER CONTROLLER
@@ -451,7 +448,7 @@ export default function BookNow() {
   // SUBMIT BOOKING
   // ====================================================
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
 
     setError("");
@@ -528,15 +525,17 @@ export default function BookNow() {
       // BOOKING ID
       // -----------------------------------------------
 
-      const bookingId = createBookingId();
-
       // -----------------------------------------------
       // BOOKING DATA
       // -----------------------------------------------
 
       const booking = {
-        id: bookingId,
-        userId: user?.uid || "",
+        userId: user.uid,
+        customer_name:
+          user?.name ||
+          user?.displayName ||
+          user?.firstName ||
+          "Customer",
 
         services,
 
@@ -569,89 +568,16 @@ export default function BookNow() {
       };
 
       // -----------------------------------------------
-      // SAVE BOOKING
+      // SAVE BOOKING TO FIRESTORE
       // -----------------------------------------------
 
-      const existingBookings =
-        JSON.parse(
-          localStorage.getItem(
-            "laundrymateBookings"
-          ) || "[]"
-        );
-
-      existingBookings.push(booking);
-
-      localStorage.setItem(
-        "laundrymateBookings",
-        JSON.stringify(
-          existingBookings
-        )
+      await createBooking(
+        user.uid,
+        "",
+        booking
       );
       window.dispatchEvent(
         new Event("laundrymateBookingUpdated")
-      );
-
-      // -----------------------------------------------
-      // PAYMENT RECORD
-      // -----------------------------------------------
-
-      const payment = {
-        bookingId,
-
-        services,
-
-        laundrySubtotal:
-          laundryTotal,
-
-        deliveryFee,
-
-        totalAmount:
-          estimatedTotal,
-
-        pickupType: pickup,
-
-        schedule,
-        time,
-
-        paymentMethod:
-          "GCash",
-
-        paymentStatus:
-          "Pending",
-
-        bookingStatus:
-          "Pending",
-
-        createdAt:
-          new Date().toISOString(),
-      };
-
-      const existingPayments =
-        JSON.parse(
-          localStorage.getItem(
-            "laundrymatePayments"
-          ) || "[]"
-        );
-
-      existingPayments.push(payment);
-
-      localStorage.setItem(
-        "laundrymatePayments",
-        JSON.stringify(
-          existingPayments
-        )
-      );
-      window.dispatchEvent(
-        new Event("laundrymatePaymentUpdated")
-      );
-
-      // -----------------------------------------------
-      // BACKWARD COMPATIBILITY
-      // -----------------------------------------------
-
-      localStorage.setItem(
-        "laundrymatePayment",
-        JSON.stringify(payment)
       );
 
       setMessage(

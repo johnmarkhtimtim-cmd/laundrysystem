@@ -10,7 +10,14 @@ import L from "leaflet";
 
 import "leaflet/dist/leaflet.css";
 import "../../styles/StaffBookings.css";
-import { notifyBookingStatusChanged } from "../../services/notificationService";
+import { useAuth } from "../../context/AuthContext";
+import {
+  acceptBooking,
+  declinePendingBooking,
+  subscribeToStaffBookings,
+  updateStaffBookingDetails,
+  updateStaffBookingStatus,
+} from "../../services/bookingService";
 
 /* =========================================================
    LEAFLET MARKER FIX
@@ -93,49 +100,11 @@ const DELIVERY_FEES = {
 };
 
 /* =========================================================
-   STORAGE
-========================================================= */
-
-function readBookings() {
-  try {
-    const data = JSON.parse(
-      localStorage.getItem("laundrymateBookings") || "[]"
-    );
-
-    return Array.isArray(data) ? data : [];
-  } catch (error) {
-    console.error("Unable to read bookings:", error);
-    return [];
-  }
-}
-
-function readPayments() {
-  try {
-    const data = JSON.parse(
-      localStorage.getItem("laundrymatePayments") || "[]"
-    );
-
-    return Array.isArray(data) ? data : [];
-  } catch (error) {
-    console.error("Unable to read payments:", error);
-    return [];
-  }
-}
-
-/* =========================================================
    PAYMENT
 ========================================================= */
 
-function getPayment(bookingId) {
-  const payments = readPayments();
-
-  return (
-    payments.find(
-      (payment) =>
-        String(payment.bookingId) === String(bookingId) ||
-        String(payment.bookingID) === String(bookingId)
-    ) || null
-  );
+function getPayment(booking) {
+  return booking?.payment || null;
 }
 
 /* =========================================================
@@ -147,6 +116,7 @@ function getCustomerName(booking) {
 
   const name =
     booking.customerName ||
+    booking.customer_name ||
     booking.name ||
     booking.fullName ||
     booking.displayName ||
@@ -284,7 +254,7 @@ function calculateTotalAmount(booking, weight) {
 function getInitialPayment(booking) {
   if (!booking) return 0;
 
-  const payment = getPayment(booking.id);
+  const payment = getPayment(booking);
 
   const amount = Number(
     booking.initialPayment ??
@@ -292,6 +262,7 @@ function getInitialPayment(booking) {
       booking.paymentAmount ??
       booking.amountPaid ??
       booking.initialPaid ??
+      payment?.initial_payment ??
       payment?.initialPayment ??
       payment?.amountPaid ??
       payment?.amount ??
@@ -314,7 +285,7 @@ function getTotalAmount(booking) {
     return calculateTotalAmount(booking, weight);
   }
 
-  const payment = getPayment(booking.id);
+  const payment = getPayment(booking);
 
   const total = Number(
     booking.totalAmount ??
@@ -323,6 +294,8 @@ function getTotalAmount(booking) {
       booking.grandTotal ??
       booking.price ??
       booking.estimatedTotal ??
+      booking.total_amount ??
+      payment?.total_amount ??
       payment?.totalAmount ??
       payment?.amount ??
       0
@@ -359,9 +332,13 @@ function getPickupLocation(booking) {
   return (
     [
       booking.address,
+      booking.pickup_address,
       booking.barangay,
+      booking.barangay_name,
       booking.city,
+      booking.city_name,
       booking.province,
+      booking.province_name,
       booking.landmark,
     ]
       .filter(Boolean)
@@ -378,6 +355,8 @@ function getContactNumber(booking) {
 
   return (
     booking.contactNumber ||
+    booking.contact_number ||
+    booking.phone_number ||
     booking.phone ||
     booking.mobileNumber ||
     booking.phoneNumber ||
@@ -451,7 +430,8 @@ function formatCurrency(value) {
 function formatDate(value) {
   if (!value) return "N/A";
 
-  const date = new Date(value);
+  const date =
+    typeof value.toDate === "function" ? value.toDate() : new Date(value);
 
   if (Number.isNaN(date.getTime())) {
     return "N/A";
@@ -464,10 +444,11 @@ function formatDate(value) {
   });
 }
 
-function getPaymentReference(bookingId) {
-  const payment = getPayment(bookingId);
+function getPaymentReference(booking) {
+  const payment = getPayment(booking);
 
   return (
+    payment?.reference_number ||
     payment?.referenceNumber ||
     payment?.gcashReference ||
     payment?.reference ||
@@ -480,7 +461,9 @@ function getPaymentReference(bookingId) {
 ========================================================= */
 
 function Bookings() {
-  const [bookings, setBookings] = useState(readBookings);
+  const { user } = useAuth();
+  const [bookings, setBookings] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
 
   const [showStatusModal, setShowStatusModal] =
@@ -508,47 +491,27 @@ function Bookings() {
      LOAD BOOKINGS
   ======================================================= */
 
-  const loadBookings = () => {
-    setBookings(readBookings());
-  };
-
   useEffect(() => {
-    const handleUpdate = () => {
-      loadBookings();
-    };
+    if (!user?.uid) return undefined;
 
-    window.addEventListener(
-      "storage",
-      handleUpdate
+    return subscribeToStaffBookings(
+      user.uid,
+      (staffBookings) => {
+        setBookings(staffBookings);
+        setSelectedBooking((selected) =>
+          selected
+            ? staffBookings.find((booking) => booking.id === selected.id) || selected
+            : selected
+        );
+        setLoading(false);
+      },
+      (error) => {
+        console.error("Unable to load staff bookings:", error);
+        setNotification("Unable to load bookings from Firestore.");
+        setLoading(false);
+      }
     );
-
-    window.addEventListener(
-      "laundrymateBookingUpdated",
-      handleUpdate
-    );
-
-    window.addEventListener(
-      "laundrymatePaymentUpdated",
-      handleUpdate
-    );
-
-    return () => {
-      window.removeEventListener(
-        "storage",
-        handleUpdate
-      );
-
-      window.removeEventListener(
-        "laundrymateBookingUpdated",
-        handleUpdate
-      );
-
-      window.removeEventListener(
-        "laundrymatePaymentUpdated",
-        handleUpdate
-      );
-    };
-  }, []);
+  }, [user?.uid]);
 
   /* =======================================================
      NOTIFICATION
@@ -653,125 +616,51 @@ function Bookings() {
     setUpdating(true);
 
     try {
-      const storedBookings = readBookings();
-
-      const updatedBookings =
-        storedBookings.map((booking) => {
-          if (
-            String(booking.id) !==
-            String(bookingId)
-          ) {
-            return booking;
-          }
-
-          return {
-            ...booking,
-            status: newStatus,
-            updatedAt:
-              new Date().toISOString(),
-          };
-        });
-
-      localStorage.setItem(
-        "laundrymateBookings",
-        JSON.stringify(updatedBookings)
-      );
-
-      /* Update payment status */
-
-      const payments = readPayments();
-
-      const updatedPayments =
-        payments.map((payment) => {
-          if (
-            String(payment.bookingId) !==
-              String(bookingId) &&
-            String(payment.bookingID) !==
-              String(bookingId)
-          ) {
-            return payment;
-          }
-
-          return {
-            ...payment,
-            bookingStatus: newStatus,
-            updatedAt:
-              new Date().toISOString(),
-          };
-        });
-
-      localStorage.setItem(
-        "laundrymatePayments",
-        JSON.stringify(updatedPayments)
-      );
-
-      const updatedBooking =
-        updatedBookings.find(
-          (booking) =>
-            String(booking.id) ===
-            String(bookingId)
+      if (newStatus === "Accepted") {
+        await acceptBooking(bookingId, user.uid);
+      } else if (selectedBooking?.status === "Pending") {
+        await declinePendingBooking(bookingId, user.uid);
+      } else {
+        await updateStaffBookingStatus(
+          bookingId,
+          user.uid,
+          newStatus
         );
+      }
+
+      const updatedBooking = {
+        ...selectedBooking,
+        staff_id: user.uid,
+        status: newStatus,
+        updatedAt: new Date().toISOString(),
+      };
 
       if (newStatus !== "Ready for Pickup" && newStatus !== "To Deliver") {
         setRiderLocation(null);
         setRiderLocationError("");
       }
 
-      setBookings(updatedBookings);
+      setBookings((currentBookings) =>
+        currentBookings.map((booking) =>
+          booking.id === bookingId ? updatedBooking : booking
+        )
+      );
       setSelectedBooking(updatedBooking);
 
       window.dispatchEvent(
         new Event("laundrymateBookingUpdated")
       );
 
-      window.dispatchEvent(
-        new Event("laundrymatePaymentUpdated")
+      setNotification(
+        `Booking status updated to "${newStatus}" and customer notified.`
       );
-
-      const relatedPayment = payments.find(
-        (payment) =>
-          String(payment.bookingId) === String(bookingId) ||
-          String(payment.bookingID) === String(bookingId)
-      );
-      const customerId =
-        updatedBooking?.userId ||
-        updatedBooking?.customerId ||
-        updatedBooking?.customer_id ||
-        updatedBooking?.customer?.uid ||
-        relatedPayment?.userId ||
-        relatedPayment?.customerId;
-
-      if (customerId) {
-        try {
-          await notifyBookingStatusChanged(
-            customerId,
-            bookingId,
-            newStatus
-          );
-          setNotification(
-            `Booking status updated to "${newStatus}" and customer notified.`
-          );
-        } catch (error) {
-          console.error("Unable to notify customer of booking status:", error);
-          setNotification(
-            `Booking status updated to "${newStatus}", but the customer notification could not be sent.`
-          );
-        }
-      } else {
-        console.warn(
-          `Booking ${bookingId} has no customer user ID; status notification was not sent.`
-        );
-        setNotification(
-          `Booking status updated to "${newStatus}", but the customer could not be identified for notification.`
-        );
-      }
 
       return updatedBooking;
     } catch (error) {
       console.error(error);
 
       setNotification(
-        "Unable to update booking status."
+        error.message || "Unable to update booking status."
       );
 
       return null;
@@ -890,7 +779,7 @@ function Bookings() {
      SAVE WEIGHT
   ======================================================= */
 
-  const handleSaveWeight = () => {
+  const handleSaveWeight = async () => {
     if (!selectedBooking) return;
 
     const weight = Number(
@@ -912,22 +801,7 @@ function Bookings() {
     setUpdating(true);
 
     try {
-      const storedBookings = readBookings();
-
-      const currentBooking =
-        storedBookings.find(
-          (booking) =>
-            String(booking.id) ===
-            String(selectedBooking.id)
-        );
-
-      if (!currentBooking) {
-        setNotification(
-          "Booking could not be found."
-        );
-
-        return;
-      }
+      const currentBooking = selectedBooking;
 
       const serviceRate =
         getServiceRate(currentBooking);
@@ -953,107 +827,42 @@ function Bookings() {
           totalAmount - initialPayment
         );
 
-      const updatedBookings =
-        storedBookings.map((booking) => {
-          if (
-            String(booking.id) !==
-            String(selectedBooking.id)
-          ) {
-            return booking;
-          }
+      const bookingDetails = {
+        weight,
+        laundryWeight: weight,
+        kg: weight,
+        serviceRate,
+        laundrySubtotal,
+        laundry_subtotal: laundrySubtotal,
+        deliveryFee,
+        delivery_fee: deliveryFee,
+        totalAmount,
+        total_amount: totalAmount,
+        estimatedTotal: totalAmount,
+        amountToBePaid,
+      };
 
-          return {
-            ...booking,
-
-            weight,
-            laundryWeight: weight,
-            kg: weight,
-
-            serviceRate,
-
-            laundrySubtotal,
-
-            deliveryFee,
-
-            totalAmount,
-
-            estimatedTotal: totalAmount,
-
-            amountToBePaid,
-
-            updatedAt:
-              new Date().toISOString(),
-          };
-        });
-
-      localStorage.setItem(
-        "laundrymateBookings",
-        JSON.stringify(updatedBookings)
+      await updateStaffBookingDetails(
+        selectedBooking.id,
+        user.uid,
+        bookingDetails
       );
 
-      /* Update payment */
+      const updatedBooking = {
+        ...currentBooking,
+        ...bookingDetails,
+        updatedAt: new Date().toISOString(),
+      };
 
-      const payments = readPayments();
-
-      const updatedPayments =
-        payments.map((payment) => {
-          if (
-            String(payment.bookingId) !==
-              String(selectedBooking.id) &&
-            String(payment.bookingID) !==
-              String(selectedBooking.id)
-          ) {
-            return payment;
-          }
-
-          return {
-            ...payment,
-
-            weight,
-            laundryWeight: weight,
-            kg: weight,
-
-            serviceRate,
-
-            laundrySubtotal,
-
-            deliveryFee,
-
-            totalAmount,
-
-            amount: totalAmount,
-
-            amountToBePaid,
-
-            bookingStatus:
-              currentBooking.status,
-
-            updatedAt:
-              new Date().toISOString(),
-          };
-        });
-
-      localStorage.setItem(
-        "laundrymatePayments",
-        JSON.stringify(updatedPayments)
+      setBookings((currentBookings) =>
+        currentBookings.map((booking) =>
+          booking.id === updatedBooking.id ? updatedBooking : booking
+        )
       );
-
-      const updatedBooking =
-        updatedBookings.find(
-          (booking) =>
-            String(booking.id) ===
-            String(selectedBooking.id)
-        );
-
-      setBookings(updatedBookings);
       setSelectedBooking(updatedBooking);
 
       window.dispatchEvent(
         new Event("laundrymateBookingUpdated")
-      );
-
-      window.dispatchEvent(
-        new Event("laundrymatePaymentUpdated")
       );
 
       setNotification(
@@ -1105,21 +914,18 @@ function Bookings() {
         );
       })
       .sort((a, b) => {
-        const dateA = new Date(
-          a.createdAt ||
-            a.updatedAt ||
-            a.schedule ||
-            0
-        ).getTime();
+        const dateA = a.booking_date || a.created_at || a.createdAt || a.schedule;
+        const dateB = b.booking_date || b.created_at || b.createdAt || b.schedule;
+        const timestampA =
+          typeof dateA?.toDate === "function"
+            ? dateA.toDate().getTime()
+            : new Date(dateA || 0).getTime();
+        const timestampB =
+          typeof dateB?.toDate === "function"
+            ? dateB.toDate().getTime()
+            : new Date(dateB || 0).getTime();
 
-        const dateB = new Date(
-          b.createdAt ||
-            b.updatedAt ||
-            b.schedule ||
-            0
-        ).getTime();
-
-        return dateB - dateA;
+        return timestampB - timestampA;
       });
   }, [bookings, search]);
 
@@ -1241,7 +1047,13 @@ function Bookings() {
           </thead>
 
           <tbody>
-            {filteredBookings.length > 0 ? (
+            {loading ? (
+              <tr>
+                <td colSpan="11" className="empty-state">
+                  Loading bookings from Firestore...
+                </td>
+              </tr>
+            ) : filteredBookings.length > 0 ? (
               filteredBookings.map((booking) => {
                 const customerName =
                   getCustomerName(booking);
@@ -1338,7 +1150,9 @@ function Bookings() {
 
                     <td>
                       {formatDate(
-                        booking.schedule
+                        booking.schedule ||
+                          booking.pickup_date ||
+                          booking.pickupDate
                       )}
                     </td>
 
@@ -1346,13 +1160,19 @@ function Bookings() {
                       <button
                         type="button"
                         className="update-status-btn"
+                        disabled={updating}
                         onClick={() =>
                           handleUpdateStatus(
                             booking
                           )
                         }
+                        aria-label={`Review booking ${booking.id}, status ${booking.status || "Pending"}`}
                       >
-                        Update Status
+                        {booking.status === "Pending"
+                          ? "Review Booking"
+                          : booking.status === "Accepted"
+                            ? "Continue"
+                            : "View Details"}
                       </button>
                     </td>
                   </tr>
@@ -1466,7 +1286,7 @@ function Bookings() {
                     <Detail
                       label="Reference Number"
                       value={getPaymentReference(
-                        selectedBooking.id
+                        selectedBooking
                       )}
                     />
 
@@ -1554,7 +1374,7 @@ function Bookings() {
                     <Detail
                       label="Reference Number"
                       value={getPaymentReference(
-                        selectedBooking.id
+                        selectedBooking
                       )}
                     />
 

@@ -625,8 +625,8 @@
 }
 
 .next-status-btn {
-  width: 34px;
-  height: 34px;
+  width: 44px;
+  height: 44px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -649,6 +649,12 @@
   opacity: 0.6;
   cursor: not-allowed;
   transform: none;
+}
+
+.next-status-btn:focus-visible,
+.status-select:focus-visible {
+  outline: 3px solid rgba(37, 99, 235, 0.3);
+  outline-offset: 2px;
 }
 
 /* ==========================================
@@ -855,6 +861,17 @@
     align-items: flex-start;
     flex-direction: column;
     padding: 15px 20px;
+  }
+
+  .action-cell {
+    min-width: 230px;
+  }
+
+  .status-select {
+    flex: 1;
+    min-width: 0;
+    height: 44px;
+    font-size: 13px;
   }
 }
 

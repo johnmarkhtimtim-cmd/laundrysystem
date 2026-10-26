@@ -10,7 +10,11 @@ import L from "leaflet";
 
 import "leaflet/dist/leaflet.css";
 import "../../styles/RiderTransactions.css";
-import { notifyBookingStatusChanged } from "../../services/notificationService";
+import { useAuth } from "../../context/AuthContext";
+import {
+  subscribeToRiderBookings,
+  updateRiderBookingStatus,
+} from "../../services/bookingService";
 
 /* =========================================================
    LEAFLET MARKER FIX
@@ -93,52 +97,6 @@ const DELIVERY_FEES = {
 };
 
 /* =========================================================
-   STORAGE
-========================================================= */
-
-function readBookings() {
-  try {
-    const data = JSON.parse(
-      localStorage.getItem("laundrymateBookings") || "[]"
-    );
-
-    return Array.isArray(data) ? data : [];
-  } catch (error) {
-    console.error("Unable to read bookings:", error);
-    return [];
-  }
-}
-
-function readPayments() {
-  try {
-    const data = JSON.parse(
-      localStorage.getItem("laundrymatePayments") || "[]"
-    );
-
-    return Array.isArray(data) ? data : [];
-  } catch (error) {
-    console.error("Unable to read payments:", error);
-    return [];
-  }
-}
-
-/* =========================================================
-   PAYMENT
-========================================================= */
-
-function getPayment(bookingId) {
-  const payments = readPayments();
-
-  return (
-    payments.find(
-      (payment) =>
-        String(payment.bookingId) === String(bookingId) ||
-        String(payment.bookingID) === String(bookingId)
-    ) || null
-  );
-}
-
-/* =========================================================
    CUSTOMER
 ========================================================= */
 
@@ -147,6 +105,7 @@ function getCustomerName(booking) {
 
   const name =
     booking.customerName ||
+    booking.customer_name ||
     booking.name ||
     booking.fullName ||
     booking.displayName ||
@@ -284,17 +243,14 @@ function calculateTotalAmount(booking, weight) {
 function getInitialPayment(booking) {
   if (!booking) return 0;
 
-  const payment = getPayment(booking.id);
-
   const amount = Number(
     booking.initialPayment ??
       booking.downPayment ??
+      booking.initial_payment ??
+      booking.down_payment ??
       booking.paymentAmount ??
       booking.amountPaid ??
       booking.initialPaid ??
-      payment?.initialPayment ??
-      payment?.amountPaid ??
-      payment?.amount ??
       0
   );
 
@@ -314,17 +270,14 @@ function getTotalAmount(booking) {
     return calculateTotalAmount(booking, weight);
   }
 
-  const payment = getPayment(booking.id);
-
   const total = Number(
     booking.totalAmount ??
+      booking.total_amount ??
       booking.total ??
       booking.amount ??
       booking.grandTotal ??
       booking.price ??
       booking.estimatedTotal ??
-      payment?.totalAmount ??
-      payment?.amount ??
       0
   );
 
@@ -359,9 +312,13 @@ function getPickupLocation(booking) {
   return (
     [
       booking.address,
+      booking.pickup_address,
       booking.barangay,
+      booking.barangay_name,
       booking.city,
+      booking.city_name,
       booking.province,
+      booking.province_name,
       booking.landmark,
     ]
       .filter(Boolean)
@@ -378,6 +335,8 @@ function getContactNumber(booking) {
 
   return (
     booking.contactNumber ||
+    booking.contact_number ||
+    booking.phone_number ||
     booking.phone ||
     booking.mobileNumber ||
     booking.phoneNumber ||
@@ -451,7 +410,8 @@ function formatCurrency(value) {
 function formatDate(value) {
   if (!value) return "N/A";
 
-  const date = new Date(value);
+  const date =
+    typeof value.toDate === "function" ? value.toDate() : new Date(value);
 
   if (Number.isNaN(date.getTime())) {
     return "N/A";
@@ -464,13 +424,19 @@ function formatDate(value) {
   });
 }
 
-function getPaymentReference(bookingId) {
-  const payment = getPayment(bookingId);
+function getDateMilliseconds(value) {
+  if (!value) return 0;
+  if (typeof value.toDate === "function") return value.toDate().getTime();
 
+  const parsed = new Date(value).getTime();
+  return Number.isNaN(parsed) ? 0 : parsed;
+}
+
+function getPaymentReference(booking) {
   return (
-    payment?.referenceNumber ||
-    payment?.gcashReference ||
-    payment?.reference ||
+    booking?.reference_number ||
+    booking?.payment_reference ||
+    booking?.paymentReference ||
     "N/A"
   );
 }
@@ -480,7 +446,9 @@ function getPaymentReference(bookingId) {
 ========================================================= */
 
 function RiderTransactions() {
-  const [bookings, setBookings] = useState(readBookings);
+  const { user } = useAuth();
+  const [bookings, setBookings] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
 
   const [showStatusModal, setShowStatusModal] =
@@ -488,9 +456,6 @@ function RiderTransactions() {
 
   const [selectedBooking, setSelectedBooking] =
     useState(null);
-
-  const [editableWeight, setEditableWeight] =
-    useState("");
 
   const [notification, setNotification] =
     useState("");
@@ -508,47 +473,24 @@ function RiderTransactions() {
      LOAD BOOKINGS
   ======================================================= */
 
-  const loadBookings = () => {
-    setBookings(readBookings());
-  };
-
   useEffect(() => {
-    const handleUpdate = () => {
-      loadBookings();
-    };
+    if (!user?.uid) {
+      return undefined;
+    }
 
-    window.addEventListener(
-      "storage",
-      handleUpdate
+    return subscribeToRiderBookings(
+      user.uid,
+      (assignedBookings) => {
+        setBookings(assignedBookings);
+        setLoading(false);
+      },
+      (error) => {
+        console.error("Unable to load rider bookings:", error);
+        setNotification("Unable to load assigned bookings.");
+        setLoading(false);
+      }
     );
-
-    window.addEventListener(
-      "laundrymateBookingUpdated",
-      handleUpdate
-    );
-
-    window.addEventListener(
-      "laundrymatePaymentUpdated",
-      handleUpdate
-    );
-
-    return () => {
-      window.removeEventListener(
-        "storage",
-        handleUpdate
-      );
-
-      window.removeEventListener(
-        "laundrymateBookingUpdated",
-        handleUpdate
-      );
-
-      window.removeEventListener(
-        "laundrymatePaymentUpdated",
-        handleUpdate
-      );
-    };
-  }, []);
+  }, [user?.uid]);
 
   /* =======================================================
      NOTIFICATION
@@ -619,12 +561,6 @@ function RiderTransactions() {
     setRiderLocationError("");
     setSelectedBooking(booking);
 
-    setEditableWeight(
-      getWeight(booking)
-        ? String(getWeight(booking))
-        : ""
-    );
-
     setShowStatusModal(true);
   };
 
@@ -639,7 +575,6 @@ function RiderTransactions() {
     setRiderLocationError("");
     setShowStatusModal(false);
     setSelectedBooking(null);
-    setEditableWeight("");
   };
 
   /* =======================================================
@@ -653,125 +588,44 @@ function RiderTransactions() {
     setUpdating(true);
 
     try {
-      const storedBookings = readBookings();
-
-      const updatedBookings =
-        storedBookings.map((booking) => {
-          if (
-            String(booking.id) !==
-            String(bookingId)
-          ) {
-            return booking;
-          }
-
-          return {
-            ...booking,
-            status: newStatus,
-            updatedAt:
-              new Date().toISOString(),
-          };
-        });
-
-      localStorage.setItem(
-        "laundrymateBookings",
-        JSON.stringify(updatedBookings)
+      await updateRiderBookingStatus(
+        bookingId,
+        user.uid,
+        newStatus
       );
 
-      /* Update payment status */
+      const updatedBooking = {
+        ...selectedBooking,
+        status: newStatus,
+        updatedAt: new Date().toISOString(),
+      };
 
-      const payments = readPayments();
-
-      const updatedPayments =
-        payments.map((payment) => {
-          if (
-            String(payment.bookingId) !==
-              String(bookingId) &&
-            String(payment.bookingID) !==
-              String(bookingId)
-          ) {
-            return payment;
-          }
-
-          return {
-            ...payment,
-            bookingStatus: newStatus,
-            updatedAt:
-              new Date().toISOString(),
-          };
-        });
-
-      localStorage.setItem(
-        "laundrymatePayments",
-        JSON.stringify(updatedPayments)
-      );
-
-      const updatedBooking =
-        updatedBookings.find(
-          (booking) =>
-            String(booking.id) ===
-            String(bookingId)
-        );
-
-      if (newStatus !== "Ready for Pickup") {
+      if (newStatus !== "Ready for Pickup" && newStatus !== "To Deliver") {
         setRiderLocation(null);
         setRiderLocationError("");
       }
 
-      setBookings(updatedBookings);
+      setBookings((currentBookings) =>
+        currentBookings.map((booking) =>
+          booking.id === bookingId ? updatedBooking : booking
+        )
+      );
       setSelectedBooking(updatedBooking);
 
       window.dispatchEvent(
         new Event("laundrymateBookingUpdated")
       );
 
-      window.dispatchEvent(
-        new Event("laundrymatePaymentUpdated")
+      setNotification(
+        `Booking status updated to "${newStatus}" and customer notified.`
       );
-
-      const relatedPayment = payments.find(
-        (payment) =>
-          String(payment.bookingId) === String(bookingId) ||
-          String(payment.bookingID) === String(bookingId)
-      );
-      const customerId =
-        updatedBooking?.userId ||
-        updatedBooking?.customerId ||
-        updatedBooking?.customer_id ||
-        updatedBooking?.customer?.uid ||
-        relatedPayment?.userId ||
-        relatedPayment?.customerId;
-
-      if (customerId) {
-        try {
-          await notifyBookingStatusChanged(
-            customerId,
-            bookingId,
-            newStatus
-          );
-          setNotification(
-            `Booking status updated to "${newStatus}" and customer notified.`
-          );
-        } catch (error) {
-          console.error("Unable to notify customer of booking status:", error);
-          setNotification(
-            `Booking status updated to "${newStatus}", but the customer notification could not be sent.`
-          );
-        }
-      } else {
-        console.warn(
-          `Booking ${bookingId} has no customer user ID; status notification was not sent.`
-        );
-        setNotification(
-          `Booking status updated to "${newStatus}", but the customer could not be identified for notification.`
-        );
-      }
 
       return updatedBooking;
     } catch (error) {
       console.error(error);
 
       setNotification(
-        "Unable to update booking status."
+        error.message || "Unable to update booking status."
       );
 
       return null;
@@ -781,87 +635,15 @@ function RiderTransactions() {
   };
 
   /* =======================================================
-     ACCEPT
-  ======================================================= */
-
-  const handleAcceptBooking = () => {
-    if (!selectedBooking) return;
-
-    updateBookingStatus(
-      selectedBooking.id,
-      "Accepted"
-    );
-  };
-
-  /* =======================================================
-     DECLINE
-  ======================================================= */
-
-  const handleDeclineBooking = () => {
-    if (!selectedBooking) return;
-
-    const confirmed = window.confirm(
-      "Are you sure you want to decline this booking?"
-    );
-
-    if (!confirmed) return;
-
-    updateBookingStatus(
-      selectedBooking.id,
-      "Declined"
-    );
-  };
-
-  /* =======================================================
-     READY FOR PICKUP
-  ======================================================= */
-
-  const handleReadyForPickup = () => {
-    if (!selectedBooking) return;
-
-    updateBookingStatus(
-      selectedBooking.id,
-      "Ready for Pickup"
-    );
-  };
-
-  /* =======================================================
      PICKED UP
   ======================================================= */
 
   const handlePickedUp = () => {
     if (!selectedBooking) return;
 
-    const weight = Number(
-      getWeight(selectedBooking)
-    );
-
-    if (!weight || weight <= 0) {
-      setNotification(
-        "Please enter and save the laundry weight first."
-      );
-
-      return;
-    }
-
     updateBookingStatus(
       selectedBooking.id,
       "In Laundry"
-    );
-  };
-
-  /* =======================================================
-     DELIVER
-     
-     IN LAUNDRY → TO DELIVER
-  ======================================================= */
-
-  const handleDeliver = () => {
-    if (!selectedBooking) return;
-
-    updateBookingStatus(
-      selectedBooking.id,
-      "To Deliver"
     );
   };
 
@@ -884,192 +666,6 @@ function RiderTransactions() {
       selectedBooking.id,
       "Delivered"
     );
-  };
-
-  /* =======================================================
-     SAVE WEIGHT
-  ======================================================= */
-
-  const handleSaveWeight = () => {
-    if (!selectedBooking) return;
-
-    const weight = Number(
-      editableWeight
-    );
-
-    if (
-      editableWeight === "" ||
-      Number.isNaN(weight) ||
-      weight <= 0
-    ) {
-      setNotification(
-        "Please enter a valid weight greater than 0 kg."
-      );
-
-      return;
-    }
-
-    setUpdating(true);
-
-    try {
-      const storedBookings = readBookings();
-
-      const currentBooking =
-        storedBookings.find(
-          (booking) =>
-            String(booking.id) ===
-            String(selectedBooking.id)
-        );
-
-      if (!currentBooking) {
-        setNotification(
-          "Booking could not be found."
-        );
-
-        return;
-      }
-
-      const serviceRate =
-        getServiceRate(currentBooking);
-
-      const laundrySubtotal =
-        calculateLaundrySubtotal(
-          currentBooking,
-          weight
-        );
-
-      const deliveryFee =
-        getDeliveryFee(currentBooking);
-
-      const totalAmount =
-        laundrySubtotal + deliveryFee;
-
-      const initialPayment =
-        getInitialPayment(currentBooking);
-
-      const amountToBePaid =
-        Math.max(
-          0,
-          totalAmount - initialPayment
-        );
-
-      const updatedBookings =
-        storedBookings.map((booking) => {
-          if (
-            String(booking.id) !==
-            String(selectedBooking.id)
-          ) {
-            return booking;
-          }
-
-          return {
-            ...booking,
-
-            weight,
-            laundryWeight: weight,
-            kg: weight,
-
-            serviceRate,
-
-            laundrySubtotal,
-
-            deliveryFee,
-
-            totalAmount,
-
-            estimatedTotal: totalAmount,
-
-            amountToBePaid,
-
-            updatedAt:
-              new Date().toISOString(),
-          };
-        });
-
-      localStorage.setItem(
-        "laundrymateBookings",
-        JSON.stringify(updatedBookings)
-      );
-
-      /* Update payment */
-
-      const payments = readPayments();
-
-      const updatedPayments =
-        payments.map((payment) => {
-          if (
-            String(payment.bookingId) !==
-              String(selectedBooking.id) &&
-            String(payment.bookingID) !==
-              String(selectedBooking.id)
-          ) {
-            return payment;
-          }
-
-          return {
-            ...payment,
-
-            weight,
-            laundryWeight: weight,
-            kg: weight,
-
-            serviceRate,
-
-            laundrySubtotal,
-
-            deliveryFee,
-
-            totalAmount,
-
-            amount: totalAmount,
-
-            amountToBePaid,
-
-            bookingStatus:
-              currentBooking.status,
-
-            updatedAt:
-              new Date().toISOString(),
-          };
-        });
-
-      localStorage.setItem(
-        "laundrymatePayments",
-        JSON.stringify(updatedPayments)
-      );
-
-      const updatedBooking =
-        updatedBookings.find(
-          (booking) =>
-            String(booking.id) ===
-            String(selectedBooking.id)
-        );
-
-      setBookings(updatedBookings);
-      setSelectedBooking(updatedBooking);
-
-      window.dispatchEvent(
-        new Event("laundrymateBookingUpdated")
-      );
-
-      window.dispatchEvent(
-        new Event("laundrymatePaymentUpdated")
-      );
-
-      setNotification(
-        `Weight updated to ${weight} kg. Total amount is ${formatCurrency(
-          totalAmount
-        )}.`
-      );
-    } catch (error) {
-      console.error(error);
-
-      setNotification(
-        "Unable to update weight."
-      );
-    } finally {
-      setUpdating(false);
-    }
   };
 
   /* =======================================================
@@ -1105,21 +701,11 @@ function RiderTransactions() {
         );
       })
       .sort((a, b) => {
-        const dateA = new Date(
-          a.createdAt ||
-            a.updatedAt ||
-            a.schedule ||
-            0
-        ).getTime();
-
-        const dateB = new Date(
-          b.createdAt ||
-            b.updatedAt ||
-            b.schedule ||
-            0
-        ).getTime();
-
-        return dateB - dateA;
+        return getDateMilliseconds(
+          b.booking_date || b.created_at || b.createdAt || b.schedule
+        ) - getDateMilliseconds(
+          a.booking_date || a.created_at || a.createdAt || a.schedule
+        );
       });
   }, [bookings, search]);
 
@@ -1179,12 +765,10 @@ function RiderTransactions() {
 
       <div className="section-header">
         <div>
-          <h1>Assigned Bookings</h1>
+          <h1>Assigned Pickups &amp; Deliveries</h1>
 
           <p>
-            Manage customer bookings,
-            laundry details, payments,
-            and pickup status.
+            View your assigned jobs and update pickup and delivery status.
           </p>
         </div>
 
@@ -1241,7 +825,13 @@ function RiderTransactions() {
           </thead>
 
           <tbody>
-            {filteredBookings.length > 0 ? (
+            {loading ? (
+              <tr>
+                <td colSpan="11" className="empty-state">
+                  Loading assigned bookings...
+                </td>
+              </tr>
+            ) : filteredBookings.length > 0 ? (
               filteredBookings.map((booking) => {
                 const customerName =
                   getCustomerName(booking);
@@ -1338,7 +928,9 @@ function RiderTransactions() {
 
                     <td>
                       {formatDate(
-                        booking.schedule
+                        booking.schedule ||
+                          booking.pickup_date ||
+                          booking.pickupDate
                       )}
                     </td>
 
@@ -1346,13 +938,19 @@ function RiderTransactions() {
                       <button
                         type="button"
                         className="update-status-btn"
+                        disabled={updating}
                         onClick={() =>
                           handleUpdateStatus(
                             booking
                           )
                         }
+                        aria-label={`View booking ${booking.id}, status ${booking.status || "Pending"}`}
                       >
-                        Update Status
+                        {booking.status === "Ready for Pickup"
+                          ? "Pickup Action"
+                          : booking.status === "To Deliver"
+                            ? "Delivery Action"
+                            : "View Booking"}
                       </button>
                     </td>
                   </tr>
@@ -1466,7 +1064,7 @@ function RiderTransactions() {
                     <Detail
                       label="Reference Number"
                       value={getPaymentReference(
-                        selectedBooking.id
+                        selectedBooking
                       )}
                     />
 
@@ -1493,29 +1091,10 @@ function RiderTransactions() {
                   </div>
 
                   <div className="status-actions">
-                    <button
-                      type="button"
-                      className="accept-btn"
-                      onClick={
-                        handleAcceptBooking
-                      }
-                      disabled={updating}
-                    >
-                      {updating
-                        ? "Updating..."
-                        : "Accept"}
-                    </button>
-
-                    <button
-                      type="button"
-                      className="decline-btn"
-                      onClick={
-                        handleDeclineBooking
-                      }
-                      disabled={updating}
-                    >
-                      Decline
-                    </button>
+                    <p role="status">
+                      This booking is assigned to you. Pickup actions will be
+                      available when staff marks the laundry ready for pickup.
+                    </p>
                   </div>
                 </>
               )}
@@ -1554,7 +1133,7 @@ function RiderTransactions() {
                     <Detail
                       label="Reference Number"
                       value={getPaymentReference(
-                        selectedBooking.id
+                        selectedBooking
                       )}
                     />
 
@@ -1581,17 +1160,6 @@ function RiderTransactions() {
                   </div>
 
                   <div className="status-actions">
-                    <button
-                      type="button"
-                      className="pickup-btn"
-                      onClick={
-                        handleReadyForPickup
-                      }
-                      disabled={updating}
-                    >
-                      Ready for Pickup
-                    </button>
-
                     <button
                       type="button"
                       className="secondary-btn"
@@ -1768,128 +1336,6 @@ function RiderTransactions() {
                     </div>
                   </div>
 
-                  {/* WEIGHT */}
-
-                  <div className="pickup-summary">
-                    <div className="pickup-summary-title">
-                      Payment Calculation
-                    </div>
-
-                    <div className="weight-editor">
-                      <label>
-                        Actual Laundry Weight
-                      </label>
-
-                      <div className="weight-input-row">
-                        <input
-                          type="number"
-                          min="0.1"
-                          step="0.1"
-                          value={
-                            editableWeight
-                          }
-                          onChange={(event) =>
-                            setEditableWeight(
-                              event.target.value
-                            )
-                          }
-                          placeholder="Enter weight"
-                          disabled={updating}
-                        />
-
-                        <span>kg</span>
-                      </div>
-
-                      <small>
-                        Service rate:{" "}
-                        {formatCurrency(
-                          getServiceRate(
-                            selectedBooking
-                          )
-                        )}
-                        /kg
-                      </small>
-                    </div>
-
-                    <PaymentRow
-                      label="Weight"
-                      value={
-                        editableWeight
-                          ? `${editableWeight} kg`
-                          : "Not set"
-                      }
-                    />
-
-                    <PaymentRow
-                      label="Laundry Subtotal"
-                      value={formatCurrency(
-                        calculateLaundrySubtotal(
-                          selectedBooking,
-                          editableWeight
-                        )
-                      )}
-                    />
-
-                    <PaymentRow
-                      label="Delivery Fee"
-                      value={formatCurrency(
-                        getDeliveryFee(
-                          selectedBooking
-                        )
-                      )}
-                    />
-
-                    <PaymentRow
-                      label="Total Amount"
-                      value={formatCurrency(
-                        calculateTotalAmount(
-                          selectedBooking,
-                          editableWeight
-                        )
-                      )}
-                      highlight
-                    />
-
-                    <PaymentRow
-                      label="Initial Payment"
-                      value={formatCurrency(
-                        getInitialPayment(
-                          selectedBooking
-                        )
-                      )}
-                    />
-
-                    <PaymentRow
-                      label="Amount to be Paid"
-                      value={formatCurrency(
-                        Math.max(
-                          0,
-                          calculateTotalAmount(
-                            selectedBooking,
-                            editableWeight
-                          ) -
-                            getInitialPayment(
-                              selectedBooking
-                            )
-                        )
-                      )}
-                      balance
-                    />
-
-                    <button
-                      type="button"
-                      className="save-weight-btn"
-                      onClick={
-                        handleSaveWeight
-                      }
-                      disabled={updating}
-                    >
-                      {updating
-                        ? "Updating..."
-                        : "Update Weight & Amount"}
-                    </button>
-                  </div>
-
                   <div className="status-actions">
                     <button
                       type="button"
@@ -1897,12 +1343,7 @@ function RiderTransactions() {
                       onClick={
                         handlePickedUp
                       }
-                      disabled={
-                        updating ||
-                        !getWeight(
-                          selectedBooking
-                        )
-                      }
+                      disabled={updating}
                     >
                       Picked Up
                     </button>
@@ -1989,20 +1430,7 @@ function RiderTransactions() {
                     />
                   </div>
 
-                  <div className="image-style-action">
-                    <button
-                      type="button"
-                      className="deliver-btn"
-                      onClick={
-                        handleDeliver
-                      }
-                      disabled={updating}
-                    >
-                      {updating
-                        ? "Updating..."
-                        : "Deliver"}
-                    </button>
-                  </div>
+                  <p>Laundry processing is managed by staff.</p>
 
                   <button
                     type="button"
@@ -2408,29 +1836,6 @@ function Detail({
       <strong className={className}>
         {value}
       </strong>
-    </div>
-  );
-}
-
-/* =========================================================
-   PAYMENT ROW
-========================================================= */
-
-function PaymentRow({
-  label,
-  value,
-  highlight = false,
-  balance = false,
-}) {
-  return (
-    <div
-      className={`pickup-summary-row ${
-        highlight ? "highlight-row" : ""
-      } ${balance ? "balance-row" : ""}`}
-    >
-      <span>{label}:</span>
-
-      <strong>{value}</strong>
     </div>
   );
 }

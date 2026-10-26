@@ -1,5 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../../context/AuthContext";
+import {
+  acceptBooking,
+  declinePendingBooking,
+  subscribeToStaffBookings,
+  updateStaffBookingStatus,
+} from "../../services/bookingService";
 import "../../styles/StaffDashboard.css";
 
 // ==========================================
@@ -10,33 +16,24 @@ const STATUS_FLOW = [
   "Pending",
   "Accepted",
   "Ready for Pickup",
-  "Picked Up",
   "In Laundry",
   "To Deliver",
   "Delivered",
   "Completed",
 ];
 
+const STATUS_TRANSITIONS = {
+  Pending: ["Accepted", "Declined"],
+  Accepted: ["Ready for Pickup"],
+  "Ready for Pickup": ["In Laundry"],
+  "In Laundry": ["To Deliver"],
+  "To Deliver": ["Delivered"],
+  Delivered: ["Completed"],
+};
+
 // ==========================================
 // HELPERS
 // ==========================================
-
-function readBookings() {
-  try {
-    const savedBookings = localStorage.getItem("laundrymateBookings");
-    return savedBookings ? JSON.parse(savedBookings) : [];
-  } catch (error) {
-    console.error("Error reading bookings:", error);
-    return [];
-  }
-}
-
-function saveBookings(bookings) {
-  localStorage.setItem("laundrymateBookings", JSON.stringify(bookings));
-
-  // Notify other components that bookings have changed
-  window.dispatchEvent(new Event("laundrymateBookingsUpdated"));
-}
 
 function getBookingStatus(booking) {
   const status =
@@ -45,7 +42,7 @@ function getBookingStatus(booking) {
     booking.orderStatus ||
     "Pending"
 
-  if (["Washing", "Drying", "Folding"].includes(status)) {
+  if (["Picked Up", "Washing", "Drying", "Folding"].includes(status)) {
     return "In Laundry";
   }
 
@@ -68,6 +65,7 @@ function getBookingId(booking) {
 function getCustomerName(booking) {
   return (
     booking.customerName ||
+    booking.customer_name ||
     booking.name ||
     booking.userName ||
     booking.customer?.name ||
@@ -112,7 +110,10 @@ function getDate(booking) {
 function formatDate(dateValue) {
   if (!dateValue) return "No date";
 
-  const date = new Date(dateValue);
+  const date =
+    typeof dateValue.toDate === "function"
+      ? dateValue.toDate()
+      : new Date(dateValue);
 
   if (Number.isNaN(date.getTime())) {
     return dateValue;
@@ -149,52 +150,31 @@ function StaffDashboard() {
   const [statusFilter, setStatusFilter] = useState("All");
   const [updatingId, setUpdatingId] = useState(null);
   const [lastUpdated, setLastUpdated] = useState(new Date());
+  const [actionError, setActionError] = useState("");
+  const [refreshKey, setRefreshKey] = useState(0);
 
   // ==========================================
   // LOAD BOOKINGS
   // ==========================================
 
-  const loadBookings = () => {
-    setLoading(true);
-
-    const savedBookings = readBookings();
-
-    // Sort newest bookings first
-    const sortedBookings = [...savedBookings].sort((a, b) => {
-      const dateA = new Date(getDate(a)).getTime() || 0;
-      const dateB = new Date(getDate(b)).getTime() || 0;
-
-      return dateB - dateA;
-    });
-
-    setBookings(sortedBookings);
-    setLastUpdated(new Date());
-    setLoading(false);
-  };
-
   useEffect(() => {
-    loadBookings();
+    if (!user?.uid) return undefined;
 
-    const handleBookingUpdate = () => {
-      loadBookings();
-    };
-
-    window.addEventListener(
-      "laundrymateBookingsUpdated",
-      handleBookingUpdate
+    return subscribeToStaffBookings(
+      user.uid,
+      (staffBookings) => {
+        setBookings(staffBookings);
+        setLastUpdated(new Date());
+        setLoading(false);
+      },
+      (error) => {
+        console.error("Unable to load staff dashboard bookings:", error);
+        setActionError("Unable to load bookings from Firestore.");
+        setLoading(false);
+      },
+      false
     );
-
-    window.addEventListener("storage", handleBookingUpdate);
-
-    return () => {
-      window.removeEventListener(
-        "laundrymateBookingsUpdated",
-        handleBookingUpdate
-      );
-
-      window.removeEventListener("storage", handleBookingUpdate);
-    };
-  }, []);
+  }, [user?.uid, refreshKey]);
 
   // ==========================================
   // STATISTICS
@@ -211,7 +191,6 @@ function StaffDashboard() {
       [
         "Accepted",
         "Ready for Pickup",
-        "Picked Up",
         "In Laundry",
         "To Deliver",
         "Delivered",
@@ -259,32 +238,36 @@ function StaffDashboard() {
   // UPDATE ORDER STATUS
   // ==========================================
 
-  const updateBookingStatus = (bookingId, newStatus) => {
+  const updateBookingStatus = async (bookingId, newStatus) => {
     setUpdatingId(bookingId);
+    setActionError("");
 
-    const updatedBookings = bookings.map((booking) => {
-      const currentId = getBookingId(booking);
+    const booking = bookings.find(
+      (item) => String(getBookingId(item)) === String(bookingId)
+    );
 
-      if (String(currentId) !== String(bookingId)) {
-        return booking;
+    try {
+      if (!booking) throw new Error("Booking could not be found.");
+
+      if (getBookingStatus(booking) === "Pending" && newStatus === "Accepted") {
+        await acceptBooking(bookingId, user.uid);
+      } else if (
+        getBookingStatus(booking) === "Pending" &&
+        newStatus === "Declined"
+      ) {
+        await declinePendingBooking(bookingId, user.uid);
+      } else {
+        await updateStaffBookingStatus(bookingId, user.uid, newStatus);
       }
 
-      return {
-        ...booking,
-        status: newStatus,
-        bookingStatus: newStatus,
-        orderStatus: newStatus,
-        updatedAt: new Date().toISOString(),
-      };
-    });
-
-    saveBookings(updatedBookings);
-    setBookings(updatedBookings);
-    setLastUpdated(new Date());
-
-    setTimeout(() => {
+      window.dispatchEvent(new Event("laundrymateBookingUpdated"));
+      setLastUpdated(new Date());
+    } catch (error) {
+      console.error("Unable to update booking status:", error);
+      setActionError(error.message || "Unable to update booking status.");
+    } finally {
       setUpdatingId(null);
-    }, 300);
+    }
   };
 
   // ==========================================
@@ -293,15 +276,12 @@ function StaffDashboard() {
 
   const moveToNextStatus = (booking) => {
     const currentStatus = getBookingStatus(booking);
-    const currentIndex = STATUS_FLOW.indexOf(currentStatus);
-
-    if (currentIndex === -1 || currentIndex === STATUS_FLOW.length - 1) {
+    const nextStatuses = STATUS_TRANSITIONS[currentStatus] || [];
+    if (nextStatuses.length !== 1) {
       return;
     }
 
-    const nextStatus = STATUS_FLOW[currentIndex + 1];
-
-    updateBookingStatus(getBookingId(booking), nextStatus);
+    void updateBookingStatus(getBookingId(booking), nextStatuses[0]);
   };
 
   // ==========================================
@@ -340,13 +320,22 @@ function StaffDashboard() {
 
         <button
           className="refresh-dashboard-btn"
-          onClick={loadBookings}
+          onClick={() => {
+            setLoading(true);
+            setRefreshKey((key) => key + 1);
+          }}
           title="Refresh dashboard"
         >
           <span className="refresh-icon">↻</span>
           Refresh
         </button>
       </div>
+
+      {actionError && (
+        <p className="dashboard-feedback" role="alert">
+          {actionError}
+        </p>
+      )}
 
       {/* ======================================
           STATISTICS
@@ -548,8 +537,8 @@ function StaffDashboard() {
                 {filteredBookings.map((booking) => {
                   const bookingId = getBookingId(booking);
                   const status = getBookingStatus(booking);
-                  const currentIndex = STATUS_FLOW.indexOf(status);
-                  const isCompleted = status === "Completed";
+                  const nextStatuses = STATUS_TRANSITIONS[status] || [];
+                  const statusOptions = [status, ...nextStatuses];
 
                   return (
                     <tr key={bookingId}>
@@ -642,7 +631,7 @@ function StaffDashboard() {
                               )
                             }
                           >
-                            {STATUS_FLOW.map((statusOption) => (
+                            {statusOptions.map((statusOption) => (
                               <option
                                 key={statusOption}
                                 value={statusOption}
@@ -652,11 +641,9 @@ function StaffDashboard() {
                             ))}
                           </select>
 
-                          {!isCompleted &&
-                            currentIndex !== -1 &&
-                            currentIndex <
-                              STATUS_FLOW.length - 1 && (
+                          {nextStatuses.length === 1 && (
                               <button
+                                type="button"
                                 className="next-status-btn"
                                 onClick={() =>
                                   moveToNextStatus(booking)
@@ -664,9 +651,12 @@ function StaffDashboard() {
                                 disabled={
                                   updatingId === bookingId
                                 }
-                                title="Move to next status"
+                                title={`Move to ${nextStatuses[0]}`}
+                                aria-label={`Move booking ${bookingId} to ${nextStatuses[0]}`}
                               >
-                                →
+                                {updatingId === bookingId
+                                  ? "..."
+                                  : "→"}
                               </button>
                             )}
                         </div>

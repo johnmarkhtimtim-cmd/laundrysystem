@@ -1,16 +1,25 @@
 import { 
   collection, 
   doc, 
-  getDoc, 
   getDocs,
   setDoc,
   updateDoc,
   query,
   where,
   orderBy,
+  onSnapshot,
   serverTimestamp
 } from "firebase/firestore";
 import { db } from "./firebase";
+
+const getTimestampMilliseconds = (value) => {
+  if (!value) return 0;
+  if (typeof value.toDate === "function") return value.toDate().getTime();
+  if (typeof value.seconds === "number") return value.seconds * 1000;
+
+  const timestamp = new Date(value).getTime();
+  return Number.isNaN(timestamp) ? 0 : timestamp;
+};
 
 /**
  * Create a payment record
@@ -21,11 +30,19 @@ import { db } from "./firebase";
  * @param {string} status - Payment status (Pending, Paid)
  * @returns {Promise<string>} Payment ID
  */
-export const createPayment = async (bookingId, customerId, amount, method = "Cash on Pickup", status = "Pending") => {
+export const createPayment = async (
+  bookingId,
+  customerId,
+  amount,
+  method = "Cash on Pickup",
+  status = "Pending",
+  details = {}
+) => {
   try {
     const paymentRef = doc(collection(db, "payments"));
     
     const payment = {
+      ...details,
       payment_id: paymentRef.id,
       booking_id: bookingId,
       customer_id: customerId,
@@ -41,6 +58,25 @@ export const createPayment = async (bookingId, customerId, amount, method = "Cas
     return paymentRef.id;
   } catch (error) {
     console.error("Error creating payment:", error);
+    throw error;
+  }
+};
+
+/**
+ * Update a customer's pending payment details without changing its status.
+ */
+export const updateCustomerPayment = async (paymentId, paymentData) => {
+  try {
+    const paymentRef = doc(db, "payments", paymentId);
+    await updateDoc(paymentRef, {
+      amount: paymentData.amount,
+      payment_method: paymentData.payment_method,
+      gcash_customer_name: paymentData.gcash_customer_name || "",
+      reference_number: paymentData.reference_number || "",
+      updated_at: serverTimestamp(),
+    });
+  } catch (error) {
+    console.error("Error updating customer payment:", error);
     throw error;
   }
 };
@@ -80,17 +116,20 @@ export const getCustomerPayments = async (customerId) => {
   try {
     const q = query(
       collection(db, "payments"),
-      where("customer_id", "==", customerId),
-      orderBy("created_at", "desc")
+      where("customer_id", "==", customerId)
     );
     
     const querySnapshot = await getDocs(q);
-    const payments = [];
-    querySnapshot.forEach((doc) => {
-      payments.push({ id: doc.id, ...doc.data() });
-    });
-    
-    return payments;
+    return querySnapshot.docs
+      .map((paymentDoc) => ({
+        id: paymentDoc.id,
+        ...paymentDoc.data(),
+      }))
+      .sort(
+        (a, b) =>
+          getTimestampMilliseconds(b.created_at || b.createdAt) -
+          getTimestampMilliseconds(a.created_at || a.createdAt)
+      );
   } catch (error) {
     console.error("Error getting customer payments:", error);
     throw error;
@@ -98,8 +137,41 @@ export const getCustomerPayments = async (customerId) => {
 };
 
 /**
- * Get all payments for staff view
- * @returns {Promise<array>} Array of payments with customer and booking details
+ * Subscribe to a customer's payment records.
+ */
+export const subscribeToCustomerPayments = (
+  customerId,
+  onPayments,
+  onError
+) => {
+  const q = query(
+    collection(db, "payments"),
+    where("customer_id", "==", customerId)
+  );
+
+  return onSnapshot(
+    q,
+    (querySnapshot) => {
+      onPayments(
+        querySnapshot.docs
+          .map((paymentDoc) => ({
+            id: paymentDoc.id,
+            ...paymentDoc.data(),
+          }))
+          .sort(
+            (a, b) =>
+              getTimestampMilliseconds(b.created_at || b.createdAt) -
+              getTimestampMilliseconds(a.created_at || a.createdAt)
+          )
+      );
+    },
+    onError
+  );
+};
+
+/**
+ * Get all payments for staff view with customer details
+ * @returns {Promise<array>} Array of payments with customer details
  */
 export const getAllPayments = async () => {
   try {
@@ -113,25 +185,9 @@ export const getAllPayments = async () => {
     
     for (const docSnapshot of querySnapshot.docs) {
       const payment = { id: docSnapshot.id, ...docSnapshot.data() };
-      
-      // Get customer details
-      if (payment.customer_id) {
-        const customerRef = doc(db, "users", payment.customer_id);
-        const customerSnap = await getDoc(customerRef);
-        if (customerSnap.exists()) {
-          payment.customer = customerSnap.data();
-        }
-      }
-      
-      // Get booking details
-      if (payment.booking_id) {
-        const bookingRef = doc(db, "bookings", payment.booking_id);
-        const bookingSnap = await getDoc(bookingRef);
-        if (bookingSnap.exists()) {
-          payment.booking = bookingSnap.data();
-        }
-      }
-      
+      payment.customer = {
+        name: payment.customer_name || "Unknown",
+      };
       payments.push(payment);
     }
     

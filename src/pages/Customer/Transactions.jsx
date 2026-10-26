@@ -1,84 +1,42 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../../context/AuthContext";
+import { subscribeToCustomerPayments } from "../../services/paymentService";
 import "../../styles/Transactions.css";
 
 function Transactions() {
   const { user } = useAuth();
 
   const [transactions, setTransactions] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(Boolean(user?.uid));
+  const [loadError, setLoadError] = useState("");
 
   // =========================================================
   // LOAD TRANSACTIONS
   // =========================================================
-
-  const loadTransactions = () => {
-    try {
-      const storedPayments = JSON.parse(
-        localStorage.getItem("laundrymatePayments") || "[]"
-      );
-
-      let userPayments = storedPayments;
-
-      // Show only current customer's transactions
-      if (user?.uid) {
-        userPayments = storedPayments.filter(
-          (payment) =>
-            !payment.userId ||
-            payment.userId === user.uid
-        );
-      }
-
-      // Latest transaction first
-      const sortedTransactions = [...userPayments].sort(
-        (a, b) =>
-          new Date(b.createdAt || 0) -
-          new Date(a.createdAt || 0)
-      );
-
-      setTransactions(sortedTransactions);
-    } catch (error) {
-      console.error(
-        "Failed to load transactions:",
-        error
-      );
-
-      setTransactions([]);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   // =========================================================
   // LOAD ON PAGE OPEN
   // =========================================================
 
   useEffect(() => {
-    loadTransactions();
+    if (!user?.uid) {
+      return undefined;
+    }
 
-    // Payment updated
-    window.addEventListener(
-      "laundrymatePaymentUpdated",
-      loadTransactions
+    return subscribeToCustomerPayments(
+      user.uid,
+      (payments) => {
+        setTransactions(payments);
+        setLoadError("");
+        setLoading(false);
+      },
+      (error) => {
+        console.error("Failed to load transactions:", error);
+        setTransactions([]);
+        setLoadError("Unable to load your transactions. Please try again later.");
+        setLoading(false);
+      }
     );
-
-    // Booking updated
-    window.addEventListener(
-      "laundrymateBookingUpdated",
-      loadTransactions
-    );
-
-    return () => {
-      window.removeEventListener(
-        "laundrymatePaymentUpdated",
-        loadTransactions
-      );
-
-      window.removeEventListener(
-        "laundrymateBookingUpdated",
-        loadTransactions
-      );
-    };
   }, [user]);
 
   // =========================================================
@@ -102,7 +60,8 @@ function Transactions() {
   const formatDate = (date) => {
     if (!date) return "—";
 
-    const parsed = new Date(date);
+    const parsed =
+      typeof date.toDate === "function" ? date.toDate() : new Date(date);
 
     if (Number.isNaN(parsed.getTime())) {
       return date;
@@ -124,6 +83,7 @@ function Transactions() {
   const getStatus = (transaction) => {
     return (
       transaction.paymentStatus ||
+      transaction.payment_status ||
       transaction.status ||
       "Pending"
     );
@@ -146,6 +106,7 @@ function Transactions() {
   const getPaymentId = (transaction) => {
     return (
       transaction.paymentId ||
+      transaction.payment_id ||
       transaction.id ||
       "—"
     );
@@ -158,6 +119,7 @@ function Transactions() {
   const getBookingId = (transaction) => {
     return (
       transaction.bookingId ||
+      transaction.booking_id ||
       transaction.booking?.id ||
       "—"
     );
@@ -182,6 +144,7 @@ function Transactions() {
   const getAmount = (transaction) => {
     return (
       transaction.totalAmount ??
+      transaction.total_amount ??
       transaction.amount ??
       0
     );
@@ -258,6 +221,7 @@ function Transactions() {
         </div>
 
       </div>    
+      {loadError && <p role="alert">{loadError}</p>}
       {/* =====================================================
           TRANSACTION HISTORY
       ===================================================== */}
@@ -391,12 +355,12 @@ function Transactions() {
                               )}
                             </strong>
 
-                            {transaction.referenceNumber && (
+                            {                            (transaction.referenceNumber ||
+                              transaction.reference_number) && (
                               <small>
                                 Ref:{" "}
-                                {
-                                  transaction.referenceNumber
-                                }
+                                {transaction.referenceNumber ||
+                                  transaction.reference_number}
                               </small>
                             )}
 
@@ -434,7 +398,8 @@ function Transactions() {
 
                           <span className="transaction-date">
                             {formatDate(
-                              transaction.createdAt
+                              transaction.createdAt ||
+                                transaction.created_at
                             )}
                           </span>
 
@@ -461,10 +426,12 @@ function Transactions() {
                           <span
                             className={`transaction-method ${String(
                               transaction.paymentMethod ||
+                                transaction.payment_method ||
                                 ""
                             ).toLowerCase()}`}
                           >
                             {transaction.paymentMethod ||
+                              transaction.payment_method ||
                               "—"}
                           </span>
 

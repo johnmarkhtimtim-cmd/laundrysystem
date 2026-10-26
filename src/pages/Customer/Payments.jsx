@@ -1,5 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../../context/AuthContext";
+import { getCustomerBookings } from "../../services/bookingService";
+import {
+  createPayment,
+  getCustomerPayments,
+  updateCustomerPayment,
+} from "../../services/paymentService";
 import "../../styles/Payments.css";
 
 const DEFAULT_GCASH_NAME = "Prince-Tyler Laundry Shop";
@@ -24,6 +30,30 @@ const SERVICES = [
     price: 200,
   },
 ];
+
+function getDateMilliseconds(value) {
+  if (!value) return 0;
+  if (typeof value.toDate === "function") return value.toDate().getTime();
+
+  const date = new Date(value).getTime();
+  return Number.isNaN(date) ? 0 : date;
+}
+
+function normalizePayment(payment) {
+  return {
+    ...payment,
+    paymentId: payment.payment_id || payment.id,
+    bookingId: payment.booking_id || payment.bookingId,
+    userId: payment.customer_id || payment.userId,
+    paymentMethod: payment.payment_method || payment.paymentMethod,
+    paymentStatus: payment.payment_status || payment.paymentStatus,
+    referenceNumber: payment.reference_number || payment.referenceNumber,
+    gcashCustomerName:
+      payment.gcash_customer_name || payment.gcashCustomerName,
+    totalAmount: payment.total_amount ?? payment.totalAmount ?? payment.amount,
+    createdAt: payment.created_at || payment.createdAt,
+  };
+}
 
 function Payment() {
   const { user } = useAuth();
@@ -72,151 +102,88 @@ function Payment() {
   const [successMessage, setSuccessMessage] =
     useState("");
 
+  const loadData = useCallback(async () => {
+    if (!user?.uid) {
+      setBooking(null);
+      setPayments([]);
+    } else {
+      const [userBookings, storedPayments] = await Promise.all([
+        getCustomerBookings(user.uid),
+        getCustomerPayments(user.uid),
+      ]);
+
+      const sortedBookings = [...userBookings].sort(
+        (a, b) =>
+          getDateMilliseconds(b.booking_date || b.created_at || b.createdAt) -
+          getDateMilliseconds(a.booking_date || a.created_at || a.createdAt)
+      );
+      setBooking(sortedBookings[0] || null);
+      setPayments(storedPayments.map(normalizePayment));
+    }
+
+    const settings = JSON.parse(
+      localStorage.getItem("laundrymatePaymentSettings") || "{}"
+    );
+    setGcashName(settings.gcashName || DEFAULT_GCASH_NAME);
+    setGcashNumber(settings.gcashNumber || DEFAULT_GCASH_NUMBER);
+    setGcashQr(settings.gcashQr || DEFAULT_GCASH_QR);
+  }, [user]);
+
   // =========================================================
   // LOAD DATA
   // =========================================================
 
   useEffect(() => {
-    loadData();
+    let isMounted = true;
+    const refreshData = async () => {
+      try {
+        await loadData();
+        if (isMounted) setError("");
+      } catch (error) {
+        console.error("Failed to load payment data:", error);
+        if (isMounted) {
+          setBooking(null);
+          setPayments([]);
+          setError("Unable to load your booking or payment records. Please refresh to try again.");
+        }
+      }
+    };
+
+    refreshData();
 
     window.addEventListener(
       "laundrymatePaymentUpdated",
-      loadData
+      refreshData
     );
 
     window.addEventListener(
       "laundrymatePaymentSettingsUpdated",
-      loadData
+      refreshData
     );
 
     window.addEventListener(
       "laundrymateBookingUpdated",
-      loadData
+      refreshData
     );
 
     return () => {
+      isMounted = false;
       window.removeEventListener(
         "laundrymatePaymentUpdated",
-        loadData
+        refreshData
       );
 
       window.removeEventListener(
         "laundrymatePaymentSettingsUpdated",
-        loadData
+        refreshData
       );
 
       window.removeEventListener(
         "laundrymateBookingUpdated",
-        loadData
+        refreshData
       );
     };
-  }, [user]);
-
-  // =========================================================
-  // LOAD LOCAL STORAGE DATA
-  // =========================================================
-
-  const loadData = () => {
-    try {
-      // =====================================================
-      // BOOKINGS
-      // =====================================================
-
-      const storedBookings = JSON.parse(
-        localStorage.getItem(
-          "laundrymateBookings"
-        ) || "[]"
-      );
-
-      let userBookings = storedBookings;
-
-      if (user?.uid) {
-        userBookings = storedBookings.filter(
-          (item) =>
-            !item.userId ||
-            item.userId === user.uid
-        );
-      }
-
-      if (userBookings.length > 0) {
-        const sortedBookings = [...userBookings].sort(
-          (a, b) =>
-            new Date(
-              b.createdAt || b.date || 0
-            ) -
-            new Date(
-              a.createdAt || a.date || 0
-            )
-        );
-
-        setBooking(sortedBookings[0]);
-      } else {
-        setBooking(null);
-      }
-
-      // =====================================================
-      // PAYMENTS
-      // =====================================================
-
-      const storedPayments = JSON.parse(
-        localStorage.getItem(
-          "laundrymatePayments"
-        ) || "[]"
-      );
-
-      let userPayments = storedPayments;
-
-      if (user?.uid) {
-        userPayments = storedPayments.filter(
-          (item) =>
-            !item.userId ||
-            item.userId === user.uid
-        );
-      }
-
-      const sortedPayments = [...userPayments].sort(
-        (a, b) =>
-          new Date(
-            b.createdAt || 0
-          ) -
-          new Date(
-            a.createdAt || 0
-          )
-      );
-
-      setPayments(sortedPayments);
-
-      // =====================================================
-      // PAYMENT SETTINGS
-      // =====================================================
-
-      const settings = JSON.parse(
-        localStorage.getItem(
-          "laundrymatePaymentSettings"
-        ) || "{}"
-      );
-
-      setGcashName(
-        settings.gcashName ||
-          DEFAULT_GCASH_NAME
-      );
-
-      setGcashNumber(
-        settings.gcashNumber ||
-          DEFAULT_GCASH_NUMBER
-      );
-
-      setGcashQr(
-        settings.gcashQr ||
-          DEFAULT_GCASH_QR
-      );
-    } catch (error) {
-      console.error(
-        "Failed to load payment data:",
-        error
-      );
-    }
-  };
+  }, [loadData]);
 
   // =========================================================
   // GET SERVICE PRICE
@@ -525,7 +492,7 @@ function Payment() {
   // CONFIRM PAYMENT
   // =========================================================
 
-  const handleConfirmPayment = () => {
+  const handleConfirmPayment = async () => {
     if (!booking) {
       setError(
         "You do not have a booking to pay."
@@ -615,208 +582,82 @@ function Payment() {
     setError("");
 
     try {
-      const existingPayments =
-        JSON.parse(
-          localStorage.getItem(
-            "laundrymatePayments"
-          ) || "[]"
-        );
+      if (!user?.uid) {
+        throw new Error("You must be signed in to submit a payment.");
+      }
 
-      const paymentId =
-        editingPayment?.id ||
-        `PAY-${Date.now()}`;
-
-      const paymentData = {
-        id: paymentId,
-
-        paymentId,
-
-        bookingId,
-
-        userId:
-          user?.uid ||
-          booking.userId ||
-          "",
-
-        customerId:
-          user?.uid ||
-          booking.userId ||
-          "",
-
-        customerName:
+      const paymentDetails = {
+        customer_name:
           user?.displayName ||
+          user?.name ||
+          booking.customer_name ||
           booking.customerName ||
-          booking.name ||
           "Customer",
-
-        // CUSTOMER GCASH NAME
-        gcashCustomerName:
+        gcash_customer_name:
           paymentMethod === "GCash"
             ? gcashCustomerName.trim()
             : "",
-
-        services:
-          bookingServices.join(", "),
-
-        totalAmount:
-          calculatedTotal,
-
-        amount:
-          calculatedTotal,
-
-        paymentMethod,
-
-        paymentStatus: "Pending",
-
-        status: "Pending",
-
-        referenceNumber:
+        reference_number:
           paymentMethod === "GCash"
             ? referenceNumber.trim()
             : "",
+        services: bookingServices.join(", "),
+        total_amount: calculatedTotal,
+      };
 
+      let paymentId;
+      if (editingPayment?.id) {
+        await updateCustomerPayment(editingPayment.id, {
+            amount: calculatedTotal,
+            payment_method: paymentMethod,
+            ...paymentDetails,
+          });
+        paymentId = editingPayment.id;
+      } else {
+        paymentId = await createPayment(
+            bookingId,
+            user.uid,
+            calculatedTotal,
+            paymentMethod,
+            "Pending",
+            paymentDetails
+          );
+      }
+
+      const paymentData = {
+        id: paymentId,
+        paymentId,
+        bookingId,
+        userId: user.uid,
+        customerId: user.uid,
+        customerName:
+          user?.displayName ||
+          user?.name ||
+          booking.customer_name ||
+          booking.customerName ||
+          "Customer",
+        gcashCustomerName: paymentDetails.gcash_customer_name,
+        services: paymentDetails.services,
+        totalAmount: calculatedTotal,
+        amount: calculatedTotal,
+        paymentMethod,
+        paymentStatus: "Pending",
+        status: "Pending",
+        referenceNumber: paymentDetails.reference_number,
         createdAt:
           editingPayment?.createdAt ||
           new Date().toISOString(),
-
-        updatedAt:
-          new Date().toISOString(),
-
-        booking: {
-          id: bookingId,
-
-          services:
-            bookingServices.join(", "),
-
-          pickup_date:
-            getBookingSchedule(),
-
-          pickupType:
-            booking.pickupType ||
-            booking.pickupOption ||
-            "Pickup & Delivery",
-
-          address:
-            getAddress(),
-
-          barangay:
-            getBarangay(),
-
-          city:
-            getCity(),
-
-          province:
-            getProvince(),
-
-          landmark:
-            getLandmark(),
-
-          totalAmount:
-            calculatedTotal,
-        },
       };
 
-      // =====================================================
-      // REMOVE OLD PAYMENT WHEN EDITING
-      // =====================================================
-
-      let updatedPayments =
-        existingPayments.filter(
-          (payment) =>
-            payment.id !== paymentId
-        );
-
-      // =====================================================
-      // ADD PAYMENT
-      // =====================================================
-
-      updatedPayments.unshift(
-        paymentData
-      );
-
-      localStorage.setItem(
-        "laundrymatePayments",
-        JSON.stringify(
-          updatedPayments
+      setPayments((currentPayments) =>
+        [
+          paymentData,
+          ...currentPayments.filter((payment) => payment.id !== paymentId),
+        ].sort(
+          (a, b) =>
+            getDateMilliseconds(b.createdAt) -
+            getDateMilliseconds(a.createdAt)
         )
-      );
-
-      // =====================================================
-      // UPDATE BOOKING
-      // =====================================================
-
-      const storedBookings =
-        JSON.parse(
-          localStorage.getItem(
-            "laundrymateBookings"
-          ) || "[]"
-        );
-
-      const updatedBookings =
-        storedBookings.map(
-          (item) => {
-            const itemId =
-              item.bookingId ||
-              item.id;
-
-            if (
-              String(itemId) !==
-              String(bookingId)
-            ) {
-              return item;
-            }
-
-            return {
-              ...item,
-
-              paymentMethod,
-
-              paymentStatus:
-                "Pending",
-
-              paymentReference:
-                paymentData.referenceNumber,
-
-              paymentId,
-
-              updatedAt:
-                new Date().toISOString(),
-            };
-          }
-        );
-
-      localStorage.setItem(
-        "laundrymateBookings",
-        JSON.stringify(
-          updatedBookings
-        )
-      );
-
-      // =====================================================
-      // UPDATE LATEST PAYMENT
-      // =====================================================
-
-      localStorage.setItem(
-        "laundrymatePayment",
-        JSON.stringify(
-          paymentData
-        )
-      );
-
-      // =====================================================
-      // UPDATE STATE
-      // =====================================================
-
-      const filteredPayments =
-        updatedPayments.filter(
-          (item) =>
-            !user?.uid ||
-            !item.userId ||
-            item.userId === user.uid
-        );
-
-      setPayments(
-        filteredPayments
       );
 
       setSubmittedPayment(

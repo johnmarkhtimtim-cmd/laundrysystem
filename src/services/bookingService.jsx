@@ -3,14 +3,17 @@ import {
   doc, 
   getDoc, 
   getDocs, 
+  runTransaction,
   setDoc, 
   updateDoc, 
   query, 
   where,
   orderBy,
+  onSnapshot,
   serverTimestamp
 } from "firebase/firestore";
 import { db } from "./firebase";
+import { getBookingStatusNotificationDetails } from "./notificationService";
 
 const getTimestampMilliseconds = (value) => {
   if (!value) return 0;
@@ -19,6 +22,43 @@ const getTimestampMilliseconds = (value) => {
 
   const timestamp = new Date(value).getTime();
   return Number.isNaN(timestamp) ? 0 : timestamp;
+};
+
+const STAFF_BOOKING_TRANSITIONS = {
+  Accepted: ["Ready for Pickup"],
+  "Ready for Pickup": ["In Laundry"],
+  "In Laundry": ["To Deliver"],
+  "Picked Up": ["To Deliver"],
+  Washing: ["To Deliver"],
+  Drying: ["To Deliver"],
+  Folding: ["To Deliver"],
+  "To Deliver": ["Delivered"],
+  "Ready for Customer Pickup": ["Delivered"],
+  Delivered: ["Completed"],
+};
+
+const addBookingStatusNotification = (transaction, booking, bookingId, status) => {
+  const customerId = booking.customer_id || booking.customerId || booking.userId;
+  if (!customerId) {
+    throw new Error(
+      `Booking ${bookingId} has no customer user ID; status was not updated.`
+    );
+  }
+
+  const details = getBookingStatusNotificationDetails(bookingId, status);
+  const notificationRef = doc(collection(db, "notifications"));
+
+  transaction.set(notificationRef, {
+    notification_id: notificationRef.id,
+    user_id: customerId,
+    type: details.type,
+    title: details.title,
+    message: details.message,
+    booking_id: bookingId,
+    read: false,
+    created_at: serverTimestamp(),
+    updated_at: serverTimestamp(),
+  });
 };
 
 /**
@@ -33,18 +73,24 @@ export const createBooking = async (customerId, serviceId, bookingData) => {
     const bookingRef = doc(collection(db, "bookings"));
     
     const booking = {
+      ...bookingData,
+      id: bookingRef.id,
       booking_id: bookingRef.id,
       customer_id: customerId,
-      service_id: serviceId,
-      status: "Pending",
+      service_id: serviceId || bookingData.service_id || null,
+      status: bookingData.status || "Pending",
       booking_date: serverTimestamp(),
-      pickup_date: bookingData.pickup_date || null,
-      weight: bookingData.weight || 0,
-      total_amount: bookingData.total_amount || 0,
-      payment_method: bookingData.payment_method || "Cash on Pickup",
-      payment_status: bookingData.payment_method === "Online Payment" ? "Paid" : "Pending",
+      pickup_date: bookingData.pickup_date || bookingData.schedule || null,
+      total_amount:
+        bookingData.total_amount ??
+        bookingData.totalAmount ??
+        bookingData.estimatedTotal ??
+        0,
+      payment_method: bookingData.payment_method || bookingData.paymentMethod || "Cash on Pickup",
+      payment_status: bookingData.payment_status || bookingData.paymentStatus || "Pending",
       notes: bookingData.notes || "",
-      staff_id: null,
+      staff_id: bookingData.staff_id || null,
+      rider_id: bookingData.rider_id || null,
       created_at: serverTimestamp(),
       updated_at: serverTimestamp(),
     };
@@ -147,23 +193,409 @@ export const getStaffBookings = async (staffId, status = null) => {
 };
 
 /**
+ * Subscribe to pending bookings and bookings owned by a staff member,
+ * including the existing payment details needed by the staff workflow.
+ */
+export const subscribeToStaffBookings = (
+  staffId,
+  onBookings,
+  onError,
+  includePayments = true
+) => {
+  const bookingSets = new Map();
+  let payments = [];
+
+  const emitBookings = () => {
+    const paymentByBooking = new Map(
+      payments.map((payment) => [String(payment.booking_id), payment])
+    );
+    const bookings = new Map();
+
+    bookingSets.forEach((set) => {
+      set.forEach((booking) => bookings.set(booking.id, booking));
+    });
+
+    onBookings(
+      [...bookings.values()]
+        .map((booking) => ({
+          ...booking,
+          payment: paymentByBooking.get(String(booking.id)) || null,
+        }))
+        .sort(
+          (a, b) =>
+            getTimestampMilliseconds(b.booking_date || b.created_at) -
+            getTimestampMilliseconds(a.booking_date || a.created_at)
+        )
+    );
+  };
+
+  const handleError = (error) => {
+    console.error("Error subscribing to staff bookings:", error);
+    onError(error);
+  };
+
+  const pendingUnsubscribe = onSnapshot(
+    query(collection(db, "bookings"), where("status", "==", "Pending")),
+    (snapshot) => {
+      bookingSets.set(
+        "pending",
+        snapshot.docs.map((bookingDoc) => ({
+          id: bookingDoc.id,
+          ...bookingDoc.data(),
+        }))
+      );
+      emitBookings();
+    },
+    handleError
+  );
+
+  const assignedUnsubscribe = onSnapshot(
+    query(collection(db, "bookings"), where("staff_id", "==", staffId)),
+    (snapshot) => {
+      bookingSets.set(
+        "assigned",
+        snapshot.docs.map((bookingDoc) => ({
+          id: bookingDoc.id,
+          ...bookingDoc.data(),
+        }))
+      );
+      emitBookings();
+    },
+    handleError
+  );
+
+  const paymentsUnsubscribe = includePayments
+    ? onSnapshot(
+        collection(db, "payments"),
+        (snapshot) => {
+          payments = snapshot.docs.map((paymentDoc) => ({
+            id: paymentDoc.id,
+            ...paymentDoc.data(),
+          }));
+          emitBookings();
+        },
+        handleError
+      )
+    : () => {};
+
+  return () => {
+    pendingUnsubscribe();
+    assignedUnsubscribe();
+    paymentsUnsubscribe();
+  };
+};
+
+/**
+ * Claim a pending booking for the staff member and auto-assign it to the
+ * rider with the fewest active jobs.
+ */
+export const acceptBooking = async (bookingId, staffId) => {
+  try {
+    const ridersSnapshot = await getDocs(
+      query(collection(db, "users"), where("role", "==", "rider"))
+    );
+    const riderRefs = ridersSnapshot.docs.map((riderDoc) => ({
+      id: riderDoc.id,
+      ref: riderDoc.ref,
+      data: riderDoc.data(),
+    }));
+
+    if (riderRefs.length === 0) {
+      throw new Error("No rider accounts are available to assign this booking.");
+    }
+
+    const existingWorkloads = await Promise.all(
+      riderRefs.map(async (rider) => {
+        if (typeof rider.data.active_booking_count === "number") {
+          return rider.data.active_booking_count;
+        }
+
+        const assignedBookings = await getDocs(
+          query(collection(db, "bookings"), where("rider_id", "==", rider.id))
+        );
+        return assignedBookings.docs.filter(
+          (bookingDoc) =>
+            !["Declined", "Delivered", "Completed"].includes(
+              bookingDoc.data().status
+            )
+        ).length;
+      })
+    );
+
+    const bookingRef = doc(db, "bookings", bookingId);
+    await runTransaction(db, async (transaction) => {
+      const bookingSnapshot = await transaction.get(bookingRef);
+      const riderSnapshots = await Promise.all(
+        riderRefs.map(({ ref }) => transaction.get(ref))
+      );
+
+      if (!bookingSnapshot.exists()) {
+        throw new Error(`Booking ${bookingId} does not exist.`);
+      }
+
+      const booking = bookingSnapshot.data();
+      if (booking.status !== "Pending" || booking.staff_id) {
+        throw new Error("This booking has already been claimed by another staff member.");
+      }
+
+      const riders = riderSnapshots.map((riderSnapshot, index) => {
+        const riderData = riderSnapshot.data();
+        return {
+          id: riderRefs[index].id,
+          ref: riderRefs[index].ref,
+          data: riderData,
+          activeBookingCount:
+            typeof riderData.active_booking_count === "number"
+              ? riderData.active_booking_count
+              : existingWorkloads[index],
+        };
+      });
+      riders.sort(
+        (a, b) =>
+          a.activeBookingCount - b.activeBookingCount ||
+          a.id.localeCompare(b.id)
+      );
+      const selectedRider = riders[0];
+      const riderName =
+        selectedRider.data.name ||
+        selectedRider.data.displayName ||
+        selectedRider.data.firstName ||
+        selectedRider.data.email ||
+        "Rider";
+
+      transaction.update(bookingRef, {
+        staff_id: staffId,
+        rider_id: selectedRider.id,
+        rider_name: riderName,
+        status: "Accepted",
+        updated_at: serverTimestamp(),
+      });
+      addBookingStatusNotification(transaction, booking, bookingId, "Accepted");
+      transaction.update(selectedRider.ref, {
+        active_booking_count: selectedRider.activeBookingCount + 1,
+      });
+    });
+  } catch (error) {
+    console.error("Error accepting and assigning booking:", error);
+    throw error;
+  }
+};
+
+/**
+ * Decline a pending booking while assigning ownership to the staff member.
+ */
+export const declinePendingBooking = async (bookingId, staffId) => {
+  try {
+    const bookingRef = doc(db, "bookings", bookingId);
+    await runTransaction(db, async (transaction) => {
+      const bookingSnapshot = await transaction.get(bookingRef);
+
+      if (!bookingSnapshot.exists()) {
+        throw new Error(`Booking ${bookingId} does not exist.`);
+      }
+
+      const booking = bookingSnapshot.data();
+      if (booking.status !== "Pending" || booking.staff_id) {
+        throw new Error("This booking has already been claimed by another staff member.");
+      }
+
+      transaction.update(bookingRef, {
+        staff_id: staffId,
+        status: "Declined",
+        updated_at: serverTimestamp(),
+      });
+      addBookingStatusNotification(transaction, booking, bookingId, "Declined");
+    });
+  } catch (error) {
+    console.error("Error declining booking:", error);
+    throw error;
+  }
+};
+
+/**
+ * Update the status of a booking already assigned to the current staff member.
+ */
+export const updateStaffBookingStatus = async (
+  bookingId,
+  staffId,
+  newStatus
+) => {
+  try {
+    const bookingRef = doc(db, "bookings", bookingId);
+    await runTransaction(db, async (transaction) => {
+      const bookingSnapshot = await transaction.get(bookingRef);
+      if (!bookingSnapshot.exists()) {
+        throw new Error(`Booking ${bookingId} does not exist.`);
+      }
+
+      const booking = bookingSnapshot.data();
+      if (booking.staff_id !== staffId) {
+        throw new Error("This booking is not assigned to the current staff member.");
+      }
+      if (!STAFF_BOOKING_TRANSITIONS[booking.status]?.includes(newStatus)) {
+        throw new Error(
+          `Staff cannot change booking status from "${booking.status}" to "${newStatus}".`
+        );
+      }
+
+      transaction.update(bookingRef, {
+        status: newStatus,
+        updated_at: serverTimestamp(),
+      });
+      addBookingStatusNotification(transaction, booking, bookingId, newStatus);
+    });
+  } catch (error) {
+    console.error("Error updating staff booking status:", error);
+    throw error;
+  }
+};
+
+/**
+ * Save staff-calculated laundry details to the shared booking and payment records.
+ */
+export const updateStaffBookingDetails = async (
+  bookingId,
+  staffId,
+  details
+) => {
+  try {
+    const bookingRef = doc(db, "bookings", bookingId);
+    const bookingSnapshot = await getDoc(bookingRef);
+
+    if (!bookingSnapshot.exists()) {
+      throw new Error(`Booking ${bookingId} does not exist.`);
+    }
+    if (bookingSnapshot.data().staff_id !== staffId) {
+      throw new Error("This booking is not assigned to the current staff member.");
+    }
+
+    await updateDoc(bookingRef, {
+      ...details,
+      updated_at: serverTimestamp(),
+    });
+
+    const paymentSnapshot = await getDocs(
+      query(collection(db, "payments"), where("booking_id", "==", bookingId))
+    );
+    await Promise.all(
+      paymentSnapshot.docs.map((paymentDoc) =>
+        updateDoc(paymentDoc.ref, {
+          total_amount: details.total_amount,
+          weight: details.weight,
+          laundry_subtotal: details.laundry_subtotal,
+          delivery_fee: details.delivery_fee,
+          updated_at: serverTimestamp(),
+        })
+      )
+    );
+  } catch (error) {
+    console.error("Error updating staff booking details:", error);
+    throw error;
+  }
+};
+
+/**
  * Get bookings assigned to a rider. The Firestore query is scoped by rider_id.
  */
 export const getRiderBookings = async (riderId) => {
   try {
     const q = query(
       collection(db, "bookings"),
-      where("rider_id", "==", riderId),
-      orderBy("booking_date", "desc")
+      where("rider_id", "==", riderId)
     );
 
     const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map((bookingDoc) => ({
+    const bookings = querySnapshot.docs.map((bookingDoc) => ({
       id: bookingDoc.id,
       ...bookingDoc.data(),
     }));
+    return bookings.sort(
+      (a, b) =>
+        getTimestampMilliseconds(b.booking_date || b.created_at) -
+        getTimestampMilliseconds(a.booking_date || a.created_at)
+    );
   } catch (error) {
     console.error("Error getting rider bookings:", error);
+    throw error;
+  }
+};
+
+/**
+ * Subscribe to bookings assigned to a rider.
+ */
+export const subscribeToRiderBookings = (riderId, onBookings, onError) => {
+  const q = query(
+    collection(db, "bookings"),
+    where("rider_id", "==", riderId)
+  );
+
+  return onSnapshot(
+    q,
+    (querySnapshot) => {
+      onBookings(querySnapshot.docs.map((bookingDoc) => ({
+        id: bookingDoc.id,
+        ...bookingDoc.data(),
+      })).sort(
+        (a, b) =>
+          getTimestampMilliseconds(b.booking_date || b.created_at) -
+          getTimestampMilliseconds(a.booking_date || a.created_at)
+      ));
+    },
+    onError
+  );
+};
+
+/**
+ * Update a rider-owned booking only for pickup and delivery transitions.
+ */
+export const updateRiderBookingStatus = async (bookingId, riderId, newStatus) => {
+  try {
+    const bookingRef = doc(db, "bookings", bookingId);
+    const allowedTransitions = {
+      "Ready for Pickup": "In Laundry",
+      "To Deliver": "Delivered",
+    };
+    const riderRef = doc(db, "users", riderId);
+
+    await runTransaction(db, async (transaction) => {
+      const [bookingSnapshot, riderSnapshot] = await Promise.all([
+        transaction.get(bookingRef),
+        transaction.get(riderRef),
+      ]);
+
+      if (!bookingSnapshot.exists()) {
+        throw new Error(`Booking ${bookingId} does not exist.`);
+      }
+
+      const booking = bookingSnapshot.data();
+      if (booking.rider_id !== riderId) {
+        throw new Error("This booking is not assigned to the current rider.");
+      }
+
+      if (allowedTransitions[booking.status] !== newStatus) {
+        throw new Error(
+          `Rider cannot change booking status from "${booking.status}" to "${newStatus}".`
+        );
+      }
+
+      transaction.update(bookingRef, {
+        status: newStatus,
+        updated_at: serverTimestamp(),
+      });
+      addBookingStatusNotification(transaction, booking, bookingId, newStatus);
+
+      if (
+        newStatus === "Delivered" &&
+        riderSnapshot.exists() &&
+        riderSnapshot.data().active_booking_count > 0
+      ) {
+        transaction.update(riderRef, {
+          active_booking_count: riderSnapshot.data().active_booking_count - 1,
+        });
+      }
+    });
+  } catch (error) {
+    console.error("Error updating rider booking status:", error);
     throw error;
   }
 };
@@ -189,26 +621,6 @@ export const getPendingBookings = async () => {
     return bookings;
   } catch (error) {
     console.error("Error getting pending bookings:", error);
-    throw error;
-  }
-};
-
-/**
- * Accept booking (assign to staff)
- * @param {string} bookingId - Booking ID
- * @param {string} staffId - Staff ID
- * @returns {Promise<void>}
- */
-export const acceptBooking = async (bookingId, staffId) => {
-  try {
-    const bookingRef = doc(db, "bookings", bookingId);
-    await updateDoc(bookingRef, {
-      staff_id: staffId,
-      status: "Accepted",
-      updated_at: serverTimestamp(),
-    });
-  } catch (error) {
-    console.error("Error accepting booking:", error);
     throw error;
   }
 };

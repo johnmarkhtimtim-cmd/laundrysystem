@@ -23,10 +23,34 @@ service cloud.firestore {
       return userRole('rider');
     }
 
+    function customerOwnsBooking(bookingId) {
+      return bookingId is string
+        && exists(/databases/$(database)/documents/bookings/$(bookingId))
+        && get(/databases/$(database)/documents/bookings/$(bookingId)).data.customer_id == request.auth.uid;
+    }
+
     match /users/{userId} {
-      allow read: if signedIn() && (request.auth.uid == userId || admin());
+      allow read: if signedIn()
+        && (request.auth.uid == userId || admin()
+          || (staff() && resource.data.role == 'rider'));
       allow create: if signedIn() && request.auth.uid == userId;
-      allow update: if signedIn() && (request.auth.uid == userId || admin());
+      allow update: if signedIn()
+        && (request.auth.uid == userId || admin()
+          || (staff()
+            && resource.data.role == 'rider'
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['active_booking_count'])
+            && ((resource.data.active_booking_count is number
+                && request.resource.data.active_booking_count == resource.data.active_booking_count + 1)
+              || ((!('active_booking_count' in resource.data)
+                  || !(resource.data.active_booking_count is number))
+                && request.resource.data.active_booking_count is number
+                && request.resource.data.active_booking_count > 0)))
+          || (rider()
+            && request.auth.uid == userId
+            && resource.data.active_booking_count is number
+            && resource.data.active_booking_count > 0
+            && request.resource.data.active_booking_count == resource.data.active_booking_count - 1
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['active_booking_count'])));
       allow delete: if admin();
     }
 
@@ -40,22 +64,93 @@ service cloud.firestore {
     }
 
     match /bookings/{bookingId} {
-      allow create: if signedIn() && request.resource.data.customer_id == request.auth.uid;
+      allow create: if signedIn()
+        && request.resource.data.customer_id == request.auth.uid
+        && request.resource.data.staff_id == null
+        && request.resource.data.rider_id == null;
       allow read: if admin()
         || (userRole('customer') && resource.data.customer_id == request.auth.uid)
         || (staff() && (resource.data.staff_id == request.auth.uid || resource.data.status == 'Pending'))
+        || (staff() && resource.data.rider_id is string)
         || (rider() && resource.data.rider_id == request.auth.uid);
       allow update: if admin()
         || (staff() && resource.data.staff_id == request.auth.uid)
+        || (staff()
+          && resource.data.status == 'Pending'
+          && resource.data.get('staff_id', null) == null
+          && request.resource.data.staff_id == request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'staff_id',
+            'rider_id',
+            'rider_name',
+            'status',
+            'updated_at'
+          ])
+          && ((request.resource.data.status == 'Accepted'
+              && request.resource.data.rider_id is string
+              && get(/databases/$(database)/documents/users/$(request.resource.data.rider_id)).data.role == 'rider')
+            || (request.resource.data.status == 'Declined'
+              && request.resource.data.get('rider_id', null) == null)))
         || (rider() && resource.data.rider_id == request.auth.uid
           && request.resource.data.rider_id == request.auth.uid
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updated_at']));
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updated_at'])
+          && ((resource.data.status == 'Ready for Pickup'
+              && request.resource.data.status == 'In Laundry')
+            || (resource.data.status == 'To Deliver'
+              && request.resource.data.status == 'Delivered')));
       allow delete: if admin();
     }
 
     match /payments/{paymentId} {
-      allow read: if admin() || (signedIn() && resource.data.customer_id == request.auth.uid);
-      allow write: if admin() || staff();
+      allow read: if admin() || staff()
+        || (signedIn() && resource.data.customer_id == request.auth.uid);
+      allow create: if admin() || staff()
+        || (userRole('customer')
+          && request.resource.data.customer_id == request.auth.uid
+          && customerOwnsBooking(request.resource.data.booking_id)
+          && request.resource.data.payment_status == 'Pending'
+          && request.resource.data.amount is number
+          && request.resource.data.amount == get(
+            /databases/$(database)/documents/bookings/$(request.resource.data.booking_id)
+          ).data.total_amount
+          && request.resource.data.payment_method in ['GCash', 'Cash', 'Cash on Pickup']
+          && request.resource.data.keys().hasOnly([
+            'payment_id',
+            'booking_id',
+            'customer_id',
+            'customer_name',
+            'amount',
+            'total_amount',
+            'services',
+            'payment_method',
+            'payment_status',
+            'gcash_customer_name',
+            'reference_number',
+            'payment_date',
+            'created_at',
+            'updated_at'
+          ]));
+      allow update: if admin() || staff()
+        || (userRole('customer')
+          && resource.data.customer_id == request.auth.uid
+          && resource.data.payment_status == 'Pending'
+          && request.resource.data.payment_status == 'Pending'
+          && request.resource.data.customer_id == resource.data.customer_id
+          && request.resource.data.booking_id == resource.data.booking_id
+          && customerOwnsBooking(resource.data.booking_id)
+          && request.resource.data.amount is number
+          && request.resource.data.amount == get(
+            /databases/$(database)/documents/bookings/$(resource.data.booking_id)
+          ).data.total_amount
+          && request.resource.data.payment_method in ['GCash', 'Cash', 'Cash on Pickup']
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'amount',
+            'payment_method',
+            'gcash_customer_name',
+            'reference_number',
+            'updated_at'
+          ]));
+      allow delete: if admin() || staff();
     }
 
     match /notifications/{notificationId} {

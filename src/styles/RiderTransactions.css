@@ -263,6 +263,7 @@
   background: #2563eb;
   color: #ffffff;
   padding: 9px 13px;
+  min-height: 44px;
   border-radius: 8px;
   cursor: pointer;
   font-size: 12px;
@@ -274,6 +275,17 @@
 .update-status-btn:hover {
   background: #1d4ed8;
   transform: translateY(-1px);
+}
+
+.update-status-btn:focus-visible {
+  outline: 3px solid rgba(37, 99, 235, 0.35);
+  outline-offset: 2px;
+}
+
+.update-status-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
 }
 
 /* =========================================================
