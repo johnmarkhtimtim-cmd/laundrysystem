@@ -9,10 +9,11 @@ import {
 import L from "leaflet";
 
 import "leaflet/dist/leaflet.css";
-import "../../styles/RiderTransactions.css";
+import "../../styles/StaffBookings.css";
 import { useAuth } from "../../context/AuthContext";
 import {
   subscribeToRiderBookings,
+  updateRiderBookingDetails,
   updateRiderBookingStatus,
 } from "../../services/bookingService";
 
@@ -460,6 +461,9 @@ function RiderTransactions() {
   const [notification, setNotification] =
     useState("");
 
+  const [editableWeight, setEditableWeight] =
+    useState("");
+
   const [updating, setUpdating] =
     useState(false);
 
@@ -482,6 +486,13 @@ function RiderTransactions() {
       user.uid,
       (assignedBookings) => {
         setBookings(assignedBookings);
+        setSelectedBooking((selected) =>
+          selected
+            ? assignedBookings.find(
+                (booking) => booking.id === selected.id
+              ) || selected
+            : selected
+        );
         setLoading(false);
       },
       (error) => {
@@ -560,6 +571,9 @@ function RiderTransactions() {
     setRiderLocation(null);
     setRiderLocationError("");
     setSelectedBooking(booking);
+    setEditableWeight(
+      getWeight(booking) ? String(getWeight(booking)) : ""
+    );
 
     setShowStatusModal(true);
   };
@@ -575,6 +589,7 @@ function RiderTransactions() {
     setRiderLocationError("");
     setShowStatusModal(false);
     setSelectedBooking(null);
+    setEditableWeight("");
   };
 
   /* =======================================================
@@ -641,10 +656,86 @@ function RiderTransactions() {
   const handlePickedUp = () => {
     if (!selectedBooking) return;
 
+    const weight = Number(getWeight(selectedBooking));
+    if (!weight || weight <= 0) {
+      setNotification("Please enter and save the laundry weight first.");
+      return;
+    }
+
     updateBookingStatus(
       selectedBooking.id,
       "In Laundry"
     );
+  };
+
+  const handleSaveWeight = async () => {
+    if (!selectedBooking) return;
+
+    const weight = Number(editableWeight);
+    if (
+      editableWeight === "" ||
+      Number.isNaN(weight) ||
+      weight <= 0
+    ) {
+      setNotification("Please enter a valid weight greater than 0 kg.");
+      return;
+    }
+
+    setUpdating(true);
+    try {
+      const serviceRate = getServiceRate(selectedBooking);
+      const laundrySubtotal = calculateLaundrySubtotal(
+        selectedBooking,
+        weight
+      );
+      const deliveryFee = getDeliveryFee(selectedBooking);
+      const totalAmount = laundrySubtotal + deliveryFee;
+      const amountToBePaid = Math.max(
+        0,
+        totalAmount - getInitialPayment(selectedBooking)
+      );
+      const bookingDetails = {
+        weight,
+        laundryWeight: weight,
+        kg: weight,
+        serviceRate,
+        laundrySubtotal,
+        laundry_subtotal: laundrySubtotal,
+        deliveryFee,
+        delivery_fee: deliveryFee,
+        totalAmount,
+        total_amount: totalAmount,
+        estimatedTotal: totalAmount,
+        amountToBePaid,
+      };
+
+      await updateRiderBookingDetails(
+        selectedBooking.id,
+        user.uid,
+        bookingDetails
+      );
+
+      const updatedBooking = {
+        ...selectedBooking,
+        ...bookingDetails,
+        updatedAt: new Date().toISOString(),
+      };
+      setBookings((currentBookings) =>
+        currentBookings.map((booking) =>
+          booking.id === updatedBooking.id ? updatedBooking : booking
+        )
+      );
+      setSelectedBooking(updatedBooking);
+      window.dispatchEvent(new Event("laundrymateBookingUpdated"));
+      setNotification(
+        `Weight updated to ${weight} kg. Total amount is ${formatCurrency(totalAmount)}.`
+      );
+    } catch (error) {
+      console.error("Unable to update rider booking weight:", error);
+      setNotification(error.message || "Unable to update weight.");
+    } finally {
+      setUpdating(false);
+    }
   };
 
   /* =======================================================
@@ -765,10 +856,11 @@ function RiderTransactions() {
 
       <div className="section-header">
         <div>
-          <h1>Assigned Pickups &amp; Deliveries</h1>
+          <h1>Assigned Bookings</h1>
 
           <p>
-            View your assigned jobs and update pickup and delivery status.
+            View your assigned bookings and complete your pickup and delivery
+            steps in the laundry workflow.
           </p>
         </div>
 
@@ -947,10 +1039,10 @@ function RiderTransactions() {
                         aria-label={`View booking ${booking.id}, status ${booking.status || "Pending"}`}
                       >
                         {booking.status === "Ready for Pickup"
-                          ? "Pickup Action"
+                          ? "Start Pickup"
                           : booking.status === "To Deliver"
-                            ? "Delivery Action"
-                            : "View Booking"}
+                            ? "Start Delivery"
+                            : "View Details"}
                       </button>
                     </td>
                   </tr>
@@ -1160,12 +1252,14 @@ function RiderTransactions() {
                   </div>
 
                   <div className="status-actions">
+                    <p role="status">
+                      Staff accepted this booking. Pickup actions will be
+                      available when the laundry is ready for pickup.
+                    </p>
                     <button
                       type="button"
                       className="secondary-btn"
-                      onClick={
-                        closeStatusModal
-                      }
+                      onClick={closeStatusModal}
                       disabled={updating}
                     >
                       Close
@@ -1336,6 +1430,86 @@ function RiderTransactions() {
                     </div>
                   </div>
 
+                  <div className="pickup-summary">
+                    <div className="pickup-summary-title">
+                      Payment Calculation
+                    </div>
+
+                    <div className="weight-editor">
+                      <label htmlFor="rider-laundry-weight">
+                        Actual Laundry Weight
+                      </label>
+
+                      <div className="weight-input-row">
+                        <input
+                          id="rider-laundry-weight"
+                          type="number"
+                          min="0.1"
+                          step="0.1"
+                          value={editableWeight}
+                          onChange={(event) =>
+                            setEditableWeight(event.target.value)
+                          }
+                          placeholder="Enter weight"
+                          disabled={updating}
+                        />
+                        <span>kg</span>
+                      </div>
+
+                      <small>
+                        Service rate:{" "}
+                        {formatCurrency(getServiceRate(selectedBooking))}
+                        /kg
+                      </small>
+                    </div>
+
+                    <PaymentRow
+                      label="Weight"
+                      value={editableWeight ? `${editableWeight} kg` : "Not set"}
+                    />
+                    <PaymentRow
+                      label="Laundry Subtotal"
+                      value={formatCurrency(
+                        calculateLaundrySubtotal(selectedBooking, editableWeight)
+                      )}
+                    />
+                    <PaymentRow
+                      label="Delivery Fee"
+                      value={formatCurrency(getDeliveryFee(selectedBooking))}
+                    />
+                    <PaymentRow
+                      label="Total Amount"
+                      value={formatCurrency(
+                        calculateTotalAmount(selectedBooking, editableWeight)
+                      )}
+                      highlight
+                    />
+                    <PaymentRow
+                      label="Initial Payment"
+                      value={formatCurrency(getInitialPayment(selectedBooking))}
+                    />
+                    <PaymentRow
+                      label="Amount to be Paid"
+                      value={formatCurrency(
+                        Math.max(
+                          0,
+                          calculateTotalAmount(selectedBooking, editableWeight) -
+                            getInitialPayment(selectedBooking)
+                        )
+                      )}
+                      balance
+                    />
+
+                    <button
+                      type="button"
+                      className="save-weight-btn"
+                      onClick={handleSaveWeight}
+                      disabled={updating}
+                    >
+                      {updating ? "Updating..." : "Update Weight & Amount"}
+                    </button>
+                  </div>
+
                   <div className="status-actions">
                     <button
                       type="button"
@@ -1343,7 +1517,7 @@ function RiderTransactions() {
                       onClick={
                         handlePickedUp
                       }
-                      disabled={updating}
+                      disabled={updating || !getWeight(selectedBooking)}
                     >
                       Picked Up
                     </button>
@@ -1698,8 +1872,9 @@ function RiderTransactions() {
                   DELIVERED
               ================================================= */}
 
-              {selectedBooking.status ===
-                "Delivered" && (
+              {["Delivered", "Completed"].includes(
+                selectedBooking.status
+              ) && (
                 <>
                   <div className="completed-message">
 
@@ -1708,14 +1883,15 @@ function RiderTransactions() {
                     </div>
 
                     <h3>
-                      Booking Completed
+                      {selectedBooking.status === "Completed"
+                        ? "Booking Completed"
+                        : "Laundry Delivered"}
                     </h3>
 
                     <p>
-                      The laundry order has
-                      been successfully
-                      delivered to the
-                      customer.
+                      {selectedBooking.status === "Completed"
+                        ? "Staff marked this booking as completed."
+                        : "The laundry order has been successfully delivered to the customer."}
                     </p>
 
                     <div className="completed-payment">
@@ -1864,6 +2040,24 @@ function InfoLine({
         {value}
       </strong>
 
+    </div>
+  );
+}
+
+function PaymentRow({
+  label,
+  value,
+  highlight = false,
+  balance = false,
+}) {
+  return (
+    <div
+      className={`pickup-summary-row ${
+        highlight ? "highlight-row" : ""
+      } ${balance ? "balance-row" : ""}`}
+    >
+      <span>{label}:</span>
+      <strong>{value}</strong>
     </div>
   );
 }

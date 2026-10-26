@@ -10,7 +10,8 @@ import {
   where,
   orderBy,
   onSnapshot,
-  serverTimestamp
+  serverTimestamp,
+  writeBatch
 } from "firebase/firestore";
 import { db } from "./firebase";
 import { getBookingStatusNotificationDetails } from "./notificationService";
@@ -490,6 +491,67 @@ export const updateStaffBookingDetails = async (
     );
   } catch (error) {
     console.error("Error updating staff booking details:", error);
+    throw error;
+  }
+};
+
+/**
+ * Save rider-measured weight and calculated totals for an assigned pickup.
+ */
+export const updateRiderBookingDetails = async (
+  bookingId,
+  riderId,
+  details
+) => {
+  try {
+    const bookingRef = doc(db, "bookings", bookingId);
+    const bookingSnapshot = await getDoc(bookingRef);
+
+    if (!bookingSnapshot.exists()) {
+      throw new Error(`Booking ${bookingId} does not exist.`);
+    }
+
+    const booking = bookingSnapshot.data();
+    if (booking.rider_id !== riderId) {
+      throw new Error("This booking is not assigned to the current rider.");
+    }
+    if (booking.status !== "Ready for Pickup") {
+      throw new Error("Weight can only be recorded for a ready pickup.");
+    }
+
+    const paymentSnapshot = await getDocs(
+      query(collection(db, "payments"), where("booking_id", "==", bookingId))
+    );
+    const batch = writeBatch(db);
+    batch.update(bookingRef, {
+      weight: details.weight,
+      laundryWeight: details.laundryWeight,
+      kg: details.kg,
+      serviceRate: details.serviceRate,
+      laundrySubtotal: details.laundrySubtotal,
+      laundry_subtotal: details.laundry_subtotal,
+      deliveryFee: details.deliveryFee,
+      delivery_fee: details.delivery_fee,
+      totalAmount: details.totalAmount,
+      total_amount: details.total_amount,
+      estimatedTotal: details.estimatedTotal,
+      amountToBePaid: details.amountToBePaid,
+      updated_at: serverTimestamp(),
+    });
+
+    paymentSnapshot.docs.forEach((paymentDoc) => {
+      batch.update(paymentDoc.ref, {
+        total_amount: details.total_amount,
+        weight: details.weight,
+        laundry_subtotal: details.laundry_subtotal,
+        delivery_fee: details.delivery_fee,
+        updated_at: serverTimestamp(),
+      });
+    });
+
+    await batch.commit();
+  } catch (error) {
+    console.error("Error updating rider booking details:", error);
     throw error;
   }
 };

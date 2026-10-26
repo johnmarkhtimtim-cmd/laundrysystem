@@ -93,17 +93,44 @@ service cloud.firestore {
               && request.resource.data.get('rider_id', null) == null)))
         || (rider() && resource.data.rider_id == request.auth.uid
           && request.resource.data.rider_id == request.auth.uid
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updated_at'])
-          && ((resource.data.status == 'Ready for Pickup'
-              && request.resource.data.status == 'In Laundry')
-            || (resource.data.status == 'To Deliver'
-              && request.resource.data.status == 'Delivered')));
+          && ((request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updated_at'])
+              && ((resource.data.status == 'Ready for Pickup'
+                  && request.resource.data.status == 'In Laundry')
+                || (resource.data.status == 'To Deliver'
+                  && request.resource.data.status == 'Delivered')))
+            || (resource.data.status == 'Ready for Pickup'
+              && request.resource.data.status == resource.data.status
+              && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                'weight',
+                'laundryWeight',
+                'kg',
+                'serviceRate',
+                'laundrySubtotal',
+                'laundry_subtotal',
+                'deliveryFee',
+                'delivery_fee',
+                'totalAmount',
+                'total_amount',
+                'estimatedTotal',
+                'amountToBePaid',
+                'updated_at'
+              ])
+              && request.resource.data.weight is number
+              && request.resource.data.weight > 0
+              && request.resource.data.total_amount is number
+              && request.resource.data.laundry_subtotal is number
+              && request.resource.data.delivery_fee is number)));
       allow delete: if admin();
     }
 
     match /payments/{paymentId} {
       allow read: if admin() || staff()
-        || (signedIn() && resource.data.customer_id == request.auth.uid);
+        || (signedIn() && resource.data.customer_id == request.auth.uid)
+        || (rider()
+          && resource.data.booking_id is string
+          && exists(/databases/$(database)/documents/bookings/$(resource.data.booking_id))
+          && get(/databases/$(database)/documents/bookings/$(resource.data.booking_id)).data.rider_id == request.auth.uid
+          && get(/databases/$(database)/documents/bookings/$(resource.data.booking_id)).data.status == 'Ready for Pickup');
       allow create: if admin() || staff()
         || (userRole('customer')
           && request.resource.data.customer_id == request.auth.uid
@@ -131,6 +158,22 @@ service cloud.firestore {
             'updated_at'
           ]));
       allow update: if admin() || staff()
+        || (rider()
+          && resource.data.booking_id is string
+          && exists(/databases/$(database)/documents/bookings/$(resource.data.booking_id))
+          && get(/databases/$(database)/documents/bookings/$(resource.data.booking_id)).data.rider_id == request.auth.uid
+          && get(/databases/$(database)/documents/bookings/$(resource.data.booking_id)).data.status == 'Ready for Pickup'
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'total_amount',
+            'weight',
+            'laundry_subtotal',
+            'delivery_fee',
+            'updated_at'
+          ])
+          && request.resource.data.total_amount is number
+          && request.resource.data.weight is number
+          && request.resource.data.laundry_subtotal is number
+          && request.resource.data.delivery_fee is number)
         || (userRole('customer')
           && resource.data.customer_id == request.auth.uid
           && resource.data.payment_status == 'Pending'
