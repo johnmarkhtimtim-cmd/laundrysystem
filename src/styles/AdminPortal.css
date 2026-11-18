@@ -17,6 +17,8 @@
 .portal-brand small { margin-top: 2px; color: var(--portal-muted); font-size: 11px; }
 .portal-brand button, .portal-menu { display: none; }
 .portal-nav-group { margin-bottom: 16px; }
+.portal-sidebar nav { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
+.portal-brand, .portal-nav-bottom { flex-shrink: 0; }
 .portal-nav-group p { margin: 0 10px 7px; color: #94a3b8; font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
 .portal-sidebar a, .portal-sidebar button { display: flex; align-items: center; gap: 11px; width: 100%; min-height: 42px; padding: 0 11px; border: 0; border-radius: 9px; background: transparent; color: var(--portal-muted); text-decoration: none; font: 600 13px inherit; cursor: pointer; }
 .portal-sidebar a:hover, .portal-sidebar button:hover { background: #f4f7ff; color: var(--portal-blue); }

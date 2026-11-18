@@ -844,39 +844,6 @@ function Notification() {
 
       </section>
 
-      {/* =========================================
-          NOTIFICATION SETTINGS
-      ========================================= */}
-
-      <section className="notification-settings">
-
-        <div className="settings-icon">
-          ⚙
-        </div>
-
-        <div className="settings-content">
-
-          <h3>
-            Notification Preferences
-          </h3>
-
-          <p>
-            Manage which LaundryMate updates
-            you want to receive.
-          </p>
-
-        </div>
-
-        <button
-          className="settings-btn"
-          type="button"
-        >
-          Manage Preferences
-          <span>→</span>
-        </button>
-
-      </section>
-
     </div>
   );
 }

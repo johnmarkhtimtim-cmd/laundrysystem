@@ -35,7 +35,6 @@ const STAFF_BOOKING_TRANSITIONS = {
   Folding: ["To Deliver"],
   "To Deliver": ["Delivered"],
   "Ready for Customer Pickup": ["Delivered"],
-  Delivered: ["Completed"],
 };
 
 const addBookingStatusNotification = (transaction, booking, bookingId, status) => {

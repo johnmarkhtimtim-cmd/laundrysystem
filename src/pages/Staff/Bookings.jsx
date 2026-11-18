@@ -19,6 +19,27 @@ import {
   updateStaffBookingStatus,
 } from "../../services/bookingService";
 import { subscribeToServices } from "../../services/laundryService";
+import {
+  WEIGHT_TIER_KG,
+  WEIGHT_TIER_RATE,
+  calculateLaundrySubtotal,
+  calculateTotalAmount,
+  formatCurrency,
+  formatDate,
+  getAmountToBePaid,
+  getContactNumber,
+  getCustomerName,
+  getDeliveryFee,
+  getInitialPayment,
+  getInitials,
+  getPayment,
+  getPickupLocation,
+  getServiceArray,
+  getServices,
+  getStatusClass,
+  getTotalAmount,
+  getWeight,
+} from "./bookingHelpers";
 
 /* =========================================================
    LEAFLET MARKER FIX
@@ -81,233 +102,6 @@ function FitPickupAndRider({ pickupCoordinates, riderLocation }) {
 }
 
 /* =========================================================
-   DELIVERY FEES
-========================================================= */
-
-const DELIVERY_FEES = {
-  "Pickup & Delivery": 30,
-  "Pickup Only": 20,
-};
-
-/* =========================================================
-   LAUNDRY WEIGHT PRICING
-
-   Fixed tiered rate: every 5 kg (or part thereof) costs ₱150.
-   Laundry Subtotal = CEILING(Actual Weight / WEIGHT_TIER_KG) × WEIGHT_TIER_RATE
-========================================================= */
-
-const WEIGHT_TIER_KG = 5;
-const WEIGHT_TIER_RATE = 150;
-
-/* =========================================================
-   PAYMENT
-========================================================= */
-
-function getPayment(booking) {
-  return booking?.payment || null;
-}
-
-/* =========================================================
-   CUSTOMER
-========================================================= */
-
-function getCustomerName(booking) {
-  if (!booking) return "Unknown Customer";
-
-  const name =
-    booking.customerName ||
-    booking.customer_name ||
-    booking.name ||
-    booking.fullName ||
-    booking.displayName ||
-    booking.customer?.name ||
-    booking.customer?.fullName ||
-    booking.userName;
-
-  return name ? String(name).trim() : "Unknown Customer";
-}
-
-function getInitials(name) {
-  if (!name) return "C";
-
-  const parts = String(name)
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean);
-
-  if (parts.length === 1) {
-    return parts[0].charAt(0).toUpperCase();
-  }
-
-  return (
-    parts[0].charAt(0) +
-    parts[parts.length - 1].charAt(0)
-  ).toUpperCase();
-}
-
-/* =========================================================
-   SERVICES
-========================================================= */
-
-function getServiceArray(booking) {
-  if (!booking) return [];
-
-  if (Array.isArray(booking.services)) {
-    return booking.services;
-  }
-
-  if (typeof booking.services === "string") {
-    return booking.services
-      .split(",")
-      .map((item) => item.trim())
-      .filter(Boolean);
-  }
-
-  if (booking.service) {
-    return [booking.service];
-  }
-
-  return [];
-}
-
-function getServices(booking) {
-  const services = getServiceArray(booking);
-
-  return services.length
-    ? services.join(", ")
-    : "Laundry Service";
-}
-
-/* =========================================================
-   WEIGHT
-========================================================= */
-
-function getWeight(booking) {
-  if (!booking) return "";
-
-  return (
-    booking.weight ??
-    booking.laundryWeight ??
-    booking.kg ??
-    ""
-  );
-}
-
-/* =========================================================
-   DELIVERY FEE
-========================================================= */
-
-function getDeliveryFee(booking) {
-  if (!booking) return 0;
-
-  if (
-    booking.deliveryFee !== undefined &&
-    booking.deliveryFee !== null &&
-    booking.deliveryFee !== ""
-  ) {
-    const savedFee = Number(booking.deliveryFee);
-
-    if (!Number.isNaN(savedFee)) {
-      return savedFee;
-    }
-  }
-
-  const pickupType =
-    booking.pickupType ||
-    booking.deliveryType ||
-    "Pickup & Delivery";
-
-  return DELIVERY_FEES[pickupType] || 0;
-}
-
-/* =========================================================
-   INITIAL PAYMENT
-
-   The customer's verified initial payment always lives in the
-   matching Firestore "payments" record for this booking (created
-   when the customer pays at booking time). Booking-level fields are
-   kept only as a legacy fallback in case older bookings stored it
-   differently.
-========================================================= */
-
-function getInitialPayment(booking) {
-  if (!booking) return 0;
-
-  const payment = getPayment(booking);
-
-  const amount = Number(
-    payment?.initial_payment ??
-      payment?.initialPayment ??
-      payment?.amount ??
-      payment?.total_amount ??
-      payment?.totalAmount ??
-      booking.initialPayment ??
-      booking.downPayment ??
-      booking.paymentAmount ??
-      booking.amountPaid ??
-      booking.initialPaid ??
-      0
-  );
-
-  return Number.isNaN(amount) ? 0 : amount;
-}
-
-/* =========================================================
-   ADDRESS
-========================================================= */
-
-function getPickupLocation(booking) {
-  if (!booking) return "N/A";
-
-  if (booking.pickupAddress) {
-    return String(booking.pickupAddress);
-  }
-
-  if (
-    booking.pickupLocation &&
-    typeof booking.pickupLocation === "string"
-  ) {
-    return booking.pickupLocation;
-  }
-
-  return (
-    [
-      booking.address,
-      booking.pickup_address,
-      booking.barangay,
-      booking.barangay_name,
-      booking.city,
-      booking.city_name,
-      booking.province,
-      booking.province_name,
-      booking.landmark,
-    ]
-      .filter(Boolean)
-      .join(", ") || "N/A"
-  );
-}
-
-/* =========================================================
-   CONTACT
-========================================================= */
-
-function getContactNumber(booking) {
-  if (!booking) return "N/A";
-
-  return (
-    booking.contactNumber ||
-    booking.contact_number ||
-    booking.phone_number ||
-    booking.phone ||
-    booking.mobileNumber ||
-    booking.phoneNumber ||
-    booking.customer?.contactNumber ||
-    booking.customer?.phone ||
-    "N/A"
-  );
-}
-
-/* =========================================================
    COORDINATES
 ========================================================= */
 
@@ -349,40 +143,6 @@ function getCoordinates(booking) {
     latitude,
     longitude,
   };
-}
-
-/* =========================================================
-   FORMATTERS
-========================================================= */
-
-function formatCurrency(value) {
-  const amount = Number(value);
-
-  if (Number.isNaN(amount)) {
-    return "₱0.00";
-  }
-
-  return `₱${amount.toLocaleString("en-PH", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
-}
-
-function formatDate(value) {
-  if (!value) return "N/A";
-
-  const date =
-    typeof value.toDate === "function" ? value.toDate() : new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return "N/A";
-  }
-
-  return date.toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
 }
 
 function getPaymentReference(booking) {
@@ -475,58 +235,6 @@ function Bookings() {
       const key = String(serviceName).trim().toLowerCase();
       return total + (servicePriceMap[key] || 0);
     }, 0);
-  };
-
-  // Fixed tiered pricing: every 5 kg (or any part of it) is billed as a
-  // full ₱150 tier, regardless of which service(s) the booking has.
-  const calculateLaundrySubtotal = (booking, weight) => {
-    const kg = Number(weight);
-
-    if (!kg || kg <= 0 || Number.isNaN(kg)) return 0;
-
-    return Math.ceil(kg / WEIGHT_TIER_KG) * WEIGHT_TIER_RATE;
-  };
-
-  const calculateTotalAmount = (booking, weight) => {
-    return (
-      calculateLaundrySubtotal(booking, weight) +
-      getDeliveryFee(booking)
-    );
-  };
-
-  const getTotalAmount = (booking) => {
-    if (!booking) return 0;
-
-    const weight = getWeight(booking);
-
-    if (weight !== "" && Number(weight) > 0) {
-      return calculateTotalAmount(booking, weight);
-    }
-
-    const payment = getPayment(booking);
-
-    const total = Number(
-      booking.totalAmount ??
-        booking.total ??
-        booking.amount ??
-        booking.grandTotal ??
-        booking.price ??
-        booking.estimatedTotal ??
-        booking.total_amount ??
-        payment?.total_amount ??
-        payment?.totalAmount ??
-        payment?.amount ??
-        0
-    );
-
-    return Number.isNaN(total) ? 0 : total;
-  };
-
-  const getAmountToBePaid = (booking) => {
-    const total = getTotalAmount(booking);
-    const initial = getInitialPayment(booking);
-
-    return Math.max(0, total - initial);
   };
 
   /* =======================================================
@@ -986,15 +694,6 @@ function Bookings() {
      STATUS CLASS
   ======================================================= */
 
-  const getStatusClass = (status) => {
-    return (
-      status
-        ?.toLowerCase()
-        .replaceAll(" ", "-") ||
-      "pending"
-    );
-  };
-
   const pickupCoordinates = selectedBooking
     ? getCoordinates(selectedBooking)
     : null;
@@ -1087,6 +786,7 @@ function Bookings() {
             <tr>
               <th>Booking ID</th>
               <th>Customer</th>
+              <th>Contact Number</th>
               <th>Service Type</th>
               <th>Weight</th>
               <th>Total Amount</th>
@@ -1102,7 +802,7 @@ function Bookings() {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan="11" className="empty-state">
+                <td colSpan="12" className="empty-state">
                   Loading bookings from Firestore...
                 </td>
               </tr>
@@ -1136,6 +836,12 @@ function Bookings() {
                           </div>
                         </div>
                       </div>
+                    </td>
+
+                    <td>
+                      <span className="contact-number">
+                        {getContactNumber(booking)}
+                      </span>
                     </td>
 
                     <td>
@@ -1234,7 +940,7 @@ function Bookings() {
             ) : (
               <tr>
                 <td
-                  colSpan="11"
+                  colSpan="12"
                   className="empty-state"
                 >
                   <div className="empty-icon">

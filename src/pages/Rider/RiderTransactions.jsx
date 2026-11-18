@@ -120,7 +120,12 @@ function getCustomerName(booking) {
     booking.displayName ||
     booking.customer?.name ||
     booking.customer?.fullName ||
-    booking.userName;
+    booking.userName ||
+    [booking.customer?.firstName, booking.customer?.lastName]
+      .filter(Boolean)
+      .join(" ") ||
+    booking.payment?.customer_name ||
+    booking.payment?.customerName;
 
   return name ? String(name).trim() : "Unknown Customer";
 }
@@ -150,19 +155,42 @@ function getInitials(name) {
 function getServiceArray(booking) {
   if (!booking) return [];
 
-  if (Array.isArray(booking.services)) {
-    return booking.services;
-  }
+  const normalize = (value) => {
+    if (Array.isArray(value)) {
+      return value
+        .map((item) =>
+          typeof item === "string"
+            ? item.trim()
+            : String(item?.name || item?.serviceName || "").trim()
+        )
+        .filter(Boolean);
+    }
 
-  if (typeof booking.services === "string") {
-    return booking.services
-      .split(",")
-      .map((item) => item.trim())
-      .filter(Boolean);
-  }
+    if (typeof value === "string") {
+      return value
+        .split(",")
+        .map((item) => item.trim())
+        .filter(Boolean);
+    }
 
-  if (booking.service) {
-    return [booking.service];
+    return [];
+  };
+
+  const candidates = [
+    booking.services,
+    booking.selectedServices,
+    booking.service,
+    booking.serviceName,
+    booking.service_name,
+    booking.serviceType,
+    booking.service_type,
+    booking.payment?.services,
+  ];
+
+  for (const candidate of candidates) {
+    const services = normalize(candidate);
+
+    if (services.length) return services;
   }
 
   return [];
@@ -982,6 +1010,7 @@ function RiderTransactions() {
             <tr>
               <th>Booking ID</th>
               <th>Customer</th>
+              <th>Contact Number</th>
               <th>Service Type</th>
               <th>Weight</th>
               <th>Total Amount</th>
@@ -997,7 +1026,7 @@ function RiderTransactions() {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan="11" className="empty-state">
+                <td colSpan="12" className="empty-state">
                   Loading assigned bookings...
                 </td>
               </tr>
@@ -1031,6 +1060,12 @@ function RiderTransactions() {
                           </div>
                         </div>
                       </div>
+                    </td>
+
+                    <td>
+                      <span className="contact-number">
+                        {getContactNumber(booking)}
+                      </span>
                     </td>
 
                     <td>
@@ -1129,7 +1164,7 @@ function RiderTransactions() {
             ) : (
               <tr>
                 <td
-                  colSpan="11"
+                  colSpan="12"
                   className="empty-state"
                 >
                   <div className="empty-icon">

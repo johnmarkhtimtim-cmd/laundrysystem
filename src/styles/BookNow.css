@@ -557,6 +557,23 @@
     0 0 0 3px rgba(37, 99, 235, 0.1);
 }
 
+.form-group input.time-unavailable,
+.form-group input.time-unavailable:focus {
+  border-color: #dc2626;
+
+  box-shadow:
+    0 0 0 3px rgba(220, 38, 38, 0.1);
+}
+
+.time-unavailable-text {
+  margin: 6px 0 0;
+
+  color: #dc2626;
+
+  font-size: 12px;
+  font-weight: 600;
+}
+
 /* =========================================================
    LOCATION BUTTON
 ========================================================= */

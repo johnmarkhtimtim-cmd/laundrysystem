@@ -12,6 +12,10 @@ function normalizeBookingStatus(status) {
     return "To Deliver";
   }
 
+  if (status === "Completed") {
+    return "Delivered";
+  }
+
   return status || "Pending";
 }
 
@@ -54,7 +58,6 @@ function MyBooking() {
     "In Laundry",
     "To Deliver",
     "Delivered",
-    "Completed",
   ];
 
   // =====================================
@@ -217,7 +220,6 @@ function MyBooking() {
       "In Laundry": "🧺",
       "To Deliver": "🚚",
       Delivered: "✅",
-      Completed: "🎉",
     };
 
     return icons[status] || "○";
@@ -330,13 +332,12 @@ function MyBooking() {
         "Picked Up",
         "In Laundry",
         "To Deliver",
-        "Delivered",
       ].includes(normalizeBookingStatus(booking.status))
   ).length;
 
   const completedBookings = bookings.filter(
     (booking) =>
-      booking.status === "Completed"
+      normalizeBookingStatus(booking.status) === "Delivered"
   ).length;
 
   // =====================================
@@ -858,11 +859,14 @@ function MyBooking() {
 
                             const isCompleted =
                               index <
-                              statusIndex;
+                                statusIndex ||
+                              statusIndex ===
+                                statusWorkflow.length - 1;
 
                             const isActive =
                               index ===
-                              statusIndex;
+                                statusIndex &&
+                              !isCompleted;
 
                             return (
 
@@ -919,7 +923,7 @@ function MyBooking() {
                       ===================================== */}
 
                       {status ===
-                        "Completed" && (
+                        "Delivered" && (
 
                         <div className="completion-message">
 
@@ -930,12 +934,12 @@ function MyBooking() {
                           <div>
 
                             <strong>
-                              Laundry Completed!
+                              Laundry Delivered!
                             </strong>
 
                             <p>
                               Your laundry order
-                              has been completed.
+                              has been delivered.
                               Thank you for using
                               LaundryMate!
                             </p>

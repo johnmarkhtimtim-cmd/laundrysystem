@@ -13,7 +13,23 @@ import {
 } from "react-leaflet";
 
 import "leaflet/dist/leaflet.css";
+import L from "leaflet";
 import "../../styles/BookNow.css";
+
+// Vite doesn't bundle Leaflet's default marker images, so point to the CDN.
+delete L.Icon.Default.prototype._getIconUrl;
+
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl:
+    "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+  iconUrl:
+    "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+  shadowUrl:
+    "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+});
+
+const PICKUP_START_TIME = "08:00";
+const PICKUP_END_TIME = "16:00";
 
 // ======================================================
 // PICKUP OPTIONS
@@ -127,6 +143,9 @@ export default function BookNow() {
 
   const [schedule, setSchedule] = useState("");
   const [time, setTime] = useState("");
+  const isTimeUnavailable =
+    Boolean(time) &&
+    (time < PICKUP_START_TIME || time > PICKUP_END_TIME);
 
   const [address, setAddress] = useState("");
   const [barangay, setBarangay] = useState("");
@@ -402,43 +421,69 @@ export default function BookNow() {
       return;
     }
 
+    if (!window.isSecureContext) {
+      setError(
+        "Location access requires a secure (HTTPS) connection. Please select your location on the map instead."
+      );
+      setShowMap(true);
+      return;
+    }
+
     setIsLocating(true);
     setShowMap(true);
 
+    const handleSuccess = async (position) => {
+      const lat = position.coords.latitude;
+      const lng = position.coords.longitude;
+
+      setLatitude(lat);
+      setLongitude(lng);
+      setGpsAccuracy(position.coords.accuracy);
+      setIsLocating(false);
+
+      await reverseGeocode(lat, lng);
+    };
+
+    const handleFailure = (geoError) => {
+      console.error(geoError);
+
+      const messages = {
+        1: "Location permission was denied. Allow location access in your browser settings, or select your location on the map.",
+        2: "Your location is currently unavailable. Please select your location on the map.",
+        3: "Getting your location timed out. Please try again or select your location on the map.",
+      };
+
+      setError(
+        messages[geoError?.code] ||
+          "Unable to get your current location. Please select your location on the map."
+      );
+
+      setIsLocating(false);
+    };
+
+    // High accuracy (GPS) often times out on laptops/desktops, so fall back
+    // to a network-based position before giving up.
     navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const lat =
-          position.coords.latitude;
+      handleSuccess,
+      (highAccuracyError) => {
+        if (highAccuracyError?.code === 1) {
+          handleFailure(highAccuracyError);
+          return;
+        }
 
-        const lng =
-          position.coords.longitude;
-
-        setLatitude(lat);
-        setLongitude(lng);
-
-        setGpsAccuracy(
-          position.coords.accuracy
+        navigator.geolocation.getCurrentPosition(
+          handleSuccess,
+          handleFailure,
+          {
+            enableHighAccuracy: false,
+            timeout: 15000,
+            maximumAge: 60000,
+          }
         );
-
-        await reverseGeocode(
-          lat,
-          lng
-        );
-
-        setIsLocating(false);
-      },
-      (geoError) => {
-        console.error(geoError);
-
-        setError(
-          "Unable to get your current location. Please select your location manually."
-        );
-
-        setIsLocating(false);
       },
       {
         enableHighAccuracy: true,
-        timeout: 15000,
+        timeout: 8000,
         maximumAge: 0,
       }
     );
@@ -482,6 +527,13 @@ export default function BookNow() {
     if (!time) {
       setError(
         "Please select a pickup time."
+      );
+      return;
+    }
+
+    if (isTimeUnavailable) {
+      setError(
+        "Not available. Pickup time must be between 8:00 AM and 4:00 PM."
       );
       return;
     }
@@ -532,10 +584,21 @@ export default function BookNow() {
       const booking = {
         userId: user.uid,
         customer_name:
+          [user?.firstName, user?.lastName]
+            .filter(Boolean)
+            .join(" ")
+            .trim() ||
           user?.name ||
+          user?.fullName ||
           user?.displayName ||
-          user?.firstName ||
+          user?.email?.split("@")[0] ||
           "Customer",
+
+        contactNumber:
+          user?.phone ||
+          user?.phoneNumber ||
+          user?.contactNumber ||
+          "",
 
         services,
 
@@ -915,7 +978,7 @@ export default function BookNow() {
                   </h2>
 
                   <p>
-                    Choose your preferred date and time.
+                    Choose your preferred date and time (8:00 AM – 4:00 PM).
                   </p>
 
                 </div>
@@ -957,13 +1020,31 @@ export default function BookNow() {
                   <input
                     id="time"
                     type="time"
+                    min={PICKUP_START_TIME}
+                    max={PICKUP_END_TIME}
                     value={time}
+                    aria-invalid={isTimeUnavailable}
+                    className={
+                      isTimeUnavailable
+                        ? "time-unavailable"
+                        : undefined
+                    }
                     onChange={(event) =>
                       setTime(
                         event.target.value
                       )
                     }
                   />
+
+                  {isTimeUnavailable && (
+                    <p
+                      className="time-unavailable-text"
+                      role="alert"
+                    >
+                      Not available. Pickup is only
+                      from 8:00 AM to 4:00 PM.
+                    </p>
+                  )}
 
                 </div>
 

@@ -104,7 +104,7 @@
 
 .bookings-table {
   width: 100%;
-  min-width: 1250px;
+  min-width: 1400px;
   border-collapse: collapse;
 }
 
@@ -175,6 +175,12 @@
 .weight-value {
   font-weight: 700;
   color: #475569;
+}
+
+.contact-number {
+  color: #334155;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 .total-amount {

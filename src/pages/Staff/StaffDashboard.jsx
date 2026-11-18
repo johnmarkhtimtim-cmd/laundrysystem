@@ -1,11 +1,22 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import { subscribeToStaffBookings } from "../../services/bookingService";
 import {
-  acceptBooking,
-  declinePendingBooking,
-  subscribeToStaffBookings,
-  updateStaffBookingStatus,
-} from "../../services/bookingService";
+  formatCurrency,
+  formatDate,
+  getAmountToBePaid,
+  getContactNumber,
+  getCustomerName,
+  getInitialPayment,
+  getInitials,
+  getPickupLocation,
+  getServices,
+  getStatusClass,
+  getTotalAmount,
+  getWeight,
+} from "./bookingHelpers";
+import "../../styles/StaffBookings.css";
 import "../../styles/StaffDashboard.css";
 
 // ==========================================
@@ -19,17 +30,7 @@ const STATUS_FLOW = [
   "In Laundry",
   "To Deliver",
   "Delivered",
-  "Completed",
 ];
-
-const STATUS_TRANSITIONS = {
-  Pending: ["Accepted", "Declined"],
-  Accepted: ["Ready for Pickup"],
-  "Ready for Pickup": ["In Laundry"],
-  "In Laundry": ["To Deliver"],
-  "To Deliver": ["Delivered"],
-  Delivered: ["Completed"],
-};
 
 // ==========================================
 // HELPERS
@@ -50,6 +51,10 @@ function getBookingStatus(booking) {
     return "To Deliver";
   }
 
+  if (status === "Completed") {
+    return "Delivered";
+  }
+
   return status;
 }
 
@@ -62,93 +67,18 @@ function getBookingId(booking) {
   );
 }
 
-function getCustomerName(booking) {
-  return (
-    booking.customerName ||
-    booking.customer_name ||
-    booking.name ||
-    booking.userName ||
-    booking.customer?.name ||
-    booking.customer?.displayName ||
-    "Customer"
-  );
-}
-
-function getServices(booking) {
-  if (Array.isArray(booking.services)) {
-    return booking.services.join(", ");
-  }
-
-  return (
-    booking.services ||
-    booking.serviceType ||
-    booking.service ||
-    "Laundry Service"
-  );
-}
-
-function getAmount(booking) {
-  return Number(
-    booking.totalAmount ||
-      booking.total_amount ||
-      booking.estimatedTotal ||
-      booking.amount ||
-      0
-  );
-}
-
-function getDate(booking) {
-  return (
-    booking.createdAt ||
-    booking.created_at ||
-    booking.bookingDate ||
-    booking.date ||
-    ""
-  );
-}
-
-function formatDate(dateValue) {
-  if (!dateValue) return "No date";
-
-  const date =
-    typeof dateValue.toDate === "function"
-      ? dateValue.toDate()
-      : new Date(dateValue);
-
-  if (Number.isNaN(date.getTime())) {
-    return dateValue;
-  }
-
-  return date.toLocaleDateString("en-PH", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-}
-
-function formatCurrency(amount) {
-  return `₱${Number(amount || 0).toLocaleString("en-PH", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
-}
-
-function getStatusClass(status) {
-  return status.toLowerCase().replace(/\s+/g, "-");
-}
-
 // ==========================================
 // COMPONENT
 // ==========================================
 
 function StaffDashboard() {
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
-  const [updatingId, setUpdatingId] = useState(null);
   const [lastUpdated, setLastUpdated] = useState(new Date());
   const [actionError, setActionError] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
@@ -193,12 +123,11 @@ function StaffDashboard() {
         "Ready for Pickup",
         "In Laundry",
         "To Deliver",
-        "Delivered",
       ].includes(getBookingStatus(booking))
     ).length;
 
     const completed = bookings.filter(
-      (booking) => getBookingStatus(booking) === "Completed"
+      (booking) => getBookingStatus(booking) === "Delivered"
     ).length;
 
     return {
@@ -233,56 +162,6 @@ function StaffDashboard() {
       return matchesSearch && matchesStatus;
     });
   }, [bookings, searchTerm, statusFilter]);
-
-  // ==========================================
-  // UPDATE ORDER STATUS
-  // ==========================================
-
-  const updateBookingStatus = async (bookingId, newStatus) => {
-    setUpdatingId(bookingId);
-    setActionError("");
-
-    const booking = bookings.find(
-      (item) => String(getBookingId(item)) === String(bookingId)
-    );
-
-    try {
-      if (!booking) throw new Error("Booking could not be found.");
-
-      if (getBookingStatus(booking) === "Pending" && newStatus === "Accepted") {
-        await acceptBooking(bookingId, user.uid);
-      } else if (
-        getBookingStatus(booking) === "Pending" &&
-        newStatus === "Declined"
-      ) {
-        await declinePendingBooking(bookingId, user.uid);
-      } else {
-        await updateStaffBookingStatus(bookingId, user.uid, newStatus);
-      }
-
-      window.dispatchEvent(new Event("laundrymateBookingUpdated"));
-      setLastUpdated(new Date());
-    } catch (error) {
-      console.error("Unable to update booking status:", error);
-      setActionError(error.message || "Unable to update booking status.");
-    } finally {
-      setUpdatingId(null);
-    }
-  };
-
-  // ==========================================
-  // NEXT STATUS
-  // ==========================================
-
-  const moveToNextStatus = (booking) => {
-    const currentStatus = getBookingStatus(booking);
-    const nextStatuses = STATUS_TRANSITIONS[currentStatus] || [];
-    if (nextStatuses.length !== 1) {
-      return;
-    }
-
-    void updateBookingStatus(getBookingId(booking), nextStatuses[0]);
-  };
 
   // ==========================================
   // GREETING
@@ -519,147 +398,125 @@ function StaffDashboard() {
             </p>
           </div>
         ) : (
-          <div className="orders-table-wrapper">
-            <table className="staff-orders-table">
+          <div className="table-container">
+            <table className="bookings-table">
               <thead>
                 <tr>
-                  <th>BOOKING</th>
-                  <th>CUSTOMER</th>
-                  <th>SERVICE</th>
-                  <th>SCHEDULE</th>
-                  <th>AMOUNT</th>
-                  <th>STATUS</th>
-                  <th>ACTION</th>
+                  <th>Booking ID</th>
+                  <th>Customer</th>
+                  <th>Contact Number</th>
+                  <th>Service Type</th>
+                  <th>Weight</th>
+                  <th>Total Amount</th>
+                  <th>Initial Payment</th>
+                  <th>Amount to be Paid</th>
+                  <th>Pickup Location</th>
+                  <th>Status</th>
+                  <th>Pickup Date</th>
+                  <th>Action</th>
                 </tr>
               </thead>
 
               <tbody>
                 {filteredBookings.map((booking) => {
-                  const bookingId = getBookingId(booking);
-                  const status = getBookingStatus(booking);
-                  const nextStatuses = STATUS_TRANSITIONS[status] || [];
-                  const statusOptions = [status, ...nextStatuses];
+                  const customerName = getCustomerName(booking);
+                  const weight = getWeight(booking);
 
                   return (
-                    <tr key={bookingId}>
+                    <tr key={booking.id}>
                       <td>
-                        <div className="booking-id">
-                          #{bookingId}
-                        </div>
-
-                        <span className="booking-date">
-                          {formatDate(getDate(booking))}
+                        <span className="booking-id">
+                          #{booking.id || "N/A"}
                         </span>
                       </td>
 
                       <td>
                         <div className="customer-cell">
                           <div className="customer-avatar">
-                            {getCustomerName(booking)
-                              .charAt(0)
-                              .toUpperCase()}
+                            {getInitials(customerName)}
                           </div>
 
-                          <div>
-                            <strong>
-                              {getCustomerName(booking)}
-                            </strong>
-
-                            <span>
-                              {booking.email ||
-                                booking.customerEmail ||
-                                "Customer"}
-                            </span>
+                          <div className="customer-info">
+                            <div className="customer-name">
+                              {customerName}
+                            </div>
                           </div>
                         </div>
                       </td>
 
                       <td>
-                        <div className="service-cell">
-                          {getServices(booking)}
-                        </div>
-
-                        {booking.weight && (
-                          <span className="weight-label">
-                            {booking.weight} kg
-                          </span>
-                        )}
-                      </td>
-
-                      <td>
-                        <div className="schedule-cell">
-                          <strong>
-                            {booking.pickup_date ||
-                              booking.pickupDate ||
-                              booking.schedule ||
-                              "Not scheduled"}
-                          </strong>
-
-                          {booking.pickupTime && (
-                            <span>{booking.pickupTime}</span>
-                          )}
-                        </div>
-                      </td>
-
-                      <td>
-                        <strong className="amount-cell">
-                          {formatCurrency(getAmount(booking))}
-                        </strong>
-                      </td>
-
-                      <td>
-                        <span
-                          className={`status-badge ${getStatusClass(
-                            status
-                          )}`}
-                        >
-                          <span className="status-dot" />
-                          {status}
+                        <span className="contact-number">
+                          {getContactNumber(booking)}
                         </span>
                       </td>
 
                       <td>
-                        <div className="action-cell">
-                          <select
-                            className="status-select"
-                            value={status}
-                            disabled={updatingId === bookingId}
-                            onChange={(e) =>
-                              updateBookingStatus(
-                                bookingId,
-                                e.target.value
-                              )
-                            }
-                          >
-                            {statusOptions.map((statusOption) => (
-                              <option
-                                key={statusOption}
-                                value={statusOption}
-                              >
-                                {statusOption}
-                              </option>
-                            ))}
-                          </select>
+                        <span className="service-name">
+                          {getServices(booking)}
+                        </span>
+                      </td>
 
-                          {nextStatuses.length === 1 && (
-                              <button
-                                type="button"
-                                className="next-status-btn"
-                                onClick={() =>
-                                  moveToNextStatus(booking)
-                                }
-                                disabled={
-                                  updatingId === bookingId
-                                }
-                                title={`Move to ${nextStatuses[0]}`}
-                                aria-label={`Move booking ${bookingId} to ${nextStatuses[0]}`}
-                              >
-                                {updatingId === bookingId
-                                  ? "..."
-                                  : "→"}
-                              </button>
-                            )}
+                      <td>
+                        <span className="weight-value">
+                          {weight ? `${weight} kg` : "Not set"}
+                        </span>
+                      </td>
+
+                      <td>
+                        <span className="total-amount">
+                          {formatCurrency(getTotalAmount(booking))}
+                        </span>
+                      </td>
+
+                      <td>
+                        <span className="payment-amount">
+                          {formatCurrency(getInitialPayment(booking))}
+                        </span>
+                      </td>
+
+                      <td>
+                        <span className="amount-to-be-paid">
+                          {formatCurrency(getAmountToBePaid(booking))}
+                        </span>
+                      </td>
+
+                      <td>
+                        <div className="pickup-location">
+                          {getPickupLocation(booking)}
                         </div>
+                      </td>
+
+                      <td>
+                        <span
+                          className={`status ${getStatusClass(
+                            booking.status
+                          )}`}
+                        >
+                          {booking.status || "Pending"}
+                        </span>
+                      </td>
+
+                      <td>
+                        {formatDate(
+                          booking.schedule ||
+                            booking.pickup_date ||
+                            booking.pickupDate
+                        )}
+                      </td>
+
+                      <td>
+                        <button
+                          type="button"
+                          className="update-status-btn"
+                          onClick={() => navigate("/staff/bookings")}
+                          aria-label={`Review booking ${booking.id}, status ${booking.status || "Pending"}`}
+                        >
+                          {booking.status === "Pending"
+                            ? "Review Booking"
+                            : booking.status === "Accepted"
+                              ? "Continue"
+                              : "View Details"}
+                        </button>
                       </td>
                     </tr>
                   );
