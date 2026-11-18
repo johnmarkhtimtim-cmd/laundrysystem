@@ -88,6 +88,16 @@ const DELIVERY_FEES = {
 };
 
 /* =========================================================
+   LAUNDRY WEIGHT PRICING
+
+   Fixed tiered rate: every 5 kg (or part thereof) costs ₱150.
+   Laundry Subtotal = CEILING(Actual Weight / WEIGHT_TIER_KG) × WEIGHT_TIER_RATE
+========================================================= */
+
+const WEIGHT_TIER_KG = 5;
+const WEIGHT_TIER_RATE = 150;
+
+/* =========================================================
    PAYMENT
 ========================================================= */
 
@@ -478,12 +488,14 @@ function RiderTransactions() {
     }, 0);
   };
 
+  // Fixed tiered pricing: every 5 kg (or any part of it) is billed as a
+  // full ₱150 tier, regardless of which service(s) the booking has.
   const calculateLaundrySubtotal = (booking, weight) => {
     const kg = Number(weight);
 
     if (!kg || kg <= 0 || Number.isNaN(kg)) return 0;
 
-    return kg * getServiceRate(booking);
+    return Math.ceil(kg / WEIGHT_TIER_KG) * WEIGHT_TIER_RATE;
   };
 
   const calculateTotalAmount = (booking, weight) => {
@@ -1540,9 +1552,8 @@ function RiderTransactions() {
                       )}
 
                       <small>
-                        Service rate:{" "}
-                        {formatCurrency(getServiceRate(selectedBooking))}
-                        /kg
+                        Rate: {formatCurrency(WEIGHT_TIER_RATE)} per{" "}
+                        {WEIGHT_TIER_KG} kg (or any part thereof)
                       </small>
                     </div>
 
