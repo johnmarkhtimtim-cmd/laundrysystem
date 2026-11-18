@@ -16,6 +16,7 @@ import {
   updateRiderBookingDetails,
   updateRiderBookingStatus,
 } from "../../services/bookingService";
+import { subscribeToServices } from "../../services/laundryService";
 
 /* =========================================================
    LEAFLET MARKER FIX
@@ -78,17 +79,6 @@ function FitPickupAndRider({ pickupCoordinates, riderLocation }) {
 }
 
 /* =========================================================
-   SERVICE PRICES
-========================================================= */
-
-const SERVICE_PRICES = {
-  "Wash & Fold": 80,
-  "Dry Cleaning": 150,
-  Ironing: 60,
-  "Bedding Care": 200,
-};
-
-/* =========================================================
    DELIVERY FEES
 ========================================================= */
 
@@ -96,6 +86,14 @@ const DELIVERY_FEES = {
   "Pickup & Delivery": 30,
   "Pickup Only": 20,
 };
+
+/* =========================================================
+   PAYMENT
+========================================================= */
+
+function getPayment(booking) {
+  return booking?.payment || null;
+}
 
 /* =========================================================
    CUSTOMER
@@ -168,14 +166,6 @@ function getServices(booking) {
     : "Laundry Service";
 }
 
-function getServiceRate(booking) {
-  const services = getServiceArray(booking);
-
-  return services.reduce((total, service) => {
-    return total + (SERVICE_PRICES[service] || 0);
-  }, 0);
-}
-
 /* =========================================================
    WEIGHT
 ========================================================= */
@@ -219,33 +209,27 @@ function getDeliveryFee(booking) {
 }
 
 /* =========================================================
-   PRICE CALCULATIONS
-========================================================= */
-
-function calculateLaundrySubtotal(booking, weight) {
-  const kg = Number(weight);
-
-  if (!kg || kg <= 0) return 0;
-
-  return kg * getServiceRate(booking);
-}
-
-function calculateTotalAmount(booking, weight) {
-  return (
-    calculateLaundrySubtotal(booking, weight) +
-    getDeliveryFee(booking)
-  );
-}
-
-/* =========================================================
    INITIAL PAYMENT
+
+   The customer's verified initial payment always lives in the
+   matching Firestore "payments" record for this booking (created
+   when the customer pays at booking time). Booking-level fields are
+   kept only as a legacy fallback in case older bookings stored it
+   differently.
 ========================================================= */
 
 function getInitialPayment(booking) {
   if (!booking) return 0;
 
+  const payment = getPayment(booking);
+
   const amount = Number(
-    booking.initialPayment ??
+    payment?.initial_payment ??
+      payment?.initialPayment ??
+      payment?.amount ??
+      payment?.total_amount ??
+      payment?.totalAmount ??
+      booking.initialPayment ??
       booking.downPayment ??
       booking.initial_payment ??
       booking.down_payment ??
@@ -256,40 +240,6 @@ function getInitialPayment(booking) {
   );
 
   return Number.isNaN(amount) ? 0 : amount;
-}
-
-/* =========================================================
-   TOTAL
-========================================================= */
-
-function getTotalAmount(booking) {
-  if (!booking) return 0;
-
-  const weight = getWeight(booking);
-
-  if (weight !== "" && Number(weight) > 0) {
-    return calculateTotalAmount(booking, weight);
-  }
-
-  const total = Number(
-    booking.totalAmount ??
-      booking.total_amount ??
-      booking.total ??
-      booking.amount ??
-      booking.grandTotal ??
-      booking.price ??
-      booking.estimatedTotal ??
-      0
-  );
-
-  return Number.isNaN(total) ? 0 : total;
-}
-
-function getAmountToBePaid(booking) {
-  const total = getTotalAmount(booking);
-  const initial = getInitialPayment(booking);
-
-  return Math.max(0, total - initial);
 }
 
 /* =========================================================
@@ -434,7 +384,13 @@ function getDateMilliseconds(value) {
 }
 
 function getPaymentReference(booking) {
+  const payment = getPayment(booking);
+
   return (
+    payment?.reference_number ||
+    payment?.referenceNumber ||
+    payment?.gcashReference ||
+    payment?.reference ||
     booking?.reference_number ||
     booking?.payment_reference ||
     booking?.paymentReference ||
@@ -464,6 +420,9 @@ function RiderTransactions() {
   const [editableWeight, setEditableWeight] =
     useState("");
 
+  const [weightError, setWeightError] =
+    useState("");
+
   const [updating, setUpdating] =
     useState(false);
 
@@ -472,6 +431,102 @@ function RiderTransactions() {
 
   const [riderLocationError, setRiderLocationError] =
     useState("");
+
+  const [services, setServices] = useState([]);
+
+  /* =======================================================
+     LOAD SERVICE PRICING (ADMIN SERVICES / PRICING MODULE)
+  ======================================================= */
+
+  useEffect(() => {
+    const unsubscribe = subscribeToServices(
+      (nextServices) => setServices(nextServices),
+      (error) => {
+        console.error("Unable to load service pricing:", error);
+      }
+    );
+
+    return () => unsubscribe?.();
+  }, []);
+
+  // Live price-per-kg lookup, keyed by lowercased service name, sourced
+  // directly from the Admin Services/Pricing collection. Never hardcode
+  // prices here; this map is the single source of truth for rates.
+  const servicePriceMap = useMemo(() => {
+    const map = {};
+
+    services.forEach((service) => {
+      if (!service?.name || service.status === "Inactive") return;
+
+      map[String(service.name).trim().toLowerCase()] =
+        Number(service.price) || 0;
+    });
+
+    return map;
+  }, [services]);
+
+  /* =======================================================
+     PRICE CALCULATIONS (depend on the live service pricing)
+  ======================================================= */
+
+  const getServiceRate = (booking) => {
+    const bookingServices = getServiceArray(booking);
+
+    return bookingServices.reduce((total, serviceName) => {
+      const key = String(serviceName).trim().toLowerCase();
+      return total + (servicePriceMap[key] || 0);
+    }, 0);
+  };
+
+  const calculateLaundrySubtotal = (booking, weight) => {
+    const kg = Number(weight);
+
+    if (!kg || kg <= 0 || Number.isNaN(kg)) return 0;
+
+    return kg * getServiceRate(booking);
+  };
+
+  const calculateTotalAmount = (booking, weight) => {
+    return (
+      calculateLaundrySubtotal(booking, weight) +
+      getDeliveryFee(booking)
+    );
+  };
+
+  const getTotalAmount = (booking) => {
+    if (!booking) return 0;
+
+    const weight = getWeight(booking);
+
+    if (weight !== "" && Number(weight) > 0) {
+      return calculateTotalAmount(booking, weight);
+    }
+
+    const payment = getPayment(booking);
+
+    const total = Number(
+      booking.totalAmount ??
+        booking.total_amount ??
+        booking.total ??
+        booking.amount ??
+        booking.grandTotal ??
+        booking.price ??
+        booking.estimatedTotal ??
+        payment?.total_amount ??
+        payment?.totalAmount ??
+        payment?.amount ??
+        0
+    );
+
+    return Number.isNaN(total) ? 0 : total;
+  };
+
+  const getAmountToBePaid = (booking) => {
+    const total = getTotalAmount(booking);
+    const initial = getInitialPayment(booking);
+
+    return Math.max(0, total - initial);
+  };
 
   /* =======================================================
      LOAD BOOKINGS
@@ -571,6 +626,7 @@ function RiderTransactions() {
     setRiderLocation(null);
     setRiderLocationError("");
     setSelectedBooking(booking);
+    setWeightError("");
     setEditableWeight(
       getWeight(booking) ? String(getWeight(booking)) : ""
     );
@@ -590,6 +646,7 @@ function RiderTransactions() {
     setShowStatusModal(false);
     setSelectedBooking(null);
     setEditableWeight("");
+    setWeightError("");
   };
 
   /* =======================================================
@@ -677,10 +734,11 @@ function RiderTransactions() {
       Number.isNaN(weight) ||
       weight <= 0
     ) {
-      setNotification("Please enter a valid weight greater than 0 kg.");
+      setWeightError("Please enter a valid weight greater than 0 kg.");
       return;
     }
 
+    setWeightError("");
     setUpdating(true);
     try {
       const serviceRate = getServiceRate(selectedBooking);
@@ -690,9 +748,10 @@ function RiderTransactions() {
       );
       const deliveryFee = getDeliveryFee(selectedBooking);
       const totalAmount = laundrySubtotal + deliveryFee;
+      const initialPayment = getInitialPayment(selectedBooking);
       const amountToBePaid = Math.max(
         0,
-        totalAmount - getInitialPayment(selectedBooking)
+        totalAmount - initialPayment
       );
       const bookingDetails = {
         weight,
@@ -706,6 +765,7 @@ function RiderTransactions() {
         totalAmount,
         total_amount: totalAmount,
         estimatedTotal: totalAmount,
+        initialPayment,
         amountToBePaid,
       };
 
@@ -728,7 +788,13 @@ function RiderTransactions() {
       setSelectedBooking(updatedBooking);
       window.dispatchEvent(new Event("laundrymateBookingUpdated"));
       setNotification(
-        `Weight updated to ${weight} kg. Total amount is ${formatCurrency(totalAmount)}.`
+        amountToBePaid > 0
+          ? `Weight updated to ${weight} kg. Total amount is ${formatCurrency(
+              totalAmount
+            )}. Amount to be paid: ${formatCurrency(amountToBePaid)}.`
+          : `Weight updated to ${weight} kg. Total amount is ${formatCurrency(
+              totalAmount
+            )}. Payment is fully settled.`
       );
     } catch (error) {
       console.error("Unable to update rider booking weight:", error);
@@ -1444,17 +1510,34 @@ function RiderTransactions() {
                         <input
                           id="rider-laundry-weight"
                           type="number"
-                          min="0.1"
+                          min="0"
                           step="0.1"
                           value={editableWeight}
-                          onChange={(event) =>
-                            setEditableWeight(event.target.value)
-                          }
+                          onChange={(event) => {
+                            const rawValue = event.target.value;
+
+                            // Reject negative weight input; everything else
+                            // (empty, decimals like 2.5) is allowed and
+                            // validated again before saving.
+                            if (rawValue !== "" && Number(rawValue) < 0) {
+                              setWeightError("Weight cannot be negative.");
+                              return;
+                            }
+
+                            setWeightError("");
+                            setEditableWeight(rawValue);
+                          }}
                           placeholder="Enter weight"
                           disabled={updating}
                         />
                         <span>kg</span>
                       </div>
+
+                      {weightError && (
+                        <small className="weight-error-text">
+                          {weightError}
+                        </small>
+                      )}
 
                       <small>
                         Service rate:{" "}
@@ -1499,6 +1582,21 @@ function RiderTransactions() {
                       )}
                       balance
                     />
+
+                    {getInitialPayment(selectedBooking) >
+                      calculateTotalAmount(selectedBooking, editableWeight) && (
+                      <PaymentRow
+                        label="Overpayment"
+                        value={formatCurrency(
+                          getInitialPayment(selectedBooking) -
+                            calculateTotalAmount(
+                              selectedBooking,
+                              editableWeight
+                            )
+                        )}
+                        balance
+                      />
+                    )}
 
                     <button
                       type="button"

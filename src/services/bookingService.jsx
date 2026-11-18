@@ -472,6 +472,8 @@ export const updateStaffBookingDetails = async (
 
     await updateDoc(bookingRef, {
       ...details,
+      service_rate: details.service_rate ?? details.serviceRate,
+      amount_to_be_paid: details.amount_to_be_paid ?? details.amountToBePaid,
       updated_at: serverTimestamp(),
     });
 
@@ -483,8 +485,11 @@ export const updateStaffBookingDetails = async (
         updateDoc(paymentDoc.ref, {
           total_amount: details.total_amount,
           weight: details.weight,
+          service_rate: details.service_rate ?? details.serviceRate,
           laundry_subtotal: details.laundry_subtotal,
           delivery_fee: details.delivery_fee,
+          initial_payment: details.initial_payment ?? details.initialPayment,
+          amount_to_be_paid: details.amount_to_be_paid ?? details.amountToBePaid,
           updated_at: serverTimestamp(),
         })
       )
@@ -528,6 +533,7 @@ export const updateRiderBookingDetails = async (
       laundryWeight: details.laundryWeight,
       kg: details.kg,
       serviceRate: details.serviceRate,
+      service_rate: details.serviceRate,
       laundrySubtotal: details.laundrySubtotal,
       laundry_subtotal: details.laundry_subtotal,
       deliveryFee: details.deliveryFee,
@@ -536,6 +542,7 @@ export const updateRiderBookingDetails = async (
       total_amount: details.total_amount,
       estimatedTotal: details.estimatedTotal,
       amountToBePaid: details.amountToBePaid,
+      amount_to_be_paid: details.amountToBePaid,
       updated_at: serverTimestamp(),
     });
 
@@ -543,8 +550,11 @@ export const updateRiderBookingDetails = async (
       batch.update(paymentDoc.ref, {
         total_amount: details.total_amount,
         weight: details.weight,
+        service_rate: details.serviceRate,
         laundry_subtotal: details.laundry_subtotal,
         delivery_fee: details.delivery_fee,
+        initial_payment: details.initialPayment,
+        amount_to_be_paid: details.amountToBePaid,
         updated_at: serverTimestamp(),
       });
     });
@@ -583,28 +593,78 @@ export const getRiderBookings = async (riderId) => {
 };
 
 /**
- * Subscribe to bookings assigned to a rider.
+ * Subscribe to bookings assigned to a rider, including the existing payment
+ * details (e.g. the customer's verified initial payment) needed to compute
+ * the remaining amount to be paid.
  */
-export const subscribeToRiderBookings = (riderId, onBookings, onError) => {
+export const subscribeToRiderBookings = (
+  riderId,
+  onBookings,
+  onError,
+  includePayments = true
+) => {
   const q = query(
     collection(db, "bookings"),
     where("rider_id", "==", riderId)
   );
 
-  return onSnapshot(
+  let bookings = [];
+  let payments = [];
+
+  const emitBookings = () => {
+    const paymentByBooking = new Map(
+      payments.map((payment) => [String(payment.booking_id), payment])
+    );
+
+    onBookings(
+      bookings
+        .map((booking) => ({
+          ...booking,
+          payment: paymentByBooking.get(String(booking.id)) || null,
+        }))
+        .sort(
+          (a, b) =>
+            getTimestampMilliseconds(b.booking_date || b.created_at) -
+            getTimestampMilliseconds(a.booking_date || a.created_at)
+        )
+    );
+  };
+
+  const handleError = (error) => {
+    console.error("Error subscribing to rider bookings:", error);
+    onError(error);
+  };
+
+  const bookingsUnsubscribe = onSnapshot(
     q,
     (querySnapshot) => {
-      onBookings(querySnapshot.docs.map((bookingDoc) => ({
+      bookings = querySnapshot.docs.map((bookingDoc) => ({
         id: bookingDoc.id,
         ...bookingDoc.data(),
-      })).sort(
-        (a, b) =>
-          getTimestampMilliseconds(b.booking_date || b.created_at) -
-          getTimestampMilliseconds(a.booking_date || a.created_at)
-      ));
+      }));
+      emitBookings();
     },
-    onError
+    handleError
   );
+
+  const paymentsUnsubscribe = includePayments
+    ? onSnapshot(
+        collection(db, "payments"),
+        (snapshot) => {
+          payments = snapshot.docs.map((paymentDoc) => ({
+            id: paymentDoc.id,
+            ...paymentDoc.data(),
+          }));
+          emitBookings();
+        },
+        handleError
+      )
+    : () => {};
+
+  return () => {
+    bookingsUnsubscribe();
+    paymentsUnsubscribe();
+  };
 };
 
 /**

@@ -105,6 +105,7 @@ service cloud.firestore {
                 'laundryWeight',
                 'kg',
                 'serviceRate',
+                'service_rate',
                 'laundrySubtotal',
                 'laundry_subtotal',
                 'deliveryFee',
@@ -113,6 +114,7 @@ service cloud.firestore {
                 'total_amount',
                 'estimatedTotal',
                 'amountToBePaid',
+                'amount_to_be_paid',
                 'updated_at'
               ])
               && request.resource.data.weight is number
@@ -166,8 +168,11 @@ service cloud.firestore {
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
             'total_amount',
             'weight',
+            'service_rate',
             'laundry_subtotal',
             'delivery_fee',
+            'initial_payment',
+            'amount_to_be_paid',
             'updated_at'
           ])
           && request.resource.data.total_amount is number

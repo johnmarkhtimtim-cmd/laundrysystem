@@ -777,6 +777,11 @@
   color: #94a3b8;
 }
 
+.weight-error-text {
+  color: #dc2626 !important;
+  font-weight: 700;
+}
+
 .pickup-summary-row {
   display: flex;
   justify-content: space-between;

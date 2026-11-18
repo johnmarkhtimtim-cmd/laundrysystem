@@ -6,30 +6,12 @@ import {
   getCustomerPayments,
   updateCustomerPayment,
 } from "../../services/paymentService";
+import { subscribeToServices } from "../../services/laundryService";
 import "../../styles/Payments.css";
 
 const DEFAULT_GCASH_NAME = "Prince-Tyler Laundry Shop";
 const DEFAULT_GCASH_NUMBER = "";
 const DEFAULT_GCASH_QR = "/images/gcash-qr.png";
-
-const SERVICES = [
-  {
-    name: "Wash & Fold",
-    price: 80,
-  },
-  {
-    name: "Dry Cleaning",
-    price: 150,
-  },
-  {
-    name: "Ironing",
-    price: 60,
-  },
-  {
-    name: "Bedding Care",
-    price: 200,
-  },
-];
 
 function getDateMilliseconds(value) {
   if (!value) return 0;
@@ -64,6 +46,7 @@ function Payment() {
 
   const [booking, setBooking] = useState(null);
   const [payments, setPayments] = useState([]);
+  const [services, setServices] = useState([]);
 
   const [paymentMethod, setPaymentMethod] = useState("GCash");
 
@@ -186,20 +169,38 @@ function Payment() {
   }, [loadData]);
 
   // =========================================================
+  // LOAD LIVE SERVICE PRICING (ADMIN SERVICES/PRICING MODULE)
+  // =========================================================
+
+  useEffect(() => {
+    const unsubscribe = subscribeToServices(
+      (nextServices) => setServices(nextServices),
+      (loadError) => {
+        console.error("Unable to load service pricing:", loadError);
+      }
+    );
+
+    return () => unsubscribe?.();
+  }, []);
+
+  // =========================================================
   // GET SERVICE PRICE
   // =========================================================
 
-  const getServicePrice = (serviceName) => {
-    const service = SERVICES.find(
-      (item) =>
-        item.name.toLowerCase() ===
-        String(serviceName)
-          .toLowerCase()
-          .trim()
-    );
+  const getServicePrice = useCallback(
+    (serviceName) => {
+      const normalizedName = String(serviceName).toLowerCase().trim();
 
-    return service ? service.price : 0;
-  };
+      const service = services.find(
+        (item) =>
+          item.status !== "Inactive" &&
+          String(item.name).toLowerCase().trim() === normalizedName
+      );
+
+      return service ? Number(service.price) || 0 : 0;
+    },
+    [services]
+  );
 
   // =========================================================
   // GET BOOKING SERVICES
@@ -261,7 +262,7 @@ function Payment() {
         getServicePrice(service),
       0
     );
-  }, [booking, bookingServices]);
+  }, [booking, bookingServices, getServicePrice]);
 
   // =========================================================
   // PICKUP FEE
