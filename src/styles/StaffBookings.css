@@ -198,10 +198,28 @@
   font-weight: 800;
 }
 
+.bookings-table th:nth-child(9),
+.bookings-table td:nth-child(9) {
+  width: 260px;
+  min-width: 260px;
+  max-width: 260px;
+}
+
+.bookings-table th:nth-child(10),
+.bookings-table td:nth-child(10),
+.bookings-table th:nth-child(11),
+.bookings-table td:nth-child(11) {
+  white-space: nowrap;
+  padding-left: 24px;
+}
+
 .pickup-location {
-  max-width: 220px;
+  max-width: 100%;
   line-height: 1.5;
   color: #64748b;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 /* =========================================================
