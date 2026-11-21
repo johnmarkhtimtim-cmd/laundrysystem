@@ -11,8 +11,8 @@
   min-height: 100vh;
   padding: 32px 24px 50px;
 
-  background: #f7f8fa;
-  color: #1f2937;
+  background: var(--lm-bg, #f7f8fa);
+  color: var(--lm-ink, #1f2937);
 
   font-family:
     Arial,
@@ -563,6 +563,14 @@
 
   box-shadow:
     0 0 0 3px rgba(220, 38, 38, 0.1);
+}
+
+.field-hint {
+  margin: 6px 0 0;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
 }
 
 .time-unavailable-text {
@@ -1387,4 +1395,25 @@
     font-size: 19px;
   }
 
+}
+
+.capacity-banner {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid #bfdbfe;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.capacity-banner p {
+  margin: 0;
+}
+
+.capacity-banner.capacity-full {
+  border-color: #fecaca;
+  background: #fef2f2;
+  color: #b91c1c;
 }

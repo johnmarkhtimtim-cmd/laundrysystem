@@ -1,9 +1,9 @@
 /* ========================================================= LAUNDRYMATE - TRANSACTIONS ========================================================= */
 .transactions-page {
-  min-height: 100vh;
+  min-height: 100%;
   padding: 32px;
-  background: #f5f7fb;
-  color: #172033;
+  background: var(--lm-bg, #f5f7fb);
+  color: var(--lm-ink, #172033);
   font-family:
     Inter,
     -apple-system,
@@ -127,7 +127,7 @@
   box-shadow: 0 6px 25px rgba(15, 23, 42, 0.045);
 }
 .transactions-card-header {
-  padding: 22px 24px;
+  padding: 16px 20px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -153,6 +153,70 @@
   font-size: 10px;
   font-weight: 800;
   white-space: nowrap;
+} /* ========================================================= FILTERS ========================================================= */
+.transaction-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+  padding: 12px 20px;
+  border-bottom: 1px solid #edf0f4;
+  background: #fafbfd;
+}
+.transaction-filter-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.transaction-filter-field label {
+  color: #475467;
+  font-size: 11px;
+  font-weight: 700;
+}
+.transaction-filter-field select,
+.transaction-filter-field input {
+  height: 38px;
+  min-width: 150px;
+  padding: 0 11px;
+  border: 1px solid #dfe4ec;
+  border-radius: 9px;
+  background: #ffffff;
+  color: #172033;
+  font-family: inherit;
+  font-size: 13px;
+}
+.transaction-filter-field select:focus,
+.transaction-filter-field input:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+.transaction-filter-clear {
+  height: 38px;
+  padding: 0 14px;
+  border: 1px solid #dfe4ec;
+  border-radius: 9px;
+  background: #ffffff;
+  color: #475467;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.transaction-filter-clear:hover {
+  border-color: #2563eb;
+  color: #2563eb;
+}
+@media (max-width: 480px) {
+  .transaction-filters {
+    padding: 14px 18px;
+  }
+  .transaction-filter-field {
+    flex: 1 1 100%;
+  }
+  .transaction-filter-field select,
+  .transaction-filter-field input {
+    width: 100%;
+  }
 } /* ========================================================= TABLE ========================================================= */
 .transactions-table-wrapper {
   width: 100%;
@@ -160,11 +224,11 @@
 }
 .transactions-table {
   width: 100%;
-  min-width: 1000px;
+  min-width: 720px;
   border-collapse: collapse;
 }
 .transactions-table th {
-  padding: 14px 17px;
+  padding: 10px 12px;
   border-bottom: 1px solid #e5e7eb;
   background: #f8fafc;
   color: #64748b;
@@ -176,7 +240,7 @@
   white-space: nowrap;
 }
 .transactions-table td {
-  padding: 16px 17px;
+  padding: 10px 12px;
   border-bottom: 1px solid #f1f5f9;
   color: #475569;
   font-size: 12px;
@@ -199,12 +263,12 @@
 }
 .transaction-id small {
   display: block;
-  margin-top: 4px;
+  margin-top: 2px;
   color: #94a3b8;
   font-size: 10px;
 } /* ========================================================= BOOKING ID ========================================================= */
 .transaction-booking-id {
-  padding: 5px 8px;
+  padding: 3px 8px;
   display: inline-block;
   border-radius: 7px;
   background: #f1f5f9;
@@ -214,9 +278,10 @@
 } /* ========================================================= SERVICE ========================================================= */
 .transaction-service {
   display: block;
-  max-width: 180px;
+  max-width: 200px;
   color: #475569;
-  line-height: 1.5;
+  line-height: 1.4;
+  white-space: normal;
 } /* ========================================================= DATE ========================================================= */
 .transaction-date {
   color: #64748b;
@@ -229,7 +294,7 @@
   white-space: nowrap;
 } /* ========================================================= PAYMENT METHOD ========================================================= */
 .transaction-method {
-  padding: 6px 10px;
+  padding: 4px 9px;
   display: inline-block;
   border-radius: 7px;
   background: #f1f5f9;
@@ -270,7 +335,8 @@
   background: #f0fdf4;
   color: #15803d;
 }
-.transaction-status.failed {
+.transaction-status.failed,
+.transaction-status.rejected {
   background: #fef2f2;
   color: #dc2626;
 } /* ========================================================= EMPTY ========================================================= */

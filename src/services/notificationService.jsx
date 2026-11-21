@@ -3,6 +3,7 @@ import {
   doc, 
   setDoc, 
   getDocs,
+  deleteDoc,
   query,
   where,
   updateDoc,
@@ -116,6 +117,28 @@ export const subscribeToUserNotifications = (userId, onNotifications, onError) =
 };
 
 /**
+ * Subscribe to every notification (admin inbox).
+ */
+export const subscribeToAllNotifications = (onNotifications, onError) => {
+  return onSnapshot(
+    collection(db, "notifications"),
+    (querySnapshot) => {
+      const notifications = querySnapshot.docs.map((notificationDoc) => ({
+        id: notificationDoc.id,
+        ...notificationDoc.data(),
+      }));
+      notifications.sort(
+        (a, b) =>
+          getTimestampMilliseconds(b.created_at) -
+          getTimestampMilliseconds(a.created_at)
+      );
+      onNotifications(notifications.slice(0, 100));
+    },
+    onError
+  );
+};
+
+/**
  * Mark notification as read
  * @param {string} notificationId - Notification ID
  * @returns {Promise<void>}
@@ -130,6 +153,28 @@ export const markNotificationAsRead = async (notificationId) => {
   } catch (error) {
     console.error("Error marking notification as read:", error);
     throw error;
+  }
+};
+
+/**
+ * Delete a notification document.
+ */
+export const deleteNotification = async (notificationId) => {
+  await deleteDoc(doc(db, "notifications", notificationId));
+};
+
+/**
+ * Mark every unread notification as read (admin).
+ */
+export const markAllAdminNotificationsAsRead = async () => {
+  const querySnapshot = await getDocs(collection(db, "notifications"));
+  for (const snapshot of querySnapshot.docs.filter(
+    (item) => item.data().read !== true
+  )) {
+    await updateDoc(doc(db, "notifications", snapshot.id), {
+      read: true,
+      updated_at: serverTimestamp(),
+    });
   }
 };
 
@@ -189,12 +234,19 @@ export const getUnreadNotificationsCount = async (userId) => {
  * @param {string} bookingId - Booking ID
  * @returns {Promise<string>} Notification ID
  */
-export const notifyBookingAccepted = async (customerId, bookingId) => {
+export const notifyBookingAccepted = async (
+  customerId,
+  bookingId,
+  riderName = ""
+) => {
+  const details = getBookingStatusNotificationDetails(bookingId, "Accepted", {
+    riderName,
+  });
   return createNotification(
     customerId,
-    "booking",
-    "✓ Booking Accepted",
-    `Your booking #${bookingId} has been accepted by our staff.`,
+    details.type,
+    details.title,
+    details.message,
     bookingId
   );
 };
@@ -314,12 +366,21 @@ export const notifyBookingStatusChanged = async (customerId, bookingId, status) 
   );
 };
 
-export const getBookingStatusNotificationDetails = (bookingId, status) => {
+export const getBookingStatusNotificationDetails = (
+  bookingId,
+  status,
+  extras = {}
+) => {
+  const riderName = String(extras.riderName || "").trim();
+  const acceptedMessage = riderName
+    ? `Your booking #${bookingId} has been accepted. Pickup rider: ${riderName}.`
+    : `Your booking #${bookingId} has been accepted by our staff.`;
+
   const statusDetails = {
     Accepted: {
       type: "booking",
       title: "✓ Booking Accepted",
-      message: `Your booking #${bookingId} has been accepted by our staff.`,
+      message: acceptedMessage,
     },
     Declined: {
       type: "booking",
@@ -329,12 +390,16 @@ export const getBookingStatusNotificationDetails = (bookingId, status) => {
     "Ready for Pickup": {
       type: "pickup",
       title: "✅ Ready for Pickup",
-      message: `Your laundry from booking #${bookingId} is ready for pickup.`,
+      message: riderName
+        ? `Your laundry from booking #${bookingId} is ready for pickup. Rider: ${riderName}.`
+        : `Your laundry from booking #${bookingId} is ready for pickup.`,
     },
     "Picked Up": {
       type: "pickup",
       title: "🧺 Laundry Picked Up",
-      message: `Your laundry from booking #${bookingId} has been picked up.`,
+      message: riderName
+        ? `Your laundry from booking #${bookingId} has been picked up by ${riderName}.`
+        : `Your laundry from booking #${bookingId} has been picked up.`,
     },
     "In Laundry": {
       type: "progress",
@@ -359,7 +424,9 @@ export const getBookingStatusNotificationDetails = (bookingId, status) => {
     "To Deliver": {
       type: "progress",
       title: "Laundry Out for Delivery",
-      message: `Your laundry from booking #${bookingId} is on its way to you.`,
+      message: riderName
+        ? `Your laundry from booking #${bookingId} is on its way with ${riderName}.`
+        : `Your laundry from booking #${bookingId} is on its way to you.`,
     },
     "Ready for Customer Pickup": {
       type: "pickup",
@@ -398,8 +465,50 @@ export const notifyPaymentConfirmed = async (customerId, bookingId, amount) => {
   return createNotification(
     customerId,
     "payment",
-    "💳 Payment Confirmed",
+    "Payment Confirmed",
     `Payment of ₱${amount} for booking #${bookingId} has been confirmed.`,
     bookingId
+  );
+};
+
+/**
+ * Notify customer that a payment was rejected and needs resubmission.
+ */
+export const notifyPaymentRejected = async (customerId, bookingId, amount) => {
+  return createNotification(
+    customerId,
+    "payment",
+    "Payment Rejected",
+    `Payment of ₱${amount} for booking #${bookingId} was rejected. Please resubmit with correct details.`,
+    bookingId
+  );
+};
+
+/**
+ * Notify staff/admin users that a customer submitted (or resubmitted) a payment.
+ */
+export const notifyStaffPaymentSubmitted = async ({
+  recipientIds = [],
+  bookingId,
+  amount = 0,
+  paymentMethod = "payment",
+  customerName = "Customer",
+  isResubmit = false,
+} = {}) => {
+  const uniqueRecipientIds = [...new Set(recipientIds.filter(Boolean))];
+  if (uniqueRecipientIds.length === 0 || !bookingId) return [];
+
+  const formattedAmount = Number(amount || 0).toLocaleString("en-PH");
+  const title = isResubmit
+    ? "Payment resubmitted for verification"
+    : "Payment pending verification";
+  const message = `${customerName} ${
+    isResubmit ? "resubmitted" : "submitted"
+  } a ${paymentMethod || "payment"} of ₱${formattedAmount} for booking #${bookingId}.`;
+
+  return Promise.all(
+    uniqueRecipientIds.map((recipientId) =>
+      createNotification(recipientId, "payment", title, message, bookingId)
+    )
   );
 };

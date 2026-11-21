@@ -5,20 +5,23 @@ import {
   markNotificationAsRead,
   subscribeToUserNotifications,
 } from "../../services/notificationService";
+import { subscribeToCustomerPayments } from "../../services/paymentService";
 import "../../styles/Notifications.css";
 
 function Notification() {
   const { user } = useAuth();
   const [filter, setFilter] = useState("All");
   const [localNotifications, setLocalNotifications] = useState([]);
+  const [paymentNotifications, setPaymentNotifications] = useState([]);
   const [firestoreNotifications, setFirestoreNotifications] = useState([]);
   const [firestoreNotificationsUserId, setFirestoreNotificationsUserId] = useState("");
   const notifications = useMemo(
     () =>
       [
         ...localNotifications,
+        ...paymentNotifications,
         ...(user?.uid === firestoreNotificationsUserId
-          ? firestoreNotifications
+          ? firestoreNotifications.filter((item) => item.type !== "payment")
           : []),
       ].sort(
         (a, b) =>
@@ -27,6 +30,7 @@ function Notification() {
       ),
     [
       localNotifications,
+      paymentNotifications,
       firestoreNotifications,
       firestoreNotificationsUserId,
       user?.uid,
@@ -41,10 +45,6 @@ function Notification() {
     try {
       const bookings = JSON.parse(
         localStorage.getItem("laundrymateBookings") || "[]"
-      );
-
-      const payments = JSON.parse(
-        localStorage.getItem("laundrymatePayments") || "[]"
       );
 
       const savedReadStatus = JSON.parse(
@@ -199,78 +199,6 @@ function Notification() {
       });
 
       // =========================================
-      // PAYMENT NOTIFICATIONS
-      // =========================================
-
-      payments.forEach((payment, index) => {
-        const paymentId =
-          payment.paymentId ||
-          payment.id ||
-          `PAY-${String(index + 1).padStart(3, "0")}`;
-
-        const bookingId =
-          payment.bookingId ||
-          payment.booking ||
-          "N/A";
-
-        const amount =
-          Number(
-            payment.totalAmount ||
-              payment.amount ||
-              0
-          );
-
-        const paymentStatus =
-          payment.paymentStatus ||
-          payment.status ||
-          "Pending";
-
-        const createdAt =
-          payment.createdAt ||
-          new Date().toISOString();
-
-        const notificationId = `payment-${paymentId}`;
-
-        let title = "Payment Pending";
-        let message = `Your payment of ${formatCurrency(
-          amount
-        )} for booking ${bookingId} is pending.`;
-
-        if (
-          paymentStatus.toLowerCase() === "paid" ||
-          paymentStatus.toLowerCase() === "successful" ||
-          paymentStatus.toLowerCase() === "verified"
-        ) {
-          title = "Payment Successful";
-
-          message = `Your payment of ${formatCurrency(
-            amount
-          )} for booking ${bookingId} has been received.`;
-        }
-
-        if (
-          paymentStatus.toLowerCase() === "rejected" ||
-          paymentStatus.toLowerCase() === "failed"
-        ) {
-          title = "Payment Failed";
-
-          message = `Your payment for booking ${bookingId} could not be processed.`;
-        }
-
-        generatedNotifications.push({
-          id: notificationId,
-          type: "payment",
-          title,
-          message,
-          time: formatRelativeTime(createdAt),
-          date: formatDate(createdAt),
-          booking: bookingId,
-          createdAt,
-          unread: savedReadStatus[notificationId] !== true,
-        });
-      });
-
-      // =========================================
       // SORT NEWEST FIRST
       // =========================================
 
@@ -298,10 +226,11 @@ function Notification() {
   useEffect(() => {
     const initialLoad = window.setTimeout(loadNotifications, 0);
 
-    let unsubscribe = () => {};
+    let unsubscribeNotifications = () => {};
+    let unsubscribePayments = () => {};
 
     if (user?.uid) {
-      unsubscribe = subscribeToUserNotifications(
+      unsubscribeNotifications = subscribeToUserNotifications(
         user.uid,
         (firestoreItems) => {
           setFirestoreNotificationsUserId(user.uid);
@@ -335,6 +264,74 @@ function Notification() {
           console.error("Failed to subscribe to customer notifications:", error);
         }
       );
+
+      unsubscribePayments = subscribeToCustomerPayments(
+        user.uid,
+        (payments) => {
+          const savedReadStatus = JSON.parse(
+            localStorage.getItem("laundrymateNotificationRead") || "{}"
+          );
+
+          setPaymentNotifications(
+            payments.map((payment, index) => {
+              const paymentId =
+                payment.payment_id ||
+                payment.id ||
+                `PAY-${String(index + 1).padStart(3, "0")}`;
+              const bookingId = payment.booking_id || "N/A";
+              const amount = Number(payment.total_amount || payment.amount || 0);
+              const paymentStatus = String(
+                payment.payment_status || "Pending"
+              ).toLowerCase();
+              const rawCreatedAt =
+                payment.updated_at || payment.created_at || payment.payment_date;
+              const parsedCreatedAt = rawCreatedAt?.toDate
+                ? rawCreatedAt.toDate()
+                : rawCreatedAt;
+              const createdAt =
+                parsedCreatedAt instanceof Date
+                  ? parsedCreatedAt.toISOString()
+                  : parsedCreatedAt || new Date().toISOString();
+              const notificationId = `payment-${paymentId}`;
+
+              let title = "Payment Pending";
+              let message = `Your payment of ${formatCurrency(
+                amount
+              )} for booking ${bookingId} is pending verification.`;
+
+              if (paymentStatus === "paid") {
+                title = "Payment Successful";
+                message = `Your payment of ${formatCurrency(
+                  amount
+                )} for booking ${bookingId} has been received.`;
+              }
+
+              if (paymentStatus === "rejected" || paymentStatus === "failed") {
+                title = "Payment Rejected";
+                message = `Your payment for booking ${bookingId} was rejected. Please resubmit.`;
+              }
+
+              return {
+                id: notificationId,
+                type: "payment",
+                title,
+                message,
+                time: formatRelativeTime(createdAt),
+                date: formatDate(createdAt),
+                booking: bookingId,
+                createdAt,
+                unread: savedReadStatus[notificationId] !== true,
+              };
+            })
+          );
+        },
+        (error) => {
+          console.error("Failed to subscribe to customer payments:", error);
+          setPaymentNotifications([]);
+        }
+      );
+    } else {
+      setPaymentNotifications([]);
     }
 
     const handleUpdate = () => {
@@ -372,7 +369,8 @@ function Notification() {
         handleUpdate
       );
       window.clearTimeout(initialLoad);
-      unsubscribe();
+      unsubscribeNotifications();
+      unsubscribePayments();
     };
   }, [user?.uid]);
 

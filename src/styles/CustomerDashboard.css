@@ -6,10 +6,10 @@
 
 .customer-dashboard {
   width: 100%;
-  min-height: 100vh;
+  min-height: 100%;
   padding: 30px;
-  background: #f6f8fb;
-  color: #172033;
+  background: var(--lm-bg, #f6f8fb);
+  color: var(--lm-ink, #172033);
   font-family: "Inter", "Poppins", Arial, sans-serif;
   box-sizing: border-box;
 }
@@ -201,10 +201,11 @@
   min-width: 0;
   padding: 19px;
 
-  border: 1px solid #e6eaf0;
+  border: 1px solid var(--lm-line, #e6eaf0);
   border-radius: 13px;
 
-  background: #ffffff;
+  background: var(--lm-surface, #ffffff);
+  color: var(--lm-ink, #172033);
 
   box-shadow: 0 2px 8px rgba(16, 24, 40, 0.025);
 
@@ -228,7 +229,7 @@
 }
 
 .stat-label {
-  color: #8993a3;
+  color: var(--lm-muted, #8993a3);
 
   font-size: 11px;
   font-weight: 600;
@@ -274,7 +275,7 @@
 
   margin-top: 14px;
 
-  color: #172033;
+  color: var(--lm-ink, #172033);
 
   font-size: 24px;
   font-weight: 750;
@@ -287,7 +288,7 @@
 
   margin-top: 7px;
 
-  color: #9aa3b2;
+  color: var(--lm-muted, #9aa3b2);
 
   font-size: 10px;
 }
@@ -314,10 +315,11 @@
 
   padding: 21px;
 
-  border: 1px solid #e6eaf0;
+  border: 1px solid var(--lm-line, #e6eaf0);
   border-radius: 14px;
 
-  background: #ffffff;
+  background: var(--lm-surface, #ffffff);
+  color: var(--lm-ink, #172033);
 
   box-shadow: 0 2px 8px rgba(16, 24, 40, 0.025);
 }
@@ -335,7 +337,7 @@
 .panel-header h3 {
   margin: 0;
 
-  color: #172033;
+  color: var(--lm-ink, #172033);
 
   font-size: 15px;
   font-weight: 700;
@@ -345,7 +347,7 @@
 .panel-eyebrow {
   margin: 0 0 4px;
 
-  color: #9ba4b2;
+  color: var(--lm-muted, #9ba4b2);
 
   font-size: 9px;
   font-weight: 750;
@@ -782,10 +784,11 @@
 
 .recent-orders,
 .quick-services {
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
+  background: var(--lm-surface, #ffffff);
+  border: 1px solid var(--lm-line, #e5e7eb);
   border-radius: 16px;
   overflow: hidden;
+  color: var(--lm-ink, #172033);
 }
 
 /* =========================================================
@@ -805,14 +808,14 @@
 
 .recent-orders-header h2 {
   margin: 0;
-  color: #111827;
+  color: var(--lm-ink, #111827);
   font-size: 18px;
   font-weight: 700;
 }
 
 .recent-orders-header p {
   margin: 4px 0 0;
-  color: #6b7280;
+  color: var(--lm-muted, #6b7280);
   font-size: 13px;
 }
 
@@ -845,16 +848,16 @@
 
   padding: 12px 14px;
 
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
+  background: var(--lm-surface, #ffffff);
+  border: 1px solid var(--lm-line, #e5e7eb);
   border-radius: 10px;
 
   transition: background 0.2s ease, border-color 0.2s ease;
 }
 
 .order-item:hover {
-  background: #f9fafb;
-  border-color: #dbe2ea;
+  background: var(--lm-surface-soft, #f9fafb);
+  border-color: var(--lm-line, #dbe2ea);
 }
 
 /* ORDER NUMBER */
@@ -1389,6 +1392,18 @@
 
 .customer-dashboard .dashboard-error {
   color: #b42318;
+}
+
+.customer-dashboard .dashboard-success {
+  margin-bottom: 14px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid #bbf7d0;
+  background: #f0fdf4;
+  color: #15803d;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: left;
 }
 
 .customer-dashboard .service-item {

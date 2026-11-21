@@ -372,14 +372,17 @@ body {
 ===================================== */
 
 .customer-layout .sidebar {
-  width: 250px;
-  min-width: 250px;
+  width: var(--lm-sidebar-width, 260px);
+  min-width: var(--lm-sidebar-width, 260px);
 
   background: #ffffff;
 
   border-right: 1px solid #e5e9f0;
 
-  padding: 20px 0;
+  display: flex;
+  flex-direction: column;
+
+  padding: 0 var(--lm-sidebar-pad-x, 12px) var(--lm-sidebar-pad-bottom, 24px);
 
   overflow-y: auto;
   overflow-x: hidden;
@@ -409,16 +412,21 @@ body {
   display: flex;
   align-items: center;
 
-  gap: 11px;
+  gap: 10px;
 
-  padding: 0 20px 20px;
+  height: var(--lm-sidebar-brand-height, 68px);
+  margin: 0 4px 12px;
+  padding: 0 4px;
+
+  border-bottom: 1px solid #edf0f5;
 
   min-width: 0;
+  flex-shrink: 0;
 }
 
 .customer-layout .brand-logo {
-  width: 38px;
-  height: 38px;
+  width: 40px;
+  height: 40px;
 
   flex-shrink: 0;
 
@@ -449,7 +457,7 @@ body {
 
   color: #172033;
 
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 800;
 
   white-space: nowrap;
@@ -458,12 +466,13 @@ body {
 .customer-layout .brand-text span {
   display: block;
 
-  margin-top: 2px;
+  margin-top: 1px;
 
   color: #929baa;
 
-  font-size: 8px;
+  font-size: 9px;
   font-weight: 600;
+  letter-spacing: 0.04em;
 
   white-space: nowrap;
 }
@@ -474,11 +483,7 @@ body {
 ===================================== */
 
 .customer-layout .sidebar-divider {
-  height: 1px;
-
-  margin: 0 18px 20px;
-
-  background: #edf0f5;
+  display: none;
 }
 
 
@@ -487,7 +492,10 @@ body {
 ===================================== */
 
 .customer-layout .sidebar-section {
-  margin-bottom: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--lm-sidebar-nav-gap, 2px);
+  margin-bottom: 8px;
 }
 
 
@@ -496,14 +504,14 @@ body {
 ===================================== */
 
 .customer-layout .sidebar-section-title {
-  padding: 0 20px 8px;
+  padding: var(--lm-sidebar-section-pad, 10px 10px 4px);
 
   color: #a0a8b7;
 
   font-size: 10px;
   font-weight: 800;
 
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
 
   white-space: nowrap;
   overflow: hidden;
@@ -521,20 +529,26 @@ body {
   display: flex;
   align-items: center;
 
-  gap: 13px;
+  position: relative;
 
-  margin: 2px 10px;
+  width: auto;
+  min-height: 0;
 
-  padding: 11px 20px;
+  gap: var(--lm-sidebar-item-gap, 11px);
 
-  border-radius: 9px;
+  margin: 0;
+
+  padding: var(--lm-sidebar-item-pad-y, 9px) var(--lm-sidebar-item-pad-x, 12px);
+
+  border-radius: var(--lm-sidebar-item-radius, 10px);
 
   text-decoration: none;
 
   color: #697386;
 
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.3;
 
   white-space: nowrap;
   overflow: hidden;
@@ -542,8 +556,7 @@ body {
   transition:
     background-color 0.2s ease,
     color 0.2s ease,
-    padding 0.25s ease,
-    transform 0.2s ease;
+    padding 0.25s ease;
 }
 
 
@@ -552,10 +565,10 @@ body {
 ===================================== */
 
 .customer-layout .nav-icon {
-  width: 20px;
-  min-width: 20px;
+  width: var(--lm-sidebar-icon, 18px);
+  min-width: var(--lm-sidebar-icon, 18px);
 
-  height: 20px;
+  height: var(--lm-sidebar-icon, 18px);
 
   display: flex;
   align-items: center;
@@ -567,8 +580,8 @@ body {
 }
 
 .customer-layout .nav-icon svg {
-  width: 18px;
-  height: 18px;
+  width: var(--lm-sidebar-icon, 18px);
+  height: var(--lm-sidebar-icon, 18px);
 
   stroke-width: 2;
 }
@@ -598,8 +611,6 @@ body {
   background-color: #f1f6ff;
 
   color: #1769ff;
-
-  transform: translateX(2px);
 }
 
 
@@ -612,7 +623,7 @@ body {
 
   color: #1769ff;
 
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .customer-layout .nav-link.active:hover {
@@ -656,7 +667,9 @@ body {
 .customer-layout .sidebar-bottom {
   margin-top: auto;
 
-  padding: 10px 10px 0;
+  padding: 10px 0 0;
+
+  border-top: 1px solid #edf0f5;
 }
 
 
@@ -668,15 +681,15 @@ body {
   display: flex;
   align-items: center;
 
-  gap: 9px;
+  gap: 10px;
 
-  padding: 11px;
+  padding: 10px 12px;
 
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 
   border: 1px solid #edf0f5;
 
-  border-radius: 10px;
+  border-radius: 12px;
 
   background: #fafbfc;
 
@@ -684,8 +697,8 @@ body {
 }
 
 .customer-layout .help-icon {
-  width: 29px;
-  height: 29px;
+  width: 26px;
+  height: 26px;
 
   flex-shrink: 0;
 
@@ -699,7 +712,7 @@ body {
 
   color: #1769ff;
 
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 800;
 }
 
@@ -708,7 +721,7 @@ body {
 
   color: #30394b;
 
-  font-size: 11px;
+  font-size: 11.5px;
 
   white-space: nowrap;
 }
@@ -716,11 +729,11 @@ body {
 .customer-layout .help-card span {
   display: block;
 
-  margin-top: 2px;
+  margin-top: 1px;
 
   color: #929baa;
 
-  font-size: 9px;
+  font-size: 10px;
 
   white-space: nowrap;
 }
@@ -732,26 +745,29 @@ body {
 
 .customer-layout .logout-nav-btn {
   width: 100%;
-  height: 42px;
+  min-height: 0;
+  height: auto;
 
   border: none;
 
-  border-radius: 8px;
+  border-radius: var(--lm-sidebar-item-radius, 10px);
 
   background: #fff1f1;
 
   color: #e5484d;
 
-  font-size: 12px;
-  font-weight: 700;
+  font-size: 0.875rem;
+  font-weight: 500;
 
   cursor: pointer;
 
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
 
-  gap: 8px;
+  gap: 10px;
+
+  padding: var(--lm-sidebar-item-pad-y, 9px) var(--lm-sidebar-item-pad-x, 12px);
 
   transition:
     background-color 0.2s ease,
@@ -774,8 +790,10 @@ body {
 ===================================== */
 
 .sidebar-closed .sidebar {
-  width: 72px;
-  min-width: 72px;
+  width: var(--lm-sidebar-mini-width, 72px);
+  min-width: var(--lm-sidebar-mini-width, 72px);
+  padding-left: 8px;
+  padding-right: 8px;
 }
 
 
@@ -788,6 +806,11 @@ body {
 
   padding-left: 0;
   padding-right: 0;
+}
+
+.sidebar-closed .sidebar-bottom {
+  padding-left: 10px;
+  padding-right: 10px;
 }
 
 .sidebar-closed .brand-text,
@@ -806,8 +829,8 @@ body {
 .sidebar-closed .nav-link {
   justify-content: center;
 
-  padding-left: 10px;
-  padding-right: 10px;
+  padding-left: 0;
+  padding-right: 0;
 
   gap: 0;
 }
@@ -839,10 +862,11 @@ body {
   flex: 1;
 
   min-width: 0;
+  max-width: 100%;
 
-  margin-left: 250px;
+  margin-left: var(--lm-sidebar-width, 260px);
 
-  padding: 30px;
+  padding: 24px 32px;
 
   background-color: #f5f7fb;
 
@@ -852,6 +876,8 @@ body {
   box-sizing: border-box;
 
   overflow-x: hidden;
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
 
   transition:
     margin-left 0.25s ease;
@@ -878,7 +904,7 @@ body {
 ===================================== */
 
 .sidebar-closed .customer-content {
-  margin-left: 72px;
+  margin-left: var(--lm-sidebar-mini-width, 72px);
 }
 
 
@@ -925,13 +951,14 @@ body {
 
 
 /* =====================================
-   TABLET
+   TABLET / MOBILE — off-canvas drawer
+   (content never sits under sidebar)
 ===================================== */
 
 @media (max-width: 900px) {
 
   .customer-layout .customer-title h2 {
-    font-size: 17px;
+    font-size: 16px;
   }
 
   .customer-layout .user-info {
@@ -942,105 +969,56 @@ body {
     display: none;
   }
 
-  .customer-layout .customer-content {
-    padding: 24px;
-  }
-}
-
-
-/* =====================================
-   MOBILE
-===================================== */
-
-@media (max-width: 700px) {
-
   .customer-layout .customer-header {
     height: 65px;
-
-    padding: 0 15px;
+    padding: 0 14px;
   }
 
   .customer-layout .customer-body {
     min-height: calc(100vh - 65px);
     min-height: calc(100dvh - 65px);
-
     padding-top: 65px;
   }
 
-
-  /* MOBILE SIDEBAR */
-
   .customer-layout .sidebar {
     top: 65px;
-
-    width: 250px;
-    min-width: 250px;
-
+    width: min(280px, 86vw);
+    min-width: min(280px, 86vw);
     transform: translateX(0);
-
-    box-shadow:
-      4px 0 15px rgba(0, 0, 0, 0.1);
-
+    box-shadow: 4px 0 24px rgba(15, 23, 42, 0.12);
     z-index: 1100;
   }
 
-
-  /* CLOSED MOBILE SIDEBAR */
-
+  .customer-layout.sidebar-closed .sidebar,
   .sidebar-closed .sidebar {
-    width: 250px;
-    min-width: 250px;
-
-    transform: translateX(-100%);
+    width: min(280px, 86vw);
+    min-width: min(280px, 86vw);
+    transform: translateX(-105%);
   }
 
-
-  /* MOBILE CONTENT */
-
   .customer-layout .customer-content,
-  .sidebar-closed .customer-content {
+  .customer-layout.sidebar-open .customer-content,
+  .customer-layout.sidebar-closed .customer-content,
+  .sidebar-closed .customer-content,
+  .sidebar-open .customer-content {
     width: 100%;
-
-    margin-left: 0;
-
+    max-width: 100%;
+    margin-left: 0 !important;
     padding: 20px 16px;
-
     min-height: calc(100vh - 65px);
     min-height: calc(100dvh - 65px);
   }
 
-
-  /* MOBILE OVERLAY */
-
   .sidebar-open .sidebar-overlay {
     display: block;
-
     position: fixed;
-
     top: 65px;
     left: 0;
     right: 0;
     bottom: 0;
-
     background-color: rgba(15, 23, 42, 0.4);
-
     z-index: 1000;
-  }
-
-
-  /* MOBILE HEADER */
-
-  .customer-layout .customer-title h2 {
-    font-size: 15px;
-  }
-
-  .customer-layout .customer-title span {
-    font-size: 8px;
-  }
-
-  .customer-layout .customer-logo {
-    width: 36px;
-    height: 36px;
+    border: 0;
   }
 
   .customer-layout .customer-user {
@@ -1052,11 +1030,6 @@ body {
     height: 36px;
   }
 }
-
-
-/* =====================================
-   SMALL MOBILE
-===================================== */
 
 @media (max-width: 450px) {
 

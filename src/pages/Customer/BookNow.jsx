@@ -1,8 +1,22 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { subscribeToServices } from "../../services/laundryService";
-import { createBooking } from "../../services/bookingService";
+import {
+  createBooking,
+  getLocalDateKey,
+  subscribeToDailyBookingCapacityStatus,
+} from "../../services/bookingService";
+import { subscribeToGeneralSettings } from "../../services/paymentService";
 import { useAuth } from "../../context/AuthContext";
+
+function addDaysToDateKey(dateKey, days) {
+  const [year, month, day] = String(dateKey)
+    .split("-")
+    .map(Number);
+  const date = new Date(year, month - 1, day);
+  date.setDate(date.getDate() + days);
+  return getLocalDateKey(date);
+}
 
 import {
   MapContainer,
@@ -44,7 +58,7 @@ const PICKUP_OPTIONS = [
   },
   {
     name: "Pickup Only",
-    fee: 20,
+    fee: 15,
     icon: "📦",
     description: "Your laundry will be prepared for pickup.",
   },
@@ -142,7 +156,19 @@ export default function BookNow() {
   const [pickup, setPickup] = useState("");
 
   const [schedule, setSchedule] = useState("");
+  const [pickupWindow, setPickupWindow] = useState("Same day");
+  const [capacityStatus, setCapacityStatus] = useState(null);
+  const [capacityLoading, setCapacityLoading] = useState(false);
   const [time, setTime] = useState("");
+
+  // Admin "Same day" / "Next day" → exactly one selectable pickup date
+  const allowedPickupDate = useMemo(() => {
+    const todayKey = getLocalDateKey() || new Date().toISOString().slice(0, 10);
+    if (String(pickupWindow).toLowerCase().includes("next")) {
+      return addDaysToDateKey(todayKey, 1) || todayKey;
+    }
+    return todayKey;
+  }, [pickupWindow]);
   const isTimeUnavailable =
     Boolean(time) &&
     (time < PICKUP_START_TIME || time > PICKUP_END_TIME);
@@ -490,6 +516,51 @@ export default function BookNow() {
   };
 
   // ====================================================
+  
+  // Live capacity — updates when admin changes max bookings (no refresh)
+  useEffect(() => {
+    if (!schedule) {
+      setCapacityStatus(null);
+      setCapacityLoading(false);
+      return undefined;
+    }
+
+    setCapacityLoading(true);
+
+    return subscribeToDailyBookingCapacityStatus(
+      schedule,
+      (status) => {
+        setCapacityStatus(status);
+        setCapacityLoading(false);
+      },
+      (loadError) => {
+        console.error("Unable to load booking capacity:", loadError);
+        setCapacityStatus(null);
+        setCapacityLoading(false);
+      }
+    );
+  }, [schedule]);
+
+  // Live general settings — pickup window / max bookings without refresh
+  useEffect(() => {
+    return subscribeToGeneralSettings(
+      (settings) => {
+        setPickupWindow(settings?.pickupWindow || "Same day");
+      },
+      (settingsError) => {
+        console.error("Unable to load pickup window settings:", settingsError);
+      }
+    );
+  }, []);
+
+  // Keep schedule locked to the single allowed pickup day
+  useEffect(() => {
+    if (!allowedPickupDate) return;
+    setSchedule((current) =>
+      current === allowedPickupDate ? current : allowedPickupDate
+    );
+  }, [allowedPickupDate]);
+
   // SUBMIT BOOKING
   // ====================================================
 
@@ -524,6 +595,16 @@ export default function BookNow() {
       return;
     }
 
+    if (schedule !== allowedPickupDate) {
+      setError(
+        pickupWindow === "Next day"
+          ? "Pickup is next-day only. Please use tomorrow's date."
+          : "Pickup is same-day only. Please use today's date."
+      );
+      setSchedule(allowedPickupDate);
+      return;
+    }
+
     if (!time) {
       setError(
         "Please select a pickup time."
@@ -534,6 +615,13 @@ export default function BookNow() {
     if (isTimeUnavailable) {
       setError(
         "Not available. Pickup time must be between 8:00 AM and 4:00 PM."
+      );
+      return;
+    }
+
+    if (capacityStatus?.isFull) {
+      setError(
+        "Bookings are full for the selected date. Please choose another pickup date."
       );
       return;
     }
@@ -661,9 +749,30 @@ export default function BookNow() {
         error
       );
 
-      setError(
-        "Something went wrong while saving your booking. Please try again."
-      );
+      {
+        const message = String(error?.message || "");
+        const code = String(error?.code || "");
+        if (
+          message.toLowerCase().includes("full") ||
+          message.toLowerCase().includes("closed") ||
+          message.toLowerCase().includes("max bookings")
+        ) {
+          setError(message);
+        } else if (
+          code.includes("permission") ||
+          message.toLowerCase().includes("permission")
+        ) {
+          setError(
+            "Booking was blocked by permissions. Please sign out, sign in again, then retry."
+          );
+        } else if (message) {
+          setError(message);
+        } else {
+          setError(
+            "Something went wrong while saving your booking. Please try again."
+          );
+        }
+      }
 
       setIsSubmitting(false);
     }
@@ -978,7 +1087,9 @@ export default function BookNow() {
                   </h2>
 
                   <p>
-                    Choose your preferred date and time (8:00 AM – 4:00 PM).
+                    {pickupWindow === "Next day"
+                      ? "Next-day pickup only — choose a time (8:00 AM – 4:00 PM)."
+                      : "Same-day pickup only — choose a time (8:00 AM – 4:00 PM)."}
                   </p>
 
                 </div>
@@ -996,18 +1107,23 @@ export default function BookNow() {
                   <input
                     id="schedule"
                     type="date"
-                    value={schedule}
-                    min={
-                      new Date()
-                        .toISOString()
-                        .split("T")[0]
-                    }
-                    onChange={(event) =>
+                    value={schedule || allowedPickupDate}
+                    min={allowedPickupDate}
+                    max={allowedPickupDate}
+                    onChange={(event) => {
+                      const nextDate = event.target.value;
                       setSchedule(
-                        event.target.value
-                      )
-                    }
+                        nextDate === allowedPickupDate
+                          ? nextDate
+                          : allowedPickupDate
+                      );
+                    }}
                   />
+                  <p className="field-hint">
+                    {pickupWindow === "Next day"
+                      ? "Only tomorrow is available for pickup."
+                      : "Only today is available for pickup."}
+                  </p>
 
                 </div>
 
@@ -1049,6 +1165,36 @@ export default function BookNow() {
                 </div>
 
               </div>
+
+              {schedule && (
+                <div
+                  className={
+                    "capacity-banner" +
+                    (capacityStatus?.isFull ? " capacity-full" : "")
+                  }
+                  role="status"
+                >
+                  {capacityLoading || !capacityStatus ? (
+                    <p>Checking daily booking capacity...</p>
+                  ) : capacityStatus.closed || capacityStatus.max <= 0 ? (
+                    <p>
+                      Bookings are closed right now (max bookings is 0). Please
+                      try again later.
+                    </p>
+                  ) : capacityStatus.isFull ? (
+                    <p>
+                      Bookings are full for this date ({capacityStatus.used}/
+                      {capacityStatus.max}). Please try again later.
+                    </p>
+                  ) : (
+                    <p>
+                      Capacity for this date: {capacityStatus.used}/
+                      {capacityStatus.max} used · {capacityStatus.remaining}{" "}
+                      remaining
+                    </p>
+                  )}
+                </div>
+              )}
 
             </section>
 
@@ -1636,7 +1782,8 @@ export default function BookNow() {
                 className="summary-submit"
                 disabled={
                   isSubmitting ||
-                  services.length === 0
+                  services.length === 0 ||
+                  capacityStatus?.isFull
                 }
               >
 

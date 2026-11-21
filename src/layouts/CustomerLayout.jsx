@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { Outlet, useNavigate, NavLink } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { logout } from "../services/authService";
+import LogoutConfirmModal from "../components/LogoutConfirmModal";
+import ThemeToggleBar from "../components/ThemeToggleBar";
 
 import {
   Menu,
@@ -21,13 +23,17 @@ function CustomerLayout() {
   const navigate = useNavigate();
 
   const [sidebarOpen, setSidebarOpen] = useState(
-    () => window.innerWidth > 700
+    () => typeof window !== "undefined" && window.innerWidth > 900
   );
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
 
   useEffect(() => {
     const collapseSidebarForViewport = () => {
-      if (window.innerWidth <= 700) {
+      if (window.innerWidth <= 900) {
         setSidebarOpen(false);
+      } else {
+        setSidebarOpen(true);
       }
     };
 
@@ -42,17 +48,21 @@ function CustomerLayout() {
   };
 
   const closeSidebarOnMobile = () => {
-    if (window.innerWidth <= 700) {
+    if (window.innerWidth <= 900) {
       setSidebarOpen(false);
     }
   };
 
-  const handleLogout = async () => {
+  const confirmLogout = async () => {
+    if (loggingOut) return;
+    setLoggingOut(true);
     try {
+      navigate("/", { replace: true });
       await logout();
-      navigate("/");
     } catch (error) {
       alert(error.message);
+      setLoggingOut(false);
+      setShowLogoutModal(false);
     }
   };
 
@@ -62,6 +72,7 @@ function CustomerLayout() {
         sidebarOpen ? "sidebar-open" : "sidebar-closed"
       }`}
     >
+      <ThemeToggleBar />
       {/* =====================================
           HEADER
       ===================================== */}
@@ -323,8 +334,9 @@ function CustomerLayout() {
             <button
               type="button"
               className="logout-nav-btn"
-              onClick={handleLogout}
+              onClick={() => setShowLogoutModal(true)}
               title="Logout"
+              disabled={loggingOut}
             >
               <LogOut size={17} />
 
@@ -360,6 +372,16 @@ function CustomerLayout() {
 
       </div>
 
+      <LogoutConfirmModal
+        open={showLogoutModal}
+        loading={loggingOut}
+        title="Log out?"
+        message="Are you sure you want to log out of your LaundryMate account?"
+        onCancel={() => {
+          if (!loggingOut) setShowLogoutModal(false);
+        }}
+        onConfirm={confirmLogout}
+      />
     </div>
   );
 }

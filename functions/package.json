@@ -1,0 +1,19 @@
+{
+  "name": "laundrymate-functions",
+  "description": "LaundryMate Cloud Functions",
+  "engines": {
+    "node": "20"
+  },
+  "main": "index.js",
+  "type": "commonjs",
+  "scripts": {
+    "serve": "firebase emulators:start --only functions",
+    "deploy": "firebase deploy --only functions"
+  },
+  "dependencies": {
+    "firebase-admin": "^13.0.2",
+    "firebase-functions": "^6.3.0",
+    "nodemailer": "^6.10.0"
+  },
+  "private": true
+}

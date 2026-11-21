@@ -498,7 +498,7 @@
 
 .sales-report-table {
   width: 100%;
-  min-width: 1180px;
+  min-width: 980px;
 
   border-collapse: collapse;
 }
@@ -508,8 +508,8 @@
 ========================================================= */
 
 .sales-report-table thead th {
-  height: 46px;
-  padding: 0 15px;
+  height: 38px;
+  padding: 0 12px;
 
   background: #f8fafc;
 
@@ -532,7 +532,7 @@
 ========================================================= */
 
 .sales-report-table tbody td {
-  padding: 14px 15px;
+  padding: 10px 12px;
 
   border-bottom: 1px solid #f0f2f5;
 
@@ -1036,7 +1036,7 @@
   }
 
   .sales-report-table {
-    min-width: 1180px;
+    min-width: 980px;
   }
 }
 

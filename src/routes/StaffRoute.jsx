@@ -7,7 +7,7 @@ import { useAuth } from "../context/AuthContext";
  * Security Features:
  * - Verifies user authentication
  * - Validates user role is "staff"
- * - Redirects unauthenticated users to login
+ * - Redirects unauthenticated users to the landing page
  * - Prevents unauthorized access from other roles
  * - Checks for staff verification status
  * 
@@ -24,7 +24,7 @@ function StaffRoute({ children }) {
     return <div className="loading">Loading...</div>;
   }
 
-  // Check if user is authenticated
+  // Check if user is authenticated — landing page, not sign-in modal
   if (!user) {
     return <Navigate to="/" replace />;
   }
@@ -35,11 +35,17 @@ function StaffRoute({ children }) {
   }
 
   // Optional: Check if staff member is verified/active
-  if (user.status === "inactive") {
+  if (user.status === "Inactive" || user.status === "Archived") {
     return (
       <div className="access-denied">
-        <h2>Account Inactive</h2>
-        <p>Your staff account has been deactivated. Please contact administration.</p>
+        <h2>
+          {user.status === "Archived" ? "Account Archived" : "Account Inactive"}
+        </h2>
+        <p>
+          {user.status === "Archived"
+            ? "Your staff account has been archived. Please contact administration."
+            : "Your staff account has been deactivated. Please contact administration."}
+        </p>
       </div>
     );
   }

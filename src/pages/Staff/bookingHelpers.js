@@ -4,17 +4,57 @@
 
 export const DELIVERY_FEES = {
   "Pickup & Delivery": 30,
-  "Pickup Only": 20,
+  "Pickup Only": 15,
 };
 
-// Fixed tiered rate: every 5 kg (or part thereof) costs ₱150.
-// Laundry Subtotal = CEILING(Actual Weight / WEIGHT_TIER_KG) × WEIGHT_TIER_RATE
+// Weight pricing (fixed rates — do not change):
+// ≤5 kg        → ₱150 flat
+// >5 and <10   → ₱150 + ₱27 × (kg − 5)   [decimal kg proportional]
+// exactly 10   → ₱300
+// >10 and ≤50  → ₱300 + ₱27 × (kg − 10)
+// ≤0 or >50    → invalid
 export const WEIGHT_TIER_KG = 5;
 export const WEIGHT_TIER_RATE = 150;
+export const WEIGHT_TEN_KG_RATE = 300;
+export const WEIGHT_EXTRA_PER_KG = 27;
+export const WEIGHT_MAX_KG = 50;
+
+export function getWeightPricingLabel() {
+  return `₱${WEIGHT_TIER_RATE} for 1–5 kg · +₱${WEIGHT_EXTRA_PER_KG}/kg above 5 (until 10) · ₱${WEIGHT_TEN_KG_RATE} at 10 kg · +₱${WEIGHT_EXTRA_PER_KG}/kg above 10 (max ${WEIGHT_MAX_KG} kg)`;
+}
+
+/** Returns an error message for invalid weight, or "" if valid. */
+export function validateLaundryWeight(weight) {
+  const kg = Number(weight);
+
+  if (weight === "" || weight === null || weight === undefined) {
+    return "Please enter the laundry weight.";
+  }
+
+  if (Number.isNaN(kg)) {
+    return "Please enter a valid weight in kilograms.";
+  }
+
+  if (kg <= 0) {
+    return "Weight must be greater than 0 kg.";
+  }
+
+  if (kg > WEIGHT_MAX_KG) {
+    return `Weight cannot exceed ${WEIGHT_MAX_KG} kg.`;
+  }
+
+  return "";
+}
 
 export function getPayment(booking) {
   return booking?.payment || null;
 }
+
+export {
+  formatBookingIdLabel,
+  formatShortBookingId,
+  getBookingId,
+} from "../../utils/bookingId";
 
 export function getCustomerName(booking) {
   if (!booking) return "Unknown Customer";
@@ -254,9 +294,25 @@ export function getStatusClass(status) {
 export function calculateLaundrySubtotal(booking, weight) {
   const kg = Number(weight);
 
-  if (!kg || kg <= 0 || Number.isNaN(kg)) return 0;
+  if (!kg || kg <= 0 || Number.isNaN(kg) || kg > WEIGHT_MAX_KG) return 0;
 
-  return Math.ceil(kg / WEIGHT_TIER_KG) * WEIGHT_TIER_RATE;
+  // 1–5 kg: flat ₱150
+  if (kg <= 5) {
+    return WEIGHT_TIER_RATE;
+  }
+
+  // Above 5 kg but below 10 kg: ₱150 + ₱27 per additional kg (proportional)
+  if (kg < 10) {
+    return WEIGHT_TIER_RATE + (kg - 5) * WEIGHT_EXTRA_PER_KG;
+  }
+
+  // Exactly 10 kg: ₱300
+  if (kg <= 10) {
+    return WEIGHT_TEN_KG_RATE;
+  }
+
+  // Above 10 kg up to 50 kg: ₱300 + ₱27 per additional kg (proportional)
+  return WEIGHT_TEN_KG_RATE + (kg - 10) * WEIGHT_EXTRA_PER_KG;
 }
 
 export function calculateTotalAmount(booking, weight) {

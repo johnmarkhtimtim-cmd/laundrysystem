@@ -1,0 +1,107 @@
+.logout-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 20px;
+
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(2px);
+}
+
+.logout-modal {
+  width: min(100%, 400px);
+
+  padding: 28px 24px 22px;
+
+  border-radius: 16px;
+  background: #ffffff;
+
+  text-align: center;
+
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.28);
+}
+
+.logout-modal-icon {
+  width: 56px;
+  height: 56px;
+
+  margin: 0 auto 14px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 16px;
+  background: #eff6ff;
+
+  font-size: 28px;
+  line-height: 1;
+}
+
+.logout-modal h2 {
+  margin: 0 0 8px;
+
+  color: #0f172a;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.logout-modal p {
+  margin: 0 0 22px;
+
+  color: #64748b;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.logout-modal-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.logout-modal-cancel,
+.logout-modal-confirm {
+  flex: 1;
+
+  height: 44px;
+
+  border-radius: 11px;
+
+  font-size: 14px;
+  font-weight: 600;
+
+  cursor: pointer;
+
+  transition: background 0.15s ease, opacity 0.15s ease, transform 0.15s ease;
+}
+
+.logout-modal-cancel {
+  border: 1px solid #dbe3ef;
+  background: #ffffff;
+  color: #475569;
+}
+
+.logout-modal-cancel:hover:not(:disabled) {
+  background: #f8fafc;
+}
+
+.logout-modal-confirm {
+  border: none;
+  background: #dc2626;
+  color: #ffffff;
+}
+
+.logout-modal-confirm:hover:not(:disabled) {
+  background: #b91c1c;
+}
+
+.logout-modal-cancel:disabled,
+.logout-modal-confirm:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}

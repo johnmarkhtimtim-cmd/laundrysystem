@@ -9,28 +9,11 @@ import {
   Scale,
   FileText,
 } from "lucide-react";
+import { subscribeToAllBookings } from "../../services/bookingService";
 
 import "../../styles/Report.css";
 
-const BOOKINGS_KEY = "laundrymateBookings";
 const COMPLETED_STATUS = "Completed";
-
-/* =========================================================
-   READ BOOKINGS
-========================================================= */
-
-function readBookings() {
-  try {
-    const data = JSON.parse(
-      localStorage.getItem(BOOKINGS_KEY) || "[]"
-    );
-
-    return Array.isArray(data) ? data : [];
-  } catch (error) {
-    console.error("Failed to read bookings:", error);
-    return [];
-  }
-}
 
 /* =========================================================
    FORMAT MONEY
@@ -49,14 +32,17 @@ function formatMoney(value) {
    FORMAT DATE
 ========================================================= */
 
-function formatDate(value) {
-  if (!value) return "—";
-
+function toDateValue(value) {
+  if (!value) return null;
+  if (typeof value.toDate === "function") return value.toDate();
+  if (typeof value.seconds === "number") return new Date(value.seconds * 1000);
   const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
 
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
+function formatDate(value) {
+  const date = toDateValue(value);
+  if (!date) return value ? String(value) : "—";
 
   return date.toLocaleDateString("en-PH", {
     year: "numeric",
@@ -71,6 +57,7 @@ function formatDate(value) {
 
 function getCustomerName(booking) {
   return (
+    booking.customer_name ||
     booking.customerName ||
     booking.name ||
     booking.customer?.name ||
@@ -151,10 +138,13 @@ function getWeight(booking) {
 
 function getTotalAmount(booking) {
   const amount =
+    booking.total_amount ??
     booking.totalAmount ??
+    booking.amount_to_be_paid ??
     booking.amountToPay ??
     booking.finalAmount ??
     booking.estimatedTotal ??
+    booking.payment?.amount ??
     booking.total ??
     booking.amount ??
     0;
@@ -172,7 +162,9 @@ function getTotalAmount(booking) {
 
 function getStaffName(booking) {
   return (
+    booking.staff_name ||
     booking.staffName ||
+    booking.rider_name ||
     booking.assignedStaffName ||
     booking.updatedByName ||
     booking.staff?.name ||
@@ -187,10 +179,11 @@ function getStaffName(booking) {
 
 function getPaymentStatus(booking) {
   const payment =
+    booking.payment?.payment_status ??
+    booking.payment?.paymentStatus ??
+    booking.payment?.status ??
     booking.paymentStatus ??
     booking.payment_status ??
-    booking.payment?.status ??
-    booking.payment?.paymentStatus ??
     booking.transaction?.paymentStatus ??
     booking.isPaid;
 
@@ -263,89 +256,27 @@ function Report() {
   const [loading, setLoading] = useState(true);
 
   /* =======================================================
-     LOAD BOOKINGS
-  ======================================================= */
-
-  const loadBookings = () => {
-    setLoading(true);
-
-    const data = readBookings();
-
-    data.sort((a, b) => {
-      const dateA = new Date(
-        a.updatedAt || a.createdAt || 0
-      ).getTime();
-
-      const dateB = new Date(
-        b.updatedAt || b.createdAt || 0
-      ).getTime();
-
-      return dateB - dateA;
-    });
-
-    setBookings(data);
-    setLoading(false);
-  };
-
-  /* =======================================================
-     INITIAL LOAD + AUTO REFRESH
+     LIVE FIRESTORE BOOKINGS
   ======================================================= */
 
   useEffect(() => {
-    loadBookings();
+    setLoading(true);
 
-    const handleBookingUpdate = () => {
-      loadBookings();
-    };
-
-    const handleStorage = (event) => {
-      if (
-        !event.key ||
-        event.key === BOOKINGS_KEY
-      ) {
-        loadBookings();
+    const unsubscribe = subscribeToAllBookings(
+      (data) => {
+        setBookings(data);
+        setLoading(false);
+      },
+      (error) => {
+        console.error("Failed to load live sales report:", error);
+        setBookings([]);
+        setLoading(false);
       }
-    };
-
-    window.addEventListener(
-      "laundrymateBookingUpdated",
-      handleBookingUpdate
     );
 
-    window.addEventListener(
-      "laundrymateBookingsUpdated",
-      handleBookingUpdate
-    );
-
-    window.addEventListener(
-      "storage",
-      handleStorage
-    );
-
-    const interval = setInterval(
-      loadBookings,
-      2000
-    );
-
-    return () => {
-      window.removeEventListener(
-        "laundrymateBookingUpdated",
-        handleBookingUpdate
-      );
-
-      window.removeEventListener(
-        "laundrymateBookingsUpdated",
-        handleBookingUpdate
-      );
-
-      window.removeEventListener(
-        "storage",
-        handleStorage
-      );
-
-      clearInterval(interval);
-    };
+    return () => unsubscribe?.();
   }, []);
+
 
   /* =======================================================
      REPORT DATA
@@ -377,8 +308,11 @@ function Report() {
       paymentStatus: getPaymentStatus(booking),
 
       createdAt:
+        booking.updated_at ||
         booking.updatedAt ||
+        booking.created_at ||
         booking.createdAt ||
+        booking.booking_date ||
         booking.schedule ||
         "",
     }));
@@ -421,11 +355,9 @@ function Report() {
       let matchesDate = true;
 
       if (dateFilter) {
-        const itemDate = new Date(
-          item.createdAt
-        );
+        const itemDate = toDateValue(item.createdAt);
 
-        if (!Number.isNaN(itemDate.getTime())) {
+        if (itemDate) {
           const year = itemDate.getFullYear();
 
           const month = String(
@@ -641,11 +573,11 @@ function Report() {
 
           <button
             className="report-btn secondary"
-            onClick={loadBookings}
             type="button"
+            title="Sales report updates automatically from Firestore"
           >
             <RefreshCw size={17} />
-            Refresh
+            Live
           </button>
 
           <button

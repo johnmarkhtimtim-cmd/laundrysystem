@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   User,
   Mail,
@@ -12,23 +12,34 @@ import {
   X,
 } from "lucide-react";
 
+import { useAuth } from "../../context/AuthContext";
+import { updateUserProfile } from "../../services/userService";
+import { changePassword } from "../../services/authService";
 import "../../styles/Profile.css";
+import "../../styles/StaffProfile.css";
+
+const buildProfile = (user) => {
+  const [first = "", ...rest] = (user?.name || "").trim().split(/\s+/);
+
+  return {
+    firstName: user?.firstName ?? first,
+    lastName: user?.lastName ?? rest.join(" "),
+    email: user?.email ?? "",
+    phone: user?.phone ?? "",
+    address: user?.address ?? "",
+    barangay: user?.barangay ?? "",
+    city: user?.city ?? "",
+    province: user?.province ?? "",
+  };
+};
 
 function Profile() {
   const [isEditing, setIsEditing] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  const [profile, setProfile] = useState({
-    firstName: "John Mark",
-    lastName: "Timtim",
-    email: "johnmark@email.com",
-    phone: "0912 345 6789",
-    address: "San Antonio",
-    barangay: "San Antonio",
-    city: "Santa Rosa",
-    province: "Laguna",
-  });
+  const { user, updateUser } = useAuth();
 
+  const [profile, setProfile] = useState(() => buildProfile(user));
   const [formData, setFormData] = useState(profile);
 
   const [passwordData, setPasswordData] = useState({
@@ -36,6 +47,14 @@ function Profile() {
     newPassword: "",
     confirmPassword: "",
   });
+
+  useEffect(() => {
+    const nextProfile = buildProfile(user);
+    setProfile(nextProfile);
+    if (!isEditing) {
+      setFormData(nextProfile);
+    }
+  }, [user, isEditing]);
 
   const handleChange = (e) => {
     setFormData({
@@ -61,43 +80,95 @@ function Profile() {
     setIsEditing(false);
   };
 
-  const handleSave = (e) => {
+  const handleSave = async (e) => {
     e.preventDefault();
 
-    setProfile(formData);
-    setIsEditing(false);
+    try {
+      const changes = {
+        firstName: formData.firstName.trim(),
+        lastName: formData.lastName.trim(),
+        phone: formData.phone.trim(),
+        address: formData.address.trim(),
+        barangay: formData.barangay.trim(),
+        city: formData.city.trim(),
+        province: formData.province.trim(),
+      };
 
-    alert("Profile updated successfully!");
+      await updateUserProfile(user.uid, changes);
+      updateUser(changes);
+
+      setProfile(formData);
+      setIsEditing(false);
+      alert("Profile updated successfully!");
+    } catch (error) {
+      console.error("Profile update error:", error);
+      alert("Failed to update profile. Please try again.");
+    }
   };
 
-  const handleChangePassword = (e) => {
+  const handleChangePassword = async (e) => {
     e.preventDefault();
 
-    if (
-      !passwordData.currentPassword ||
-      !passwordData.newPassword ||
-      !passwordData.confirmPassword
-    ) {
+    const { currentPassword, newPassword, confirmPassword } = passwordData;
+
+    if (!currentPassword || !newPassword || !confirmPassword) {
       alert("Please complete all password fields.");
       return;
     }
 
-    if (passwordData.newPassword !== passwordData.confirmPassword) {
+    if (newPassword !== confirmPassword) {
       alert("New passwords do not match.");
       return;
     }
 
-    alert("Password changed successfully!");
+    if (
+      newPassword.length < 8 ||
+      !/[A-Z]/.test(newPassword) ||
+      !/[a-z]/.test(newPassword) ||
+      !/\d/.test(newPassword) ||
+      !/[^A-Za-z0-9]/.test(newPassword)
+    ) {
+      alert(
+        "New password must be at least 8 characters and include an uppercase letter, a lowercase letter, a number, and a special character.",
+      );
+      return;
+    }
 
-    setPasswordData({
-      currentPassword: "",
-      newPassword: "",
-      confirmPassword: "",
-    });
+    if (newPassword === currentPassword) {
+      alert("New password must be different from the current password.");
+      return;
+    }
+
+    try {
+      await changePassword(currentPassword, newPassword);
+      alert("Password changed successfully!");
+
+      setPasswordData({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      });
+    } catch (error) {
+      console.error("Change password error:", error);
+
+      if (
+        error.code === "auth/wrong-password" ||
+        error.code === "auth/invalid-credential" ||
+        error.code === "auth/invalid-login-credentials"
+      ) {
+        alert("Current password is incorrect.");
+      } else if (error.code === "auth/too-many-requests") {
+        alert("Too many attempts. Please try again later.");
+      } else if (error.code === "auth/weak-password") {
+        alert("New password is too weak.");
+      } else {
+        alert("Failed to change password. Please try again.");
+      }
+    }
   };
 
   const getInitials = () => {
-    return `${profile.firstName.charAt(0)}${profile.lastName.charAt(0)}`;
+    return `${profile.firstName.charAt(0)}${profile.lastName.charAt(0)}`.toUpperCase() || profile.email.charAt(0).toUpperCase() || "?";
   };
 
   return (
@@ -105,19 +176,23 @@ function Profile() {
 
      
 
-      {/* PROFILE CARD */}
-      <section className="profile-card">
+      <header className="profile-header">
+        <h1>My Profile</h1>
+        <p>Manage your personal information and account security.</p>
+      </header>
+      <section className="acct-card">
+        <div className="profile-cover" aria-hidden="true" />
 
         {/* PROFILE TOP */}
         <div className="profile-top">
 
-          <div className="profile-avatar">
+          <div className="acct-avatar">
             {getInitials()}
           </div>
 
           <div className="profile-user">
             <h2>
-              {profile.firstName} {profile.lastName}
+              {`${profile.firstName} ${profile.lastName}`.trim() || profile.email.split("@")[0]}
             </h2>
 
             <p>
@@ -143,12 +218,12 @@ function Profile() {
 
         {/* PROFILE FORM */}
         <form
-          className="profile-form"
+          className="acct-form"
           onSubmit={handleSave}
         >
 
-          <div className="section-title">
-            <div className="section-icon">
+          <div className="acct-section-title">
+            <div className="acct-section-icon">
               <User size={18} />
             </div>
 
@@ -158,13 +233,13 @@ function Profile() {
             </div>
           </div>
 
-          <div className="form-grid">
+          <div className="acct-grid">
 
             {/* FIRST NAME */}
-            <div className="form-group">
+            <div className="acct-field">
               <label>First Name</label>
 
-              <div className="input-wrapper">
+              <div className="acct-input">
                 <User size={17} />
 
                 <input
@@ -178,10 +253,10 @@ function Profile() {
             </div>
 
             {/* LAST NAME */}
-            <div className="form-group">
+            <div className="acct-field">
               <label>Last Name</label>
 
-              <div className="input-wrapper">
+              <div className="acct-input">
                 <User size={17} />
 
                 <input
@@ -195,10 +270,10 @@ function Profile() {
             </div>
 
             {/* EMAIL */}
-            <div className="form-group">
+            <div className="acct-field">
               <label>Email Address</label>
 
-              <div className="input-wrapper">
+              <div className="acct-input">
                 <Mail size={17} />
 
                 <input
@@ -206,16 +281,16 @@ function Profile() {
                   name="email"
                   value={formData.email}
                   onChange={handleChange}
-                  disabled={!isEditing}
+                  disabled
                 />
               </div>
             </div>
 
             {/* PHONE */}
-            <div className="form-group">
+            <div className="acct-field">
               <label>Phone Number</label>
 
-              <div className="input-wrapper">
+              <div className="acct-input">
                 <Phone size={17} />
 
                 <input
@@ -231,8 +306,8 @@ function Profile() {
           </div>
 
           {/* ADDRESS */}
-          <div className="section-title address-title">
-            <div className="section-icon">
+          <div className="acct-section-title address-title">
+            <div className="acct-section-icon">
               <MapPin size={18} />
             </div>
 
@@ -242,12 +317,12 @@ function Profile() {
             </div>
           </div>
 
-          <div className="form-grid">
+          <div className="acct-grid">
 
-            <div className="form-group">
+            <div className="acct-field">
               <label>Address</label>
 
-              <div className="input-wrapper">
+              <div className="acct-input">
                 <MapPin size={17} />
 
                 <input
@@ -260,10 +335,10 @@ function Profile() {
               </div>
             </div>
 
-            <div className="form-group">
+            <div className="acct-field">
               <label>Barangay</label>
 
-              <div className="input-wrapper">
+              <div className="acct-input">
                 <MapPin size={17} />
 
                 <input
@@ -276,10 +351,10 @@ function Profile() {
               </div>
             </div>
 
-            <div className="form-group">
+            <div className="acct-field">
               <label>City / Municipality</label>
 
-              <div className="input-wrapper">
+              <div className="acct-input">
                 <MapPin size={17} />
 
                 <input
@@ -292,10 +367,10 @@ function Profile() {
               </div>
             </div>
 
-            <div className="form-group">
+            <div className="acct-field">
               <label>Province</label>
 
-              <div className="input-wrapper">
+              <div className="acct-input">
                 <MapPin size={17} />
 
                 <input
@@ -316,7 +391,7 @@ function Profile() {
 
               <button
                 type="button"
-                className="cancel-btn"
+                className="acct-cancel-btn"
                 onClick={handleCancel}
               >
                 <X size={17} />
@@ -325,7 +400,7 @@ function Profile() {
 
               <button
                 type="submit"
-                className="save-btn"
+                className="acct-save-btn"
               >
                 <Save size={17} />
                 Save Changes
@@ -338,10 +413,10 @@ function Profile() {
       </section>
 
       {/* CHANGE PASSWORD */}
-      <section className="password-card">
+      <section className="acct-password-card">
 
-        <div className="section-title">
-          <div className="section-icon password-icon">
+        <div className="acct-section-title">
+          <div className="acct-section-icon password-icon">
             <Lock size={18} />
           </div>
 
@@ -357,10 +432,10 @@ function Profile() {
         >
 
           {/* CURRENT PASSWORD */}
-          <div className="form-group">
+          <div className="acct-field">
             <label>Current Password</label>
 
-            <div className="input-wrapper password-wrapper">
+            <div className="acct-input password-wrapper">
 
               <Lock size={17} />
 
@@ -390,10 +465,10 @@ function Profile() {
           </div>
 
           {/* NEW PASSWORD */}
-          <div className="form-group">
+          <div className="acct-field">
             <label>New Password</label>
 
-            <div className="input-wrapper">
+            <div className="acct-input">
               <Lock size={17} />
 
               <input
@@ -407,10 +482,10 @@ function Profile() {
           </div>
 
           {/* CONFIRM PASSWORD */}
-          <div className="form-group">
+          <div className="acct-field">
             <label>Confirm New Password</label>
 
-            <div className="input-wrapper">
+            <div className="acct-input">
               <Lock size={17} />
 
               <input

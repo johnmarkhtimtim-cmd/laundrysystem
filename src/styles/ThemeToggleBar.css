@@ -1,0 +1,200 @@
+:root {
+  --theme-bar-height: 44px;
+}
+
+.theme-toggle-bar {
+  position: relative;
+  z-index: 1100;
+
+  height: var(--theme-bar-height);
+  min-height: var(--theme-bar-height);
+
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+
+  padding: 0 28px;
+
+  border-bottom: 1px solid #e2e8f0;
+  background: #f8fafc;
+
+  color: #475569;
+}
+
+.theme-toggle-label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #94a3b8;
+}
+
+.theme-toggle-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+
+  padding: 3px;
+
+  border: 1px solid #dbe3ef;
+  border-radius: 999px;
+  background: #ffffff;
+}
+
+.theme-mode-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+
+  min-height: 30px;
+  padding: 0 12px;
+
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+
+  color: #64748b;
+
+  font-size: 12px;
+  font-weight: 700;
+
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.theme-mode-btn:hover {
+  color: #0f172a;
+  background: #f1f5f9;
+}
+
+.theme-mode-btn.active {
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.theme-mode-btn.active:hover {
+  background: #1d4ed8;
+  color: #ffffff;
+}
+
+@media (max-width: 700px) {
+  .theme-toggle-bar {
+    padding: 0 16px;
+  }
+
+  .theme-toggle-label {
+    display: none;
+  }
+}
+
+/* Sticky/fixed header portals: pin theme bar to the top */
+.staff-layout > .theme-toggle-bar,
+.customer-layout > .theme-toggle-bar,
+.rider-layout > .theme-toggle-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+}
+
+.staff-layout > .theme-toggle-bar ~ .staff-header {
+  top: var(--theme-bar-height, 44px);
+}
+
+.customer-layout > .theme-toggle-bar ~ .customer-header {
+  top: var(--theme-bar-height, 44px);
+}
+
+.rider-layout > .theme-toggle-bar ~ .rider-header {
+  top: var(--theme-bar-height, 44px);
+}
+
+.staff-layout:has(> .theme-toggle-bar) .staff-body {
+  padding-top: calc(76px + var(--theme-bar-height, 44px));
+}
+
+.staff-layout:has(> .theme-toggle-bar) .sidebar {
+  top: calc(76px + var(--theme-bar-height, 44px));
+}
+
+.staff-layout:has(> .theme-toggle-bar) .staff-sidebar-overlay {
+  top: calc(76px + var(--theme-bar-height, 44px));
+}
+
+.customer-layout:has(> .theme-toggle-bar) .customer-body {
+  padding-top: calc(70px + var(--theme-bar-height, 44px));
+  min-height: calc(100vh - 70px - var(--theme-bar-height, 44px));
+  min-height: calc(100dvh - 70px - var(--theme-bar-height, 44px));
+}
+
+.customer-layout:has(> .theme-toggle-bar) .sidebar {
+  top: calc(70px + var(--theme-bar-height, 44px));
+}
+
+.customer-layout:has(> .theme-toggle-bar) .sidebar-overlay {
+  top: calc(70px + var(--theme-bar-height, 44px));
+}
+
+.rider-layout:has(> .theme-toggle-bar) .rider-header {
+  position: fixed;
+  left: 0;
+  right: 0;
+}
+
+.rider-layout:has(> .theme-toggle-bar) .rider-body {
+  padding-top: calc(76px + var(--theme-bar-height, 44px));
+}
+
+.rider-layout:has(> .theme-toggle-bar) .rider-sidebar {
+  top: calc(76px + var(--theme-bar-height, 44px));
+  height: calc(100vh - 76px - var(--theme-bar-height, 44px));
+}
+
+.rider-layout:has(> .theme-toggle-bar) .rider-sidebar-overlay {
+  top: calc(76px + var(--theme-bar-height, 44px));
+}
+
+.portal-shell > .theme-toggle-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+}
+
+.portal-shell:has(> .theme-toggle-bar) .portal-sidebar {
+  top: var(--theme-bar-height, 44px);
+}
+
+.portal-shell:has(> .theme-toggle-bar) .portal-workspace {
+  padding-top: var(--theme-bar-height, 44px);
+}
+
+@media (max-width: 900px) {
+  .staff-layout:has(> .theme-toggle-bar) .staff-body {
+    padding-top: calc(68px + var(--theme-bar-height, 44px));
+  }
+
+  .staff-layout:has(> .theme-toggle-bar) .sidebar {
+    top: calc(68px + var(--theme-bar-height, 44px));
+  }
+
+  .staff-layout:has(> .theme-toggle-bar) .staff-sidebar-overlay {
+    top: calc(68px + var(--theme-bar-height, 44px));
+  }
+
+  .customer-layout:has(> .theme-toggle-bar) .customer-body {
+    padding-top: calc(65px + var(--theme-bar-height, 44px));
+    min-height: calc(100vh - 65px - var(--theme-bar-height, 44px));
+    min-height: calc(100dvh - 65px - var(--theme-bar-height, 44px));
+  }
+
+  .customer-layout:has(> .theme-toggle-bar) .sidebar,
+  .customer-layout:has(> .theme-toggle-bar) .sidebar-overlay {
+    top: calc(65px + var(--theme-bar-height, 44px));
+  }
+
+  .rider-layout:has(> .theme-toggle-bar) .rider-sidebar {
+    height: auto;
+  }
+}

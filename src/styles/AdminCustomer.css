@@ -109,6 +109,14 @@
   background: #f3f4f6;
 }
 
+.customer-stat-icon.amber {
+  background: #fff7ed;
+}
+
+.customer-stat-grid-4 {
+  grid-template-columns: repeat(4, 1fr);
+}
+
 .customer-stat-card span {
   display: block;
 
@@ -177,6 +185,41 @@
   font-size: 13px;
 }
 
+.customer-list-tools {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.customer-filter-tabs {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  background: #f3f5f9;
+  border-radius: 10px;
+}
+
+.customer-filter-tabs button {
+  border: none;
+  background: transparent;
+  color: #64748b;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 650;
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.customer-filter-tabs button.active {
+  background: #ffffff;
+  color: #1e293b;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+}
+
 
 /* =========================================
    SEARCH
@@ -236,13 +279,13 @@
 .customer-table {
   width: 100%;
 
-  min-width: 900px;
+  min-width: 700px;
 
   border-collapse: collapse;
 }
 
 .customer-table th {
-  padding: 14px 20px;
+  padding: 10px 14px;
 
   background: #fafbfc;
 
@@ -260,7 +303,7 @@
 }
 
 .customer-table td {
-  padding: 17px 20px;
+  padding: 11px 14px;
 
   border-bottom: 1px solid #edf0f4;
 
@@ -427,6 +470,16 @@
   background: #9ca3af;
 }
 
+.customer-status.archived {
+  background: #fff7ed;
+  color: #c2410c;
+  cursor: default;
+}
+
+.customer-status.archived > span {
+  background: #f97316;
+}
+
 
 /* =========================================
    ACTION BUTTONS
@@ -456,12 +509,21 @@
   transition: 0.2s ease;
 }
 
+.customer-actions button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 .customer-view-btn {
   color: #2563eb;
 }
 
 .customer-edit-btn {
   color: #64748b;
+}
+
+.customer-archive-btn {
+  color: #c2410c;
 }
 
 .customer-delete-btn {
@@ -478,7 +540,12 @@
   border-color: #cbd5e1;
 }
 
-.customer-delete-btn:hover {
+.customer-archive-btn:hover:not(:disabled) {
+  background: #fff7ed;
+  border-color: #fed7aa;
+}
+
+.customer-delete-btn:hover:not(:disabled) {
   background: #fef2f2;
   border-color: #fecaca;
 }
@@ -736,6 +803,9 @@
 .customer-modal-footer {
   display: flex;
   justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
 
   margin-top: 22px;
 
@@ -768,14 +838,212 @@
   background: #f8f9fb;
 }
 
+.customer-modal-action {
+  width: auto !important;
+  height: auto !important;
+  min-width: 90px;
+  padding: 10px 15px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+/* =========================================
+   CREATE STAFF / RIDER
+========================================= */
+
+.employee-create-btn {
+  height: 40px;
+  padding: 0 14px;
+  border: none;
+  border-radius: 10px;
+  background: #0f766e;
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.employee-create-btn:hover {
+  background: #0d9488;
+}
+
+.employee-create-modal {
+  max-width: 560px;
+}
+
+.employee-create-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.employee-create-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.employee-create-form label span {
+  color: #dc2626;
+}
+
+.employee-create-form input {
+  height: 42px;
+  padding: 0 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #f8fafc;
+  color: #0f172a;
+  font-family: inherit;
+  font-size: 14px;
+  outline: none;
+}
+
+.employee-create-form input:focus {
+  border-color: #14b8a6;
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.15);
+}
+
+.employee-field-hint {
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.employee-create-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.employee-password-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.employee-password-field .password-requirements {
+  margin-top: 2px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+.employee-password-field .password-requirements-title {
+  margin: 0 0 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #475569;
+}
+
+.employee-password-field .password-requirement {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 3px 0;
+  font-size: 12px;
+  color: #dc2626;
+}
+
+.employee-password-field .password-requirement span:first-child {
+  width: 14px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.employee-password-field .password-requirement.met {
+  color: #16a34a;
+}
+
+.employee-password-field .password-match-message {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 2px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.employee-password-field .password-match-message span:first-child {
+  width: 14px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.employee-password-field .password-match-message.not-matched {
+  color: #dc2626;
+}
+
+.employee-password-field .password-match-message.matched {
+  color: #16a34a;
+}
+
+.employee-create-error {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #fef2f2;
+  color: #b91c1c;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.employee-create-actions {
+  margin-top: 6px;
+}
+
+.employee-create-submit {
+  min-width: 120px;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 9px;
+  background: #0f766e;
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.employee-create-submit:hover:not(:disabled) {
+  background: #0d9488;
+}
+
+.employee-create-submit:disabled,
+.employee-create-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+@media (max-width: 640px) {
+  .employee-create-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 
 /* =========================================
    RESPONSIVE
 ========================================= */
 
+@media (max-width: 1100px) {
+  .customer-stat-grid-4 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
 @media (max-width: 900px) {
 
-  .customer-stat-grid {
+  .customer-stat-grid,
+  .customer-stat-grid-4 {
     grid-template-columns: 1fr;
   }
 
@@ -791,6 +1059,19 @@
   .customer-list-header {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .customer-list-tools {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .customer-filter-tabs {
+    width: 100%;
+  }
+
+  .customer-filter-tabs button {
+    flex: 1;
   }
 
   .customer-search {

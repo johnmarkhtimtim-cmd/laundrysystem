@@ -8,8 +8,8 @@ function Dashboard() {
 
     const handleLogout = async () => {
         try {
+            navigate("/", { replace: true });
             await logout();
-            navigate("/");
         } catch (error) {
             alert(error.message);
         }
@@ -19,7 +19,7 @@ function Dashboard() {
         <div>
             <h1>Dashboard</h1>
 
-            <p>Welcome, {user?.email}</p>
+            <p>{user?.email}</p>
 
             <button onClick={handleLogout}>
                 Logout

@@ -8,7 +8,7 @@ import { useAuth } from "../context/AuthContext";
  * - Verifies user authentication
  * - Validates user role matches allowed role
  * - Handles loading state to prevent premature redirects
- * - Redirects unauthorized users to login
+ * - Redirects unauthorized users to the landing page
  * 
  * Usage:
  * <RoleRoute allowedRole="admin">
@@ -23,7 +23,7 @@ function RoleRoute({ allowedRole, children }) {
         return <div className="loading">Loading...</div>;
     }
 
-    // Check if user is authenticated
+    // Check if user is authenticated — landing page, not sign-in modal
     if (!user) {
         return <Navigate to="/" replace />;
     }

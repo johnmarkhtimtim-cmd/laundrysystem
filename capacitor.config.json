@@ -1,0 +1,11 @@
+{
+  "appId": "com.laundrymate.app",
+  "appName": "LaundryMate",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https"
+  },
+  "android": {
+    "allowMixedContent": true
+  }
+}

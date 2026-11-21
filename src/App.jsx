@@ -1,12 +1,17 @@
 import AppRoutes from "./routes/AppRoutes";
 import { AuthProvider } from "./context/AuthContext";
+import { ThemeProvider } from "./context/ThemeContext";
 import "./styles/App.css";
+import "./styles/Theme.css";
+import "./styles/SidebarSpacing.css";
 
 function App() {
     return (
-        <AuthProvider>
-            <AppRoutes />
-        </AuthProvider>
+        <ThemeProvider>
+            <AuthProvider>
+                <AppRoutes />
+            </AuthProvider>
+        </ThemeProvider>
     );
 }
 

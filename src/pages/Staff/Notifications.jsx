@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../../context/AuthContext";
-import { 
-  getUserNotifications, 
-  markNotificationAsRead, 
-  markAllNotificationsAsRead 
+import {
+  subscribeToUserNotifications,
+  markNotificationAsRead,
+  markAllNotificationsAsRead,
 } from "../../services/notificationService";
 import "../../styles/StaffNotifications.css";
 
@@ -12,46 +12,49 @@ function StaffNotifications() {
   const [loading, setLoading] = useState(true);
   const [notifications, setNotifications] = useState([]);
   const [filter, setFilter] = useState("All");
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    const fetchNotifications = async () => {
-      try {
-        if (user?.uid) {
-          const notifs = await getUserNotifications(user.uid);
-          setNotifications(notifs);
-        }
-      } catch (error) {
-        console.error("Error fetching notifications:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
+    if (!user?.uid) {
+      setLoading(false);
+      return undefined;
+    }
 
-    fetchNotifications();
+    setLoading(true);
+    setError("");
+
+    const unsubscribe = subscribeToUserNotifications(
+      user.uid,
+      (notifs) => {
+        setNotifications(notifs);
+        setLoading(false);
+        setError("");
+      },
+      (loadError) => {
+        console.error("Error fetching notifications:", loadError);
+        setError("Unable to load notifications. Please refresh and try again.");
+        setLoading(false);
+      },
+    );
+
+    return () => unsubscribe?.();
   }, [user?.uid]);
 
   const handleMarkAsRead = async (notificationId) => {
     try {
       await markNotificationAsRead(notificationId);
-      const updatedNotifications = notifications.map((n) =>
-        n.id === notificationId ? { ...n, read: true } : n
-      );
-      setNotifications(updatedNotifications);
-    } catch (error) {
-      console.error("Error marking notification as read:", error);
+    } catch (markError) {
+      console.error("Error marking notification as read:", markError);
+      alert("Unable to mark notification as read.");
     }
   };
 
   const handleMarkAllAsRead = async () => {
     try {
       await markAllNotificationsAsRead(user.uid);
-      const updatedNotifications = notifications.map((n) => ({
-        ...n,
-        read: true,
-      }));
-      setNotifications(updatedNotifications);
-    } catch (error) {
-      console.error("Error marking all as read:", error);
+    } catch (markError) {
+      console.error("Error marking all as read:", markError);
+      alert("Unable to mark all notifications as read.");
     }
   };
 
@@ -95,17 +98,18 @@ function StaffNotifications() {
 
     if (minutes < 60) {
       return `${minutes} minute${minutes !== 1 ? "s" : ""} ago`;
-    } else if (hours < 24) {
-      return `${hours} hour${hours !== 1 ? "s" : ""} ago`;
-    } else if (days < 7) {
-      return `${days} day${days !== 1 ? "s" : ""} ago`;
-    } else {
-      return date.toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-      });
     }
+    if (hours < 24) {
+      return `${hours} hour${hours !== 1 ? "s" : ""} ago`;
+    }
+    if (days < 7) {
+      return `${days} day${days !== 1 ? "s" : ""} ago`;
+    }
+    return date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
   };
 
   return (
@@ -119,7 +123,8 @@ function StaffNotifications() {
         <div className="loading-message">Loading notifications...</div>
       ) : (
         <>
-          {/* NOTIFICATION STATS */}
+          {error && <div className="payment-load-error">{error}</div>}
+
           <div className="notification-stats">
             <div className="stat-box">
               <span className="stat-label">Total Notifications</span>
@@ -138,7 +143,6 @@ function StaffNotifications() {
             )}
           </div>
 
-          {/* FILTER TABS */}
           <div className="notification-filters">
             <button
               className={`filter-button ${filter === "All" ? "active" : ""}`}
@@ -160,7 +164,6 @@ function StaffNotifications() {
             </button>
           </div>
 
-          {/* NOTIFICATIONS LIST */}
           <div className="notifications-list">
             {filteredNotifications.length > 0 ? (
               filteredNotifications.map((notification) => (
@@ -184,7 +187,8 @@ function StaffNotifications() {
                     </p>
                     {notification.booking_id && (
                       <p className="notification-booking">
-                        Booking: #{notification.booking_id?.slice(-4) || notification.booking_id}
+                        Booking: #
+                        {notification.booking_id?.slice(-4) || notification.booking_id}
                       </p>
                     )}
                   </div>

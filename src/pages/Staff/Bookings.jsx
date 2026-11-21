@@ -10,23 +10,31 @@ import L from "leaflet";
 
 import "leaflet/dist/leaflet.css";
 import "../../styles/StaffBookings.css";
+import ConfirmActionModal from "../../components/ConfirmActionModal";
 import { useAuth } from "../../context/AuthContext";
 import {
   acceptBooking,
+  archiveBooking,
   declinePendingBooking,
+  getLocalDateKey,
+  subscribeToDailyBookingCapacityStatus,
   subscribeToStaffBookings,
+  unarchiveBooking,
   updateStaffBookingDetails,
   updateStaffBookingStatus,
 } from "../../services/bookingService";
 import { subscribeToServices } from "../../services/laundryService";
 import {
-  WEIGHT_TIER_KG,
-  WEIGHT_TIER_RATE,
   calculateLaundrySubtotal,
+  getWeightPricingLabel,
+  validateLaundryWeight,
+  WEIGHT_MAX_KG,
   calculateTotalAmount,
   formatCurrency,
   formatDate,
+  formatShortBookingId,
   getAmountToBePaid,
+  getBookingId,
   getContactNumber,
   getCustomerName,
   getDeliveryFee,
@@ -70,6 +78,34 @@ const riderLocationIcon = L.icon({
   shadowSize: [41, 41],
   className: "rider-location-marker",
 });
+
+const STATUS_FILTER_OPTIONS = [
+  "All",
+  "Pending",
+  "Accepted",
+  "Ready for Pickup",
+  "In Laundry",
+  "To Deliver",
+  "Delivered",
+  "Declined",
+];
+
+function isBookingArchived(booking) {
+  return Boolean(booking?.archived) || booking?.status === "Archived";
+}
+
+function normalizeFilterStatus(status) {
+  if (["Picked Up", "Washing", "Drying", "Folding"].includes(status)) {
+    return "In Laundry";
+  }
+  if (status === "Ready for Customer Pickup") {
+    return "To Deliver";
+  }
+  if (status === "Completed") {
+    return "Delivered";
+  }
+  return status || "Pending";
+}
 
 function FitPickupAndRider({ pickupCoordinates, riderLocation }) {
   const map = useMap();
@@ -165,7 +201,13 @@ function Bookings() {
   const { user } = useAuth();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [capacityStatus, setCapacityStatus] = useState(null);
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("All");
+  const [listFilter, setListFilter] = useState("active");
+  const [archivingId, setArchivingId] = useState(null);
+  const [archiveConfirmBooking, setArchiveConfirmBooking] =
+    useState(null);
 
   const [showStatusModal, setShowStatusModal] =
     useState(false);
@@ -192,6 +234,7 @@ function Bookings() {
     useState("");
 
   const [services, setServices] = useState([]);
+  const [confirmAction, setConfirmAction] = useState(null);
 
   /* =======================================================
      LOAD SERVICE PRICING (ADMIN SERVICES / PRICING MODULE)
@@ -441,16 +484,30 @@ function Bookings() {
   const handleDeclineBooking = () => {
     if (!selectedBooking) return;
 
-    const confirmed = window.confirm(
-      "Are you sure you want to decline this booking?"
-    );
-
-    if (!confirmed) return;
-
-    updateBookingStatus(
-      selectedBooking.id,
-      "Declined"
-    );
+    setConfirmAction({
+      bookingId: selectedBooking.id,
+      nextStatus: "Declined",
+      variant: "danger",
+      title: "Decline this booking?",
+      message: "Are you sure you want to decline this booking?",
+      confirmLabel: "Yes, Decline",
+      loadingLabel: "Declining...",
+      closeAfter: true,
+      meta: [
+        {
+          label: "Booking",
+          value: `#${formatShortBookingId(selectedBooking)}`,
+        },
+        {
+          label: "Customer",
+          value: getCustomerName(selectedBooking),
+        },
+        {
+          label: "Service",
+          value: getServices(selectedBooking),
+        },
+      ],
+    });
   };
 
   /* =======================================================
@@ -515,16 +572,65 @@ function Bookings() {
   const handleDelivered = () => {
     if (!selectedBooking) return;
 
-    const confirmed = window.confirm(
-      "Are you sure this laundry order has been delivered to the customer?"
+    setConfirmAction({
+      bookingId: selectedBooking.id,
+      nextStatus: "Delivered",
+      variant: "success",
+      title: "Mark as delivered?",
+      message:
+        "Are you sure this laundry order has been delivered to the customer?",
+      confirmLabel: "Yes, Delivered",
+      loadingLabel: "Updating...",
+      closeAfter: true,
+      meta: [
+        {
+          label: "Booking",
+          value: `#${formatShortBookingId(selectedBooking)}`,
+        },
+        {
+          label: "Customer",
+          value: getCustomerName(selectedBooking),
+        },
+        {
+          label: "Service",
+          value: getServices(selectedBooking),
+        },
+        {
+          label: "Weight",
+          value: (() => {
+            const weight = getWeight(selectedBooking);
+            return weight !== "" && weight !== null && weight !== undefined
+              ? `${weight} kg`
+              : "Not set";
+          })(),
+        },
+        {
+          label: "Amount Due",
+          value: formatCurrency(getAmountToBePaid(selectedBooking)),
+        },
+      ],
+    });
+  };
+
+  const closeConfirmAction = () => {
+    if (updating) return;
+    setConfirmAction(null);
+  };
+
+  const confirmStatusAction = async () => {
+    if (!confirmAction?.bookingId || !confirmAction?.nextStatus) return;
+
+    const result = await updateBookingStatus(
+      confirmAction.bookingId,
+      confirmAction.nextStatus
     );
 
-    if (!confirmed) return;
-
-    updateBookingStatus(
-      selectedBooking.id,
-      "Delivered"
-    );
+    if (result) {
+      setConfirmAction(null);
+      if (confirmAction.closeAfter) {
+        closeStatusModal();
+      }
+    }
   };
 
   /* =======================================================
@@ -534,19 +640,11 @@ function Bookings() {
   const handleSaveWeight = async () => {
     if (!selectedBooking) return;
 
-    const weight = Number(
-      editableWeight
-    );
+    const weight = Number(editableWeight);
+    const weightValidationError = validateLaundryWeight(editableWeight);
 
-    if (
-      editableWeight === "" ||
-      Number.isNaN(weight) ||
-      weight <= 0
-    ) {
-      setWeightError(
-        "Please enter a valid weight greater than 0 kg."
-      );
-
+    if (weightValidationError) {
+      setWeightError(weightValidationError);
       return;
     }
 
@@ -643,17 +741,101 @@ function Bookings() {
   };
 
   /* =======================================================
+     ARCHIVE / RESTORE
+  ======================================================= */
+
+  const openArchiveConfirm = (booking) => {
+    if (!booking?.id) return;
+    setArchiveConfirmBooking(booking);
+  };
+
+  const closeArchiveConfirm = () => {
+    if (archivingId) return;
+    setArchiveConfirmBooking(null);
+  };
+
+  const confirmArchiveBooking = async () => {
+    const booking = archiveConfirmBooking;
+    if (!booking?.id) return;
+
+    const archived = isBookingArchived(booking);
+
+    setArchivingId(booking.id);
+    try {
+      if (archived) {
+        await unarchiveBooking(booking.id);
+        setNotification("Booking restored to active transactions.");
+      } else {
+        await archiveBooking(booking.id);
+        setNotification("Booking archived.");
+        if (selectedBooking?.id === booking.id) {
+          closeStatusModal();
+        }
+      }
+      setArchiveConfirmBooking(null);
+    } catch (error) {
+      console.error(error);
+      setNotification(
+        archived
+          ? "Unable to restore booking."
+          : "Unable to archive booking."
+      );
+    } finally {
+      setArchivingId(null);
+    }
+  };
+
+  /* =======================================================
      FILTER
   ======================================================= */
+
+  
+  useEffect(() => {
+    return subscribeToDailyBookingCapacityStatus(
+      getLocalDateKey(),
+      (status) => setCapacityStatus(status),
+      (error) => {
+        console.error("Unable to load daily capacity:", error);
+        setCapacityStatus(null);
+      }
+    );
+  }, []);
+
+  const activeBookingsCount = useMemo(
+    () => bookings.filter((booking) => !isBookingArchived(booking)).length,
+    [bookings]
+  );
+
+  const archivedBookingsCount = useMemo(
+    () => bookings.filter((booking) => isBookingArchived(booking)).length,
+    [bookings]
+  );
 
   const filteredBookings = useMemo(() => {
     return bookings
       .filter((booking) => {
-        const query =
-          search.trim().toLowerCase();
+        const archived = isBookingArchived(booking);
+        if (listFilter === "archived" ? !archived : archived) {
+          return false;
+        }
 
+        const normalizedStatus = normalizeFilterStatus(booking.status);
+        if (
+          statusFilter !== "All" &&
+          normalizedStatus !== statusFilter
+        ) {
+          return false;
+        }
+
+        const query = search.trim().toLowerCase();
+        if (!query) return true;
+
+        const bookingId = getBookingId(booking);
         const searchableText = [
-          booking.id,
+          bookingId,
+          formatShortBookingId(bookingId),
+          booking.booking_id,
+          booking.bookingId,
           getCustomerName(booking),
           getServices(booking),
           getPickupLocation(booking),
@@ -669,10 +851,7 @@ function Bookings() {
           .join(" ")
           .toLowerCase();
 
-        return (
-          !query ||
-          searchableText.includes(query)
-        );
+        return searchableText.includes(query);
       })
       .sort((a, b) => {
         const dateA = a.booking_date || a.created_at || a.createdAt || a.schedule;
@@ -688,7 +867,7 @@ function Bookings() {
 
         return timestampB - timestampA;
       });
-  }, [bookings, search]);
+  }, [bookings, search, statusFilter, listFilter]);
 
   /* =======================================================
      STATUS CLASS
@@ -737,42 +916,95 @@ function Bookings() {
 
       <div className="section-header">
         <div>
-          <h1>Assigned Bookings</h1>
+          <h1>
+            {listFilter === "archived"
+              ? "Archived Bookings"
+              : "Assigned Bookings"}
+          </h1>
 
           <p>
-            Manage customer bookings,
-            laundry details, payments,
-            and pickup status.
+            {listFilter === "archived"
+              ? "Restore archived transactions or keep them out of the active list."
+              : "Manage customer bookings, laundry details, payments, and pickup status."}
           </p>
         </div>
 
-        <div className="booking-count">
-          {filteredBookings.length}{" "}
-          {filteredBookings.length === 1
-            ? "Booking"
-            : "Bookings"}
+        <div className="header-count-stack">
+          <div className="booking-count">
+            {filteredBookings.length}{" "}
+            {filteredBookings.length === 1
+              ? "Booking"
+              : "Bookings"}
+          </div>
+          {capacityStatus && !capacityStatus.unlimited && (
+            <div className={"booking-count" + (capacityStatus.isFull ? " capacity-full" : "")}>
+              Today {capacityStatus.used}/{capacityStatus.max}
+              {capacityStatus.closed || capacityStatus.max <= 0
+                ? " CLOSED"
+                : capacityStatus.isFull
+                  ? " FULL"
+                  : ""}
+            </div>
+          )}
         </div>
       </div>
 
       {/* =================================================
-          SEARCH
+          FILTERS
       ================================================= */}
 
       <div className="filters">
-        <div className="search-wrapper">
-          <span className="search-icon">
-            ⌕
-          </span>
+        <div className="booking-filter-tabs">
+          <button
+            type="button"
+            className={listFilter === "active" ? "active" : ""}
+            onClick={() => setListFilter("active")}
+          >
+            Active ({activeBookingsCount})
+          </button>
+          <button
+            type="button"
+            className={listFilter === "archived" ? "active" : ""}
+            onClick={() => setListFilter("archived")}
+          >
+            Archived ({archivedBookingsCount})
+          </button>
+        </div>
 
-          <input
-            type="search"
-            className="filter-input"
-            placeholder="Search customer, booking ID, service..."
-            value={search}
-            onChange={(event) =>
-              setSearch(event.target.value)
-            }
-          />
+        <div className="filters-row">
+          <div className="search-wrapper">
+            <span className="search-icon">
+              ⌕
+            </span>
+
+            <input
+              type="search"
+              className="filter-input"
+              placeholder="Search customer, booking ID, service..."
+              value={search}
+              onChange={(event) =>
+                setSearch(event.target.value)
+              }
+            />
+          </div>
+
+          <div className="filter-select-wrapper">
+            <label htmlFor="bookingStatusFilter">Status</label>
+            <select
+              id="bookingStatusFilter"
+              className="filter-select"
+              value={statusFilter}
+              onChange={(event) =>
+                setStatusFilter(event.target.value)
+              }
+            >
+              {STATUS_FILTER_OPTIONS.map((status) => (
+                <option key={status} value={status}>
+                  {status === "All" ? "All status" : status}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 
@@ -814,11 +1046,23 @@ function Bookings() {
                 const weight =
                   getWeight(booking);
 
+                const pickupLocation =
+                  getPickupLocation(booking);
+
+                const servicesLabel =
+                  getServices(booking);
+
+                const fullBookingId = getBookingId(booking);
+                const bookingIdLabel = formatShortBookingId(fullBookingId);
+
                 return (
-                  <tr key={booking.id}>
+                  <tr key={booking.id || fullBookingId}>
                     <td>
-                      <span className="booking-id">
-                        #{booking.id || "N/A"}
+                      <span
+                        className="booking-id"
+                        title={`#${fullBookingId}`}
+                      >
+                        #{bookingIdLabel}
                       </span>
                     </td>
 
@@ -831,7 +1075,10 @@ function Bookings() {
                         </div>
 
                         <div className="customer-info">
-                          <div className="customer-name">
+                          <div
+                            className="customer-name"
+                            title={customerName}
+                          >
                             {customerName}
                           </div>
                         </div>
@@ -839,14 +1086,20 @@ function Bookings() {
                     </td>
 
                     <td>
-                      <span className="contact-number">
+                      <span
+                        className="contact-number"
+                        title={getContactNumber(booking)}
+                      >
                         {getContactNumber(booking)}
                       </span>
                     </td>
 
                     <td>
-                      <span className="service-name">
-                        {getServices(booking)}
+                      <span
+                        className="service-name"
+                        title={servicesLabel}
+                      >
+                        {servicesLabel}
                       </span>
                     </td>
 
@@ -889,10 +1142,11 @@ function Bookings() {
                     </td>
 
                     <td>
-                      <div className="pickup-location">
-                        {getPickupLocation(
-                          booking
-                        )}
+                      <div
+                        className="pickup-location"
+                        title={pickupLocation}
+                      >
+                        {pickupLocation}
                       </div>
                     </td>
 
@@ -916,23 +1170,50 @@ function Bookings() {
                     </td>
 
                     <td>
-                      <button
-                        type="button"
-                        className="update-status-btn"
-                        disabled={updating}
-                        onClick={() =>
-                          handleUpdateStatus(
-                            booking
-                          )
-                        }
-                        aria-label={`Review booking ${booking.id}, status ${booking.status || "Pending"}`}
-                      >
-                        {booking.status === "Pending"
-                          ? "Review Booking"
-                          : booking.status === "Accepted"
-                            ? "Continue"
-                            : "View Details"}
-                      </button>
+                      <div className="booking-actions">
+                        <button
+                          type="button"
+                          className="update-status-btn"
+                          disabled={updating || archivingId === booking.id}
+                          onClick={() =>
+                            handleUpdateStatus(
+                              booking
+                            )
+                          }
+                          aria-label={`Review booking ${booking.id}, status ${booking.status || "Pending"}`}
+                        >
+                          {booking.status === "Pending"
+                            ? "Review"
+                            : booking.status === "Accepted"
+                              ? "Continue"
+                              : "Details"}
+                        </button>
+
+                        <button
+                          type="button"
+                          className="archive-booking-btn"
+                          disabled={updating || archivingId === booking.id}
+                          onClick={() =>
+                            openArchiveConfirm(booking)
+                          }
+                          title={
+                            isBookingArchived(booking)
+                              ? "Restore booking"
+                              : "Archive booking"
+                          }
+                          aria-label={
+                            isBookingArchived(booking)
+                              ? `Restore booking ${booking.id}`
+                              : `Archive booking ${booking.id}`
+                          }
+                        >
+                          {archivingId === booking.id
+                            ? "…"
+                            : isBookingArchived(booking)
+                              ? "Restore"
+                              : "Archive"}
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -952,7 +1233,11 @@ function Bookings() {
                   </strong>
 
                   <span>
-                    Try changing your search.
+                    {search || statusFilter !== "All"
+                      ? "Try changing your search or filters."
+                      : listFilter === "archived"
+                        ? "No archived bookings yet."
+                        : "Assigned bookings will appear here."}
                   </span>
                 </td>
               </tr>
@@ -993,7 +1278,7 @@ function Bookings() {
 
                   <p>
                     Booking #
-                    {selectedBooking.id}
+                    {formatShortBookingId(selectedBooking)}
                   </p>
                 </div>
 
@@ -1363,7 +1648,8 @@ function Bookings() {
                       <div className="weight-input-row">
                         <input
                           type="number"
-                          min="0"
+                          min="0.1"
+                          max={WEIGHT_MAX_KG}
                           step="0.1"
                           value={
                             editableWeight
@@ -1371,12 +1657,19 @@ function Bookings() {
                           onChange={(event) => {
                             const rawValue = event.target.value;
 
-                            // Reject negative weight input; everything else
-                            // (empty, decimals like 2.5) is allowed and
-                            // validated again before saving.
-                            if (rawValue !== "" && Number(rawValue) < 0) {
+                            if (rawValue !== "" && Number(rawValue) <= 0) {
                               setWeightError(
-                                "Weight cannot be negative."
+                                "Weight must be greater than 0 kg."
+                              );
+                              return;
+                            }
+
+                            if (
+                              rawValue !== "" &&
+                              Number(rawValue) > WEIGHT_MAX_KG
+                            ) {
+                              setWeightError(
+                                `Weight cannot exceed ${WEIGHT_MAX_KG} kg.`
                               );
                               return;
                             }
@@ -1398,8 +1691,7 @@ function Bookings() {
                       )}
 
                       <small>
-                        Rate: {formatCurrency(WEIGHT_TIER_RATE)} per{" "}
-                        {WEIGHT_TIER_KG} kg (or any part thereof)
+                        Rate: {getWeightPricingLabel()}
                       </small>
                     </div>
 
@@ -1993,6 +2285,114 @@ function Bookings() {
             </div>
           </div>
         )}
+
+      {/* =================================================
+          ARCHIVE CONFIRM MODAL
+      ================================================= */}
+
+      {archiveConfirmBooking && (
+        <div
+          className="status-modal-overlay archive-confirm-overlay"
+          onClick={(event) => {
+            if (event.target === event.currentTarget) {
+              closeArchiveConfirm();
+            }
+          }}
+        >
+          <div
+            className="archive-confirm-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="archive-confirm-title"
+          >
+            <div className="archive-confirm-icon-wrap">
+              <span
+                className={`archive-confirm-icon ${
+                  isBookingArchived(archiveConfirmBooking)
+                    ? "restore"
+                    : "archive"
+                }`}
+                aria-hidden="true"
+              >
+                {isBookingArchived(archiveConfirmBooking) ? "↺" : "📦"}
+              </span>
+            </div>
+
+            <h2 id="archive-confirm-title">
+              {isBookingArchived(archiveConfirmBooking)
+                ? "Restore booking?"
+                : "Archive booking?"}
+            </h2>
+
+            <p className="archive-confirm-message">
+              {isBookingArchived(archiveConfirmBooking)
+                ? "This booking will return to the active transactions list."
+                : "It will be hidden from the active transactions list. You can restore it anytime from Archived."}
+            </p>
+
+            <div className="archive-confirm-meta">
+              <div>
+                <span>Booking ID</span>
+                <strong>#{formatShortBookingId(archiveConfirmBooking)}</strong>
+              </div>
+              <div>
+                <span>Customer</span>
+                <strong>
+                  {getCustomerName(archiveConfirmBooking)}
+                </strong>
+              </div>
+              <div>
+                <span>Status</span>
+                <strong>
+                  {archiveConfirmBooking.status || "Pending"}
+                </strong>
+              </div>
+            </div>
+
+            <div className="archive-confirm-actions">
+              <button
+                type="button"
+                className="secondary-btn"
+                disabled={Boolean(archivingId)}
+                onClick={closeArchiveConfirm}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className={
+                  isBookingArchived(archiveConfirmBooking)
+                    ? "accept-btn"
+                    : "archive-confirm-btn"
+                }
+                disabled={Boolean(archivingId)}
+                onClick={confirmArchiveBooking}
+              >
+                {archivingId
+                  ? isBookingArchived(archiveConfirmBooking)
+                    ? "Restoring..."
+                    : "Archiving..."
+                  : isBookingArchived(archiveConfirmBooking)
+                    ? "Restore Booking"
+                    : "Archive Booking"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <ConfirmActionModal
+        open={Boolean(confirmAction)}
+        loading={updating}
+        variant={confirmAction?.variant || "danger"}
+        title={confirmAction?.title}
+        message={confirmAction?.message}
+        confirmLabel={confirmAction?.confirmLabel}
+        loadingLabel={confirmAction?.loadingLabel}
+        meta={confirmAction?.meta}
+        onCancel={closeConfirmAction}
+        onConfirm={confirmStatusAction}
+      />
     </div>
   );
 }

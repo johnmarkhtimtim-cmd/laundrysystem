@@ -1,0 +1,50 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return signedIn() && request.auth.uid == userId;
+    }
+
+    function isImage() {
+      return request.resource.contentType.matches('image/jpeg')
+        || request.resource.contentType.matches('image/png')
+        || request.resource.contentType.matches('image/webp');
+    }
+
+    function underSizeLimit() {
+      return request.resource.size > 0
+        && request.resource.size <= 2 * 1024 * 1024;
+    }
+
+    // Customer payment receipts
+    match /payment-receipts/{userId}/{bookingId}/{fileName} {
+      allow read: if signedIn();
+      allow create: if isOwner(userId)
+        && isImage()
+        && underSizeLimit()
+        && fileName.matches('^[0-9]+_[A-Za-z0-9._-]+$');
+      allow update: if false;
+      allow delete: if isOwner(userId);
+    }
+
+    // Shop GCash QR (Admin Settings UI is role-gated; avoid firestore.get here
+    // so uploads do not hang/fail on Spark or cross-service rule latency).
+    match /shop-assets/gcash-qr/{fileName} {
+      allow read: if true;
+      allow create: if signedIn()
+        && isImage()
+        && underSizeLimit()
+        && fileName.matches('^[0-9]+_[A-Za-z0-9._-]+$');
+      allow update: if false;
+      allow delete: if signedIn();
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

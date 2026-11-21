@@ -10,6 +10,7 @@ import L from "leaflet";
 
 import "leaflet/dist/leaflet.css";
 import "../../styles/StaffBookings.css";
+import ConfirmActionModal from "../../components/ConfirmActionModal";
 import { useAuth } from "../../context/AuthContext";
 import {
   subscribeToRiderBookings,
@@ -17,6 +18,10 @@ import {
   updateRiderBookingStatus,
 } from "../../services/bookingService";
 import { subscribeToServices } from "../../services/laundryService";
+import {
+  formatShortBookingId,
+  getBookingId,
+} from "../Staff/bookingHelpers";
 
 /* =========================================================
    LEAFLET MARKER FIX
@@ -84,18 +89,22 @@ function FitPickupAndRider({ pickupCoordinates, riderLocation }) {
 
 const DELIVERY_FEES = {
   "Pickup & Delivery": 30,
-  "Pickup Only": 20,
+  "Pickup Only": 15,
 };
 
 /* =========================================================
-   LAUNDRY WEIGHT PRICING
+   LAUNDRY WEIGHT PRICING (fixed rates — do not change)
 
-   Fixed tiered rate: every 5 kg (or part thereof) costs ₱150.
-   Laundry Subtotal = CEILING(Actual Weight / WEIGHT_TIER_KG) × WEIGHT_TIER_RATE
+   ≤5 kg       → ₱150 flat
+   >5 and <10  → ₱150 + ₱27 × (kg − 5)
+   exactly 10  → ₱300
+   >10 and ≤50 → ₱300 + ₱27 × (kg − 10)
 ========================================================= */
 
-const WEIGHT_TIER_KG = 5;
 const WEIGHT_TIER_RATE = 150;
+const WEIGHT_TEN_KG_RATE = 300;
+const WEIGHT_EXTRA_PER_KG = 27;
+const WEIGHT_MAX_KG = 50;
 
 /* =========================================================
    PAYMENT
@@ -471,6 +480,7 @@ function RiderTransactions() {
     useState("");
 
   const [services, setServices] = useState([]);
+  const [deliverConfirm, setDeliverConfirm] = useState(null);
 
   /* =======================================================
      LOAD SERVICE PRICING (ADMIN SERVICES / PRICING MODULE)
@@ -516,14 +526,25 @@ function RiderTransactions() {
     }, 0);
   };
 
-  // Fixed tiered pricing: every 5 kg (or any part of it) is billed as a
-  // full ₱150 tier, regardless of which service(s) the booking has.
+  // Weight pricing is fixed by kg band (not per selected service).
   const calculateLaundrySubtotal = (booking, weight) => {
     const kg = Number(weight);
 
-    if (!kg || kg <= 0 || Number.isNaN(kg)) return 0;
+    if (!kg || kg <= 0 || Number.isNaN(kg) || kg > WEIGHT_MAX_KG) return 0;
 
-    return Math.ceil(kg / WEIGHT_TIER_KG) * WEIGHT_TIER_RATE;
+    if (kg <= 5) {
+      return WEIGHT_TIER_RATE;
+    }
+
+    if (kg < 10) {
+      return WEIGHT_TIER_RATE + (kg - 5) * WEIGHT_EXTRA_PER_KG;
+    }
+
+    if (kg <= 10) {
+      return WEIGHT_TEN_KG_RATE;
+    }
+
+    return WEIGHT_TEN_KG_RATE + (kg - 10) * WEIGHT_EXTRA_PER_KG;
   };
 
   const calculateTotalAmount = (booking, weight) => {
@@ -774,7 +795,12 @@ function RiderTransactions() {
       Number.isNaN(weight) ||
       weight <= 0
     ) {
-      setWeightError("Please enter a valid weight greater than 0 kg.");
+      setWeightError("Weight must be greater than 0 kg.");
+      return;
+    }
+
+    if (weight > WEIGHT_MAX_KG) {
+      setWeightError(`Weight cannot exceed ${WEIGHT_MAX_KG} kg.`);
       return;
     }
 
@@ -853,16 +879,56 @@ function RiderTransactions() {
   const handleDelivered = () => {
     if (!selectedBooking) return;
 
-    const confirmed = window.confirm(
-      "Are you sure this laundry order has been delivered to the customer?"
-    );
+    setDeliverConfirm({
+      bookingId: selectedBooking.id,
+      title: "Mark as delivered?",
+      message:
+        "Are you sure this laundry order has been delivered to the customer?",
+      confirmLabel: "Yes, Delivered",
+      loadingLabel: "Updating...",
+      meta: [
+        {
+          label: "Booking",
+          value: `#${formatShortBookingId(selectedBooking)}`,
+        },
+        {
+          label: "Customer",
+          value: getCustomerName(selectedBooking),
+        },
+        {
+          label: "Service",
+          value: getServices(selectedBooking),
+        },
+        {
+          label: "Weight",
+          value: (() => {
+            const weight = getWeight(selectedBooking);
+            return weight !== "" && weight !== null && weight !== undefined
+              ? `${weight} kg`
+              : "Not set";
+          })(),
+        },
+      ],
+    });
+  };
 
-    if (!confirmed) return;
+  const closeDeliverConfirm = () => {
+    if (updating) return;
+    setDeliverConfirm(null);
+  };
 
-    updateBookingStatus(
-      selectedBooking.id,
+  const confirmDelivered = async () => {
+    if (!deliverConfirm?.bookingId) return;
+
+    const result = await updateBookingStatus(
+      deliverConfirm.bookingId,
       "Delivered"
     );
+
+    if (result) {
+      setDeliverConfirm(null);
+      closeStatusModal();
+    }
   };
 
   /* =======================================================
@@ -875,8 +941,10 @@ function RiderTransactions() {
         const query =
           search.trim().toLowerCase();
 
+        const bookingId = getBookingId(booking);
         const searchableText = [
-          booking.id,
+          bookingId,
+          formatShortBookingId(bookingId),
           getCustomerName(booking),
           getServices(booking),
           getPickupLocation(booking),
@@ -931,7 +999,7 @@ function RiderTransactions() {
   ======================================================= */
 
   return (
-    <div className="staff-bookings">
+    <div className="staff-bookings rider-transactions">
 
       {/* =================================================
           NOTIFICATION
@@ -983,20 +1051,22 @@ function RiderTransactions() {
       ================================================= */}
 
       <div className="filters">
-        <div className="search-wrapper">
-          <span className="search-icon">
-            ⌕
-          </span>
+        <div className="filters-row">
+          <div className="search-wrapper">
+            <span className="search-icon">
+              ⌕
+            </span>
 
-          <input
-            type="search"
-            className="filter-input"
-            placeholder="Search customer, booking ID, service..."
-            value={search}
-            onChange={(event) =>
-              setSearch(event.target.value)
-            }
-          />
+            <input
+              type="search"
+              className="filter-input"
+              placeholder="Search customer, booking ID, service..."
+              value={search}
+              onChange={(event) =>
+                setSearch(event.target.value)
+              }
+            />
+          </div>
         </div>
       </div>
 
@@ -1041,8 +1111,11 @@ function RiderTransactions() {
                 return (
                   <tr key={booking.id}>
                     <td>
-                      <span className="booking-id">
-                        #{booking.id || "N/A"}
+                      <span
+                        className="booking-id"
+                        title={`#${getBookingId(booking)}`}
+                      >
+                        #{formatShortBookingId(booking)}
                       </span>
                     </td>
 
@@ -1217,7 +1290,7 @@ function RiderTransactions() {
 
                   <p>
                     Booking #
-                    {selectedBooking.id}
+                    {formatShortBookingId(selectedBooking)}
                   </p>
                 </div>
 
@@ -1557,17 +1630,25 @@ function RiderTransactions() {
                         <input
                           id="rider-laundry-weight"
                           type="number"
-                          min="0"
+                          min="0.1"
+                          max={WEIGHT_MAX_KG}
                           step="0.1"
                           value={editableWeight}
                           onChange={(event) => {
                             const rawValue = event.target.value;
 
-                            // Reject negative weight input; everything else
-                            // (empty, decimals like 2.5) is allowed and
-                            // validated again before saving.
-                            if (rawValue !== "" && Number(rawValue) < 0) {
-                              setWeightError("Weight cannot be negative.");
+                            if (rawValue !== "" && Number(rawValue) <= 0) {
+                              setWeightError("Weight must be greater than 0 kg.");
+                              return;
+                            }
+
+                            if (
+                              rawValue !== "" &&
+                              Number(rawValue) > WEIGHT_MAX_KG
+                            ) {
+                              setWeightError(
+                                `Weight cannot exceed ${WEIGHT_MAX_KG} kg.`
+                              );
                               return;
                             }
 
@@ -1587,8 +1668,10 @@ function RiderTransactions() {
                       )}
 
                       <small>
-                        Rate: {formatCurrency(WEIGHT_TIER_RATE)} per{" "}
-                        {WEIGHT_TIER_KG} kg (or any part thereof)
+                        Rate: ₱{WEIGHT_TIER_RATE} for 1–5 kg · +₱
+                        {WEIGHT_EXTRA_PER_KG}/kg above 5 · ₱{WEIGHT_TEN_KG_RATE}{" "}
+                        at 10 kg · +₱{WEIGHT_EXTRA_PER_KG}/kg above 10 (max{" "}
+                        {WEIGHT_MAX_KG} kg)
                       </small>
                     </div>
 
@@ -2131,6 +2214,19 @@ function RiderTransactions() {
             </div>
           </div>
         )}
+
+      <ConfirmActionModal
+        open={Boolean(deliverConfirm)}
+        loading={updating}
+        variant="success"
+        title={deliverConfirm?.title}
+        message={deliverConfirm?.message}
+        confirmLabel={deliverConfirm?.confirmLabel}
+        loadingLabel={deliverConfirm?.loadingLabel}
+        meta={deliverConfirm?.meta}
+        onCancel={closeDeliverConfirm}
+        onConfirm={confirmDelivered}
+      />
     </div>
   );
 }

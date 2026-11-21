@@ -1,0 +1,1034 @@
+/* =========================================
+   GLOBAL THEME TOKENS + DARK MODE
+   ========================================= */
+
+:root,
+[data-theme="light"] {
+  --lm-bg: #f5f7fb;
+  --lm-surface: #ffffff;
+  --lm-surface-soft: #f8fafc;
+  --lm-ink: #172033;
+  --lm-muted: #64748b;
+  --lm-line: #e5e7eb;
+  --lm-blue: #2563eb;
+  --lm-danger: #dc2626;
+  --lm-overlay: rgba(15, 23, 42, 0.55);
+  color-scheme: light;
+}
+
+[data-theme="dark"] {
+  --lm-bg: #0b1220;
+  --lm-surface: #111827;
+  --lm-surface-soft: #0f172a;
+  --lm-ink: #e5eefc;
+  --lm-muted: #94a3b8;
+  --lm-line: #243044;
+  --lm-blue: #3b82f6;
+  --lm-danger: #f87171;
+  --lm-overlay: rgba(2, 6, 23, 0.72);
+  color-scheme: dark;
+
+  --portal-bg: var(--lm-bg);
+  --portal-ink: var(--lm-ink);
+  --portal-muted: var(--lm-muted);
+  --portal-line: var(--lm-line);
+  --portal-blue: var(--lm-blue);
+}
+
+[data-theme="dark"] body,
+[data-theme="dark"] #root {
+  background: var(--lm-bg);
+  color: var(--lm-ink);
+}
+
+/* Theme bar in dark mode */
+[data-theme="dark"] .theme-toggle-bar {
+  background: #0f172a;
+  border-bottom-color: #243044;
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .theme-toggle-switch {
+  background: #111827;
+  border-color: #243044;
+}
+
+[data-theme="dark"] .theme-mode-btn {
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .theme-mode-btn:hover {
+  background: #1e293b;
+  color: #e2e8f0;
+}
+
+[data-theme="dark"] .theme-mode-btn.active {
+  background: #2563eb;
+  color: #ffffff;
+}
+
+/* -------- Admin portal -------- */
+[data-theme="dark"] .portal-shell {
+  background: var(--lm-bg);
+  color: var(--lm-ink);
+}
+
+[data-theme="dark"] .portal-sidebar,
+[data-theme="dark"] .portal-topbar,
+[data-theme="dark"] .portal-card,
+[data-theme="dark"] .mini-stat,
+[data-theme="dark"] .light-action,
+[data-theme="dark"] .portal-menu,
+[data-theme="dark"] .table-tools label {
+  background: var(--lm-surface);
+  border-color: var(--lm-line);
+  color: var(--lm-ink);
+}
+
+[data-theme="dark"] .portal-topbar {
+  background: rgba(17, 24, 39, 0.92);
+}
+
+[data-theme="dark"] .portal-sidebar a,
+[data-theme="dark"] .portal-sidebar button,
+[data-theme="dark"] .portal-notice,
+[data-theme="dark"] .portal-brand small,
+[data-theme="dark"] .portal-profile small,
+[data-theme="dark"] .page-heading p,
+[data-theme="dark"] .mini-stat small,
+[data-theme="dark"] th {
+  color: var(--lm-muted);
+}
+
+[data-theme="dark"] .portal-sidebar a:hover,
+[data-theme="dark"] .portal-sidebar button:hover {
+  background: #172554;
+  color: #93c5fd;
+}
+
+[data-theme="dark"] .portal-sidebar a.active {
+  background: #1e3a8a;
+  color: #bfdbfe;
+}
+
+[data-theme="dark"] .portal-nav-bottom {
+  border-top-color: var(--lm-line);
+}
+
+[data-theme="dark"] .portal-nav-bottom button:hover {
+  background: #3f1d1d;
+  color: #fca5a5;
+}
+
+[data-theme="dark"] .portal-profile b,
+[data-theme="dark"] .mini-stat > span {
+  background: #1e3a8a;
+  color: #93c5fd;
+}
+
+[data-theme="dark"] .portal-notice {
+  border-color: var(--lm-line);
+  color: var(--lm-muted);
+}
+
+[data-theme="dark"] .portal-notice i {
+  border-color: var(--lm-surface);
+}
+
+[data-theme="dark"] .table-tools input,
+[data-theme="dark"] .row-action {
+  background: transparent;
+  color: var(--lm-ink);
+}
+
+[data-theme="dark"] .row-action {
+  background: #1e293b;
+}
+
+[data-theme="dark"] th,
+[data-theme="dark"] td {
+  border-bottom-color: #1f2a3d;
+}
+
+/* -------- Customer portal -------- */
+[data-theme="dark"] .customer-layout {
+  background: var(--lm-bg);
+  color: var(--lm-ink);
+}
+
+[data-theme="dark"] .customer-layout .customer-header,
+[data-theme="dark"] .customer-layout .sidebar,
+[data-theme="dark"] .customer-layout .help-card {
+  background: var(--lm-surface);
+  border-color: var(--lm-line);
+  color: var(--lm-ink);
+}
+
+[data-theme="dark"] .customer-layout .customer-title h2,
+[data-theme="dark"] .customer-layout .user-info strong,
+[data-theme="dark"] .customer-layout .brand-text h2,
+[data-theme="dark"] .customer-layout .nav-link {
+  color: var(--lm-ink);
+}
+
+[data-theme="dark"] .customer-layout .customer-title span,
+[data-theme="dark"] .customer-layout .user-info span,
+[data-theme="dark"] .customer-layout .brand-text span,
+[data-theme="dark"] .customer-layout .sidebar-section-title,
+[data-theme="dark"] .customer-layout .help-card span {
+  color: var(--lm-muted);
+}
+
+[data-theme="dark"] .customer-layout .sidebar-toggle,
+[data-theme="dark"] .customer-layout .notification-button {
+  background: #1e293b;
+  border-color: var(--lm-line);
+  color: var(--lm-ink);
+}
+
+[data-theme="dark"] .customer-layout .nav-link:hover {
+  background: #172554;
+  color: #93c5fd;
+}
+
+[data-theme="dark"] .customer-layout .nav-link.active {
+  background: #1e3a8a;
+  color: #bfdbfe;
+}
+
+[data-theme="dark"] .customer-layout .logout-nav-btn:hover {
+  background: #3f1d1d;
+  color: #fca5a5;
+}
+
+[data-theme="dark"] .customer-layout .sidebar-divider,
+[data-theme="dark"] .customer-layout .header-divider,
+[data-theme="dark"] .customer-layout .sidebar-brand,
+[data-theme="dark"] .customer-layout .sidebar-bottom,
+[data-theme="dark"] .portal-brand,
+[data-theme="dark"] .portal-nav-bottom {
+  border-color: var(--lm-line);
+  background-image: none;
+}
+
+[data-theme="dark"] .customer-layout .customer-content {
+  background: var(--lm-bg);
+}
+
+/* Customer dashboard + page surfaces */
+[data-theme="dark"] .customer-dashboard,
+[data-theme="dark"] .my-bookings-page,
+[data-theme="dark"] .book-now-page,
+[data-theme="dark"] .customer-payments-page,
+[data-theme="dark"] .customer-profile-page,
+[data-theme="dark"] .customer-notifications-page,
+[data-theme="dark"] .transactions-page {
+  background: var(--lm-bg) !important;
+  color: var(--lm-ink) !important;
+}
+
+[data-theme="dark"] .stat-card,
+[data-theme="dark"] .panel,
+[data-theme="dark"] .recent-orders,
+[data-theme="dark"] .quick-services,
+[data-theme="dark"] .summary-box,
+[data-theme="dark"] .order-item,
+[data-theme="dark"] .service-item,
+[data-theme="dark"] .quick-service,
+[data-theme="dark"] .booking-card,
+[data-theme="dark"] .bookings-card,
+[data-theme="dark"] .filter-card,
+[data-theme="dark"] .summary-card,
+[data-theme="dark"] .profile-card,
+[data-theme="dark"] .payment-card,
+[data-theme="dark"] .notification-card,
+[data-theme="dark"] .service-option,
+[data-theme="dark"] .booking-form-card,
+[data-theme="dark"] .map-card,
+[data-theme="dark"] .info-card {
+  background: var(--lm-surface) !important;
+  border-color: var(--lm-line) !important;
+  color: var(--lm-ink) !important;
+  box-shadow: none !important;
+}
+
+[data-theme="dark"] .stat-label,
+[data-theme="dark"] .stat-change,
+[data-theme="dark"] .panel-eyebrow,
+[data-theme="dark"] .recent-orders-header p,
+[data-theme="dark"] .quick-services-header p,
+[data-theme="dark"] .order-info p,
+[data-theme="dark"] .order-info span,
+[data-theme="dark"] .service-content p,
+[data-theme="dark"] .summary-label,
+[data-theme="dark"] .perk-list li {
+  color: var(--lm-muted) !important;
+}
+
+[data-theme="dark"] .stat-value,
+[data-theme="dark"] .panel-header h3,
+[data-theme="dark"] .recent-orders-header h2,
+[data-theme="dark"] .quick-services-header h2,
+[data-theme="dark"] .order-info h4,
+[data-theme="dark"] .order-info strong,
+[data-theme="dark"] .service-content h4,
+[data-theme="dark"] .summary-item strong,
+[data-theme="dark"] .progress-header,
+[data-theme="dark"] .progress-header strong {
+  color: var(--lm-ink) !important;
+}
+
+[data-theme="dark"] .stat-card.blue .stat-icon,
+[data-theme="dark"] .order-number,
+[data-theme="dark"] .service-icon,
+[data-theme="dark"] .quick-service-icon,
+[data-theme="dark"] .summary-icon.remaining {
+  background: #1e3a8a !important;
+  color: #93c5fd !important;
+}
+
+[data-theme="dark"] .stat-card.green .stat-icon,
+[data-theme="dark"] .summary-icon.completed,
+[data-theme="dark"] .status-pill.ready-for-pickup {
+  background: #14532d !important;
+  color: #86efac !important;
+}
+
+[data-theme="dark"] .stat-card.purple .stat-icon,
+[data-theme="dark"] .status-pill.scheduled {
+  background: #4c1d95 !important;
+  color: #ddd6fe !important;
+}
+
+[data-theme="dark"] .stat-card.orange .stat-icon,
+[data-theme="dark"] .gold-badge {
+  background: #7c2d12 !important;
+  color: #fdba74 !important;
+}
+
+[data-theme="dark"] .mini-tag {
+  background: #1e3a8a !important;
+  color: #93c5fd !important;
+}
+
+[data-theme="dark"] .order-item:hover,
+[data-theme="dark"] .service-item:hover,
+[data-theme="dark"] .quick-service:hover,
+[data-theme="dark"] .summary-item,
+[data-theme="dark"] .order-arrow:hover {
+  background: #1e293b !important;
+}
+
+[data-theme="dark"] .order-arrow,
+[data-theme="dark"] .service-arrow {
+  color: var(--lm-muted) !important;
+}
+
+[data-theme="dark"] .progress-bar {
+  background: #1e293b !important;
+}
+
+[data-theme="dark"] .progress-fill {
+  background: var(--lm-blue) !important;
+}
+
+[data-theme="dark"] .view-all,
+[data-theme="dark"] .text-btn {
+  color: #93c5fd !important;
+}
+
+[data-theme="dark"] .view-all:hover,
+[data-theme="dark"] .text-btn:hover {
+  color: #bfdbfe !important;
+}
+
+[data-theme="dark"] .secondary-btn {
+  background: #1e293b !important;
+  border-color: var(--lm-line) !important;
+  color: #93c5fd !important;
+}
+
+[data-theme="dark"] .secondary-btn:hover {
+  background: #243044 !important;
+  border-color: #334155 !important;
+}
+
+[data-theme="dark"] .primary-btn {
+  background: #eff6ff !important;
+  color: #1d4ed8 !important;
+}
+
+[data-theme="dark"] .dashboard-hero {
+  background: linear-gradient(135deg, #1d4ed8, #1e3a8a) !important;
+}
+
+/* Generic white cards/tables inside customer content */
+[data-theme="dark"] .customer-content .card,
+[data-theme="dark"] .customer-content-wrapper section,
+[data-theme="dark"] .customer-content-wrapper .card,
+[data-theme="dark"] .customer-content-wrapper table,
+[data-theme="dark"] .bookings-table-wrap,
+[data-theme="dark"] .table-wrapper,
+[data-theme="dark"] .empty-state,
+[data-theme="dark"] .modal-content,
+[data-theme="dark"] .form-section {
+  background: var(--lm-surface);
+  border-color: var(--lm-line);
+  color: var(--lm-ink);
+}
+
+[data-theme="dark"] .customer-content h1,
+[data-theme="dark"] .customer-content h2,
+[data-theme="dark"] .customer-content h3,
+[data-theme="dark"] .customer-content h4,
+[data-theme="dark"] .customer-content strong {
+  color: var(--lm-ink);
+}
+
+[data-theme="dark"] .customer-content p,
+[data-theme="dark"] .customer-content small,
+[data-theme="dark"] .customer-content label,
+[data-theme="dark"] .customer-content .muted,
+[data-theme="dark"] .customer-content .subtitle {
+  color: var(--lm-muted);
+}
+
+[data-theme="dark"] .customer-content th {
+  background: #0f172a;
+  color: var(--lm-muted);
+}
+
+[data-theme="dark"] .customer-content td,
+[data-theme="dark"] .customer-content th {
+  border-color: var(--lm-line);
+  color: var(--lm-ink);
+}
+
+[data-theme="dark"] .customer-content tr:hover td {
+  background: #1e293b;
+}
+
+/* -------- Staff portal -------- */
+[data-theme="dark"] .staff-layout {
+  background: var(--lm-bg);
+  color: var(--lm-ink);
+}
+
+[data-theme="dark"] .staff-header,
+[data-theme="dark"] .staff-layout .sidebar {
+  background: var(--lm-surface);
+  border-color: var(--lm-line);
+}
+
+[data-theme="dark"] .staff-layout .brand-info h2,
+[data-theme="dark"] .staff-layout .user-details strong,
+[data-theme="dark"] .staff-layout .nav-link,
+[data-theme="dark"] .staff-layout .nav-text {
+  color: var(--lm-ink);
+}
+
+[data-theme="dark"] .staff-layout .brand-info span,
+[data-theme="dark"] .staff-layout .user-details span,
+[data-theme="dark"] .staff-layout .sidebar-section-title {
+  color: var(--lm-muted);
+}
+
+[data-theme="dark"] .staff-layout .sidebar-bottom {
+  border-top-color: var(--lm-line);
+}
+
+[data-theme="dark"] .staff-header-notice {
+  background: var(--lm-surface);
+  border-color: var(--lm-line);
+  color: var(--lm-muted);
+}
+
+[data-theme="dark"] .staff-header-notice:hover {
+  background: #172554;
+  border-color: #1e3a8a;
+  color: #93c5fd;
+}
+
+[data-theme="dark"] .staff-layout .user-avatar {
+  background: #1e3a8a;
+  color: #bfdbfe;
+  border-color: #1e40af;
+}
+
+[data-theme="dark"] .staff-menu-toggle {
+  background: var(--lm-surface);
+  border-color: var(--lm-line);
+  color: var(--lm-ink);
+}
+
+[data-theme="dark"] .staff-layout .nav-link:hover {
+  background: #172554;
+  color: #93c5fd;
+}
+
+[data-theme="dark"] .staff-layout .nav-link.active {
+  background: #1e3a8a;
+  color: #bfdbfe;
+}
+
+[data-theme="dark"] .staff-layout .logout-link:hover {
+  background: #3f1d1d;
+  color: #fca5a5;
+}
+
+[data-theme="dark"] .staff-layout .content {
+  background: var(--lm-bg);
+}
+
+/* -------- Rider portal -------- */
+[data-theme="dark"] .rider-layout {
+  background: var(--lm-bg);
+  color: var(--lm-ink);
+}
+
+[data-theme="dark"] .rider-header,
+[data-theme="dark"] .rider-sidebar {
+  background: var(--lm-surface);
+  border-color: var(--lm-line);
+}
+
+[data-theme="dark"] .rider-brand strong,
+[data-theme="dark"] .rider-account {
+  color: var(--lm-ink);
+}
+
+[data-theme="dark"] .rider-brand small {
+  color: var(--lm-muted);
+}
+
+[data-theme="dark"] .rider-sidebar a,
+[data-theme="dark"] .rider-sidebar button {
+  color: var(--lm-muted);
+}
+
+[data-theme="dark"] .rider-sidebar a:hover,
+[data-theme="dark"] .rider-sidebar a.active {
+  background: #134e4a;
+  color: #5eead4;
+}
+
+[data-theme="dark"] .rider-sidebar button:hover {
+  background: #3f1d1d;
+  color: #fca5a5;
+}
+
+[data-theme="dark"] .rider-content {
+  background: var(--lm-bg);
+}
+
+[data-theme="dark"] .rider-avatar {
+  background: #134e4a;
+  color: #5eead4;
+}
+
+/* -------- Shared logout modal -------- */
+[data-theme="dark"] .logout-modal-overlay {
+  background: var(--lm-overlay);
+}
+
+[data-theme="dark"] .logout-modal {
+  background: var(--lm-surface);
+  color: var(--lm-ink);
+}
+
+[data-theme="dark"] .logout-modal h2 {
+  color: var(--lm-ink);
+}
+
+[data-theme="dark"] .logout-modal p {
+  color: var(--lm-muted);
+}
+
+[data-theme="dark"] .logout-modal-icon {
+  background: #1e3a8a;
+}
+
+[data-theme="dark"] .logout-modal-cancel {
+  background: #1e293b;
+  border-color: var(--lm-line);
+  color: var(--lm-ink);
+}
+
+[data-theme="dark"] .logout-modal-cancel:hover:not(:disabled) {
+  background: #243044;
+}
+
+/* Generic page surfaces often used inside portals */
+[data-theme="dark"] .customer-content-wrapper,
+[data-theme="dark"] input,
+[data-theme="dark"] select,
+[data-theme="dark"] textarea {
+  color: var(--lm-ink);
+}
+
+[data-theme="dark"] input,
+[data-theme="dark"] select,
+[data-theme="dark"] textarea {
+  background: #0f172a;
+  border-color: var(--lm-line);
+}
+
+/* -------- Customer page roots -------- */
+[data-theme="dark"] .my-booking-page,
+[data-theme="dark"] .booknow-page,
+[data-theme="dark"] .payments-page,
+[data-theme="dark"] .profile-page,
+[data-theme="dark"] .notification-page,
+[data-theme="dark"] .transactions-page {
+  background: var(--lm-bg) !important;
+  color: var(--lm-ink) !important;
+}
+
+[data-theme="dark"] .acct-card,
+[data-theme="dark"] .acct-password-card,
+[data-theme="dark"] .transactions-card,
+[data-theme="dark"] .booknow-container,
+[data-theme="dark"] .booking-page-header,
+[data-theme="dark"] .payments-card,
+[data-theme="dark"] .payment-summary,
+[data-theme="dark"] .notification-item,
+[data-theme="dark"] .notification-list-card,
+[data-theme="dark"] .booking-card,
+[data-theme="dark"] .booking-list-card,
+[data-theme="dark"] .filter-bar,
+[data-theme="dark"] .booknow-header,
+[data-theme="dark"] .service-card,
+[data-theme="dark"] .address-card,
+[data-theme="dark"] .schedule-card,
+[data-theme="dark"] .summary-panel {
+  background: var(--lm-surface) !important;
+  border-color: var(--lm-line) !important;
+  color: var(--lm-ink) !important;
+  box-shadow: none !important;
+}
+
+[data-theme="dark"] .page-label,
+[data-theme="dark"] .profile-header p,
+[data-theme="dark"] .booking-page-header p,
+[data-theme="dark"] .transactions-header p,
+[data-theme="dark"] .acct-field label,
+[data-theme="dark"] .card-label,
+[data-theme="dark"] .transaction-date,
+[data-theme="dark"] .transaction-service,
+[data-theme="dark"] .empty-state p,
+[data-theme="dark"] .transactions-empty p {
+  color: var(--lm-muted) !important;
+}
+
+[data-theme="dark"] .profile-header h1,
+[data-theme="dark"] .booking-page-header h1,
+[data-theme="dark"] .transactions-header h1,
+[data-theme="dark"] .booknow-header h1,
+[data-theme="dark"] .acct-section-title,
+[data-theme="dark"] .profile-user h2,
+[data-theme="dark"] .transaction-amount,
+[data-theme="dark"] .transaction-id {
+  color: var(--lm-ink) !important;
+}
+
+[data-theme="dark"] .acct-input,
+[data-theme="dark"] .transaction-filter-field select,
+[data-theme="dark"] .transaction-filter-field input,
+[data-theme="dark"] .booknow-page input,
+[data-theme="dark"] .booknow-page select,
+[data-theme="dark"] .booknow-page textarea,
+[data-theme="dark"] .payments-page input,
+[data-theme="dark"] .payments-page select {
+  background: #0f172a !important;
+  border-color: var(--lm-line) !important;
+  color: var(--lm-ink) !important;
+}
+
+[data-theme="dark"] .acct-avatar,
+[data-theme="dark"] .acct-section-icon,
+[data-theme="dark"] .empty-transaction-icon {
+  background: #1e3a8a !important;
+  color: #93c5fd !important;
+}
+
+[data-theme="dark"] .transactions-table th {
+  background: #0f172a !important;
+  color: var(--lm-muted) !important;
+}
+
+[data-theme="dark"] .transactions-table td,
+[data-theme="dark"] .transactions-table th {
+  border-color: var(--lm-line) !important;
+}
+
+[data-theme="dark"] .transactions-table tr:hover td {
+  background: #1e293b !important;
+}
+
+[data-theme="dark"] .acct-cancel-btn,
+[data-theme="dark"] .transaction-filter-clear,
+[data-theme="dark"] .edit-profile-btn {
+  background: #1e293b !important;
+  border-color: var(--lm-line) !important;
+  color: var(--lm-ink) !important;
+}
+
+[data-theme="dark"] .acct-save-btn,
+[data-theme="dark"] .change-password-btn {
+  background: var(--lm-blue) !important;
+  color: #fff !important;
+}
+
+[data-theme="dark"] .profile-cover {
+  background: linear-gradient(135deg, #1d4ed8, #1e3a8a) !important;
+}
+
+/* -------- Staff content surfaces -------- */
+[data-theme="dark"] .staff-dashboard,
+[data-theme="dark"] .staff-bookings,
+[data-theme="dark"] .staff-bookings-page,
+[data-theme="dark"] .staff-payments-page,
+[data-theme="dark"] .staff-notifications-page,
+[data-theme="dark"] .staff-profile-page,
+[data-theme="dark"] .staff-layout .profile-page {
+  background: transparent !important;
+  color: var(--lm-ink) !important;
+}
+
+[data-theme="dark"] .staff-stat-card,
+[data-theme="dark"] .staff-orders-card,
+[data-theme="dark"] .staff-analytics-card,
+[data-theme="dark"] .staff-donut-meta div,
+[data-theme="dark"] .refresh-dashboard-btn,
+[data-theme="dark"] .orders-link-btn,
+[data-theme="dark"] .staff-layout .content .card,
+[data-theme="dark"] .staff-layout .content section,
+[data-theme="dark"] .staff-notifications-page .stat-box,
+[data-theme="dark"] .staff-notifications-page .loading-message,
+[data-theme="dark"] .staff-notifications-page .notification-item,
+[data-theme="dark"] .staff-notifications-page .empty-state,
+[data-theme="dark"] .staff-notifications-page .notification-filters,
+[data-theme="dark"] .staff-payments-page .loading-message,
+[data-theme="dark"] .staff-payments-page .summary-card,
+[data-theme="dark"] .staff-payments-page .payments-section,
+[data-theme="dark"] .staff-payments-page .payment-filters,
+[data-theme="dark"] .staff-payments-page .table-wrapper,
+[data-theme="dark"] .staff-bookings .filters-bar,
+[data-theme="dark"] .staff-bookings .table-container,
+[data-theme="dark"] .staff-bookings .bookings-card,
+[data-theme="dark"] .staff-bookings-page .bookings-card,
+[data-theme="dark"] .staff-bookings-page .filters-bar,
+[data-theme="dark"] .staff-bookings-page .table-container,
+[data-theme="dark"] .staff-bookings .section-header,
+[data-theme="dark"] .staff-layout .content .acct-card {
+  background: var(--lm-surface) !important;
+  border-color: var(--lm-line) !important;
+  color: var(--lm-ink) !important;
+  box-shadow: none !important;
+}
+
+[data-theme="dark"] .staff-chart-value,
+[data-theme="dark"] .staff-donut-percent,
+[data-theme="dark"] .staff-donut-meta strong,
+[data-theme="dark"] .staff-analytics-head h2 {
+  fill: var(--lm-ink);
+  color: var(--lm-ink) !important;
+}
+
+[data-theme="dark"] .staff-chart-label,
+[data-theme="dark"] .staff-donut-caption,
+[data-theme="dark"] .staff-donut-meta span,
+[data-theme="dark"] .staff-analytics-head p {
+  fill: var(--lm-muted);
+  color: var(--lm-muted) !important;
+}
+
+[data-theme="dark"] .staff-dashboard-header h1,
+[data-theme="dark"] .staff-stat-card h2,
+[data-theme="dark"] .orders-card-header h2,
+[data-theme="dark"] .staff-notifications-page .page-header h1,
+[data-theme="dark"] .staff-payments-page .page-header h1,
+[data-theme="dark"] .staff-bookings-page .page-header h1,
+[data-theme="dark"] .staff-bookings .section-header h1,
+[data-theme="dark"] .staff-layout .profile-page h1,
+[data-theme="dark"] .staff-layout .profile-page h2,
+[data-theme="dark"] .staff-notifications-page .stat-value,
+[data-theme="dark"] .staff-payments-page .summary-content strong,
+[data-theme="dark"] .staff-payments-page .summary-value,
+[data-theme="dark"] .staff-payments-page h2,
+[data-theme="dark"] .notification-header h4 {
+  color: var(--lm-ink) !important;
+}
+
+[data-theme="dark"] .dashboard-eyebrow,
+[data-theme="dark"] .staff-dashboard-header p,
+[data-theme="dark"] .stat-label,
+[data-theme="dark"] .stat-description,
+[data-theme="dark"] .staff-notifications-page .page-header p,
+[data-theme="dark"] .staff-notifications-page .stat-label,
+[data-theme="dark"] .staff-notifications-page .notification-message,
+[data-theme="dark"] .staff-notifications-page .notification-time,
+[data-theme="dark"] .staff-notifications-page .filter-button,
+[data-theme="dark"] .staff-payments-page .page-header p,
+[data-theme="dark"] .staff-payments-page .summary-label,
+[data-theme="dark"] .staff-bookings-page .page-header p,
+[data-theme="dark"] .staff-bookings .section-header p,
+[data-theme="dark"] .staff-payments-page .summary-content span,
+[data-theme="dark"] .staff-layout .profile-page p,
+[data-theme="dark"] .orders-card-header p,
+[data-theme="dark"] .orders-card-footer {
+  color: var(--lm-muted) !important;
+}
+
+[data-theme="dark"] .staff-notifications-page .stat-value.highlight {
+  color: #93c5fd !important;
+}
+
+[data-theme="dark"] .staff-notifications-page .filter-button.active {
+  background: #1e3a8a !important;
+  color: #bfdbfe !important;
+  box-shadow: none !important;
+}
+
+[data-theme="dark"] .staff-notifications-page .filter-button:hover {
+  color: #93c5fd !important;
+}
+
+[data-theme="dark"] .staff-notifications-page .btn-secondary {
+  background: #172554 !important;
+  border-color: #1e3a8a !important;
+  color: #93c5fd !important;
+}
+
+[data-theme="dark"] .staff-notifications-page .btn-secondary:hover {
+  background: #1e3a8a !important;
+}
+
+[data-theme="dark"] .staff-notifications-page .btn-read {
+  background: #172554 !important;
+  border-color: #1e3a8a !important;
+  color: #93c5fd !important;
+}
+
+[data-theme="dark"] .staff-notifications-page .notification-item.unread {
+  background: #0f172a !important;
+  border-color: #1e3a8a !important;
+}
+
+[data-theme="dark"] .staff-notifications-page .notification-icon,
+[data-theme="dark"] .staff-notifications-page .empty-state::before,
+[data-theme="dark"] .staff-notifications-page .notification-booking {
+  background: #1e293b !important;
+  border-color: var(--lm-line) !important;
+  color: var(--lm-muted) !important;
+}
+
+[data-theme="dark"] .staff-notifications-page .notification-item.blue .notification-icon {
+  background: #1e3a8a !important;
+}
+
+[data-theme="dark"] .staff-notifications-page .notification-item.green .notification-icon {
+  background: #14532d !important;
+}
+
+[data-theme="dark"] .staff-notifications-page .notification-item.purple .notification-icon {
+  background: #4c1d95 !important;
+}
+
+[data-theme="dark"] .staff-notifications-page .notification-item.orange .notification-icon {
+  background: #7c2d12 !important;
+}
+
+[data-theme="dark"] .stat-icon.blue {
+  background: #1e3a8a !important;
+  color: #93c5fd !important;
+}
+
+[data-theme="dark"] .stat-icon.orange {
+  background: #7c2d12 !important;
+  color: #fdba74 !important;
+}
+
+[data-theme="dark"] .stat-icon.purple {
+  background: #4c1d95 !important;
+  color: #ddd6fe !important;
+}
+
+[data-theme="dark"] .stat-icon.green {
+  background: #14532d !important;
+  color: #86efac !important;
+}
+
+[data-theme="dark"] .overview-icon {
+  background: rgba(255, 255, 255, 0.15) !important;
+}
+
+[data-theme="dark"] .overview-content h3,
+[data-theme="dark"] .overview-content p,
+[data-theme="dark"] .progress-info,
+[data-theme="dark"] .progress-info strong {
+  color: #e2e8f0 !important;
+}
+
+[data-theme="dark"] .staff-dashboard .search-box input,
+[data-theme="dark"] .staff-dashboard .filter-box select,
+[data-theme="dark"] .staff-payments-page .filter-select,
+[data-theme="dark"] .staff-payments-page .filter-input,
+[data-theme="dark"] .staff-bookings-page input,
+[data-theme="dark"] .staff-bookings-page select,
+[data-theme="dark"] .staff-bookings input,
+[data-theme="dark"] .staff-bookings select {
+  background: #0f172a !important;
+  border-color: var(--lm-line) !important;
+  color: var(--lm-ink) !important;
+}
+
+[data-theme="dark"] .staff-bookings .booking-filter-tabs button,
+[data-theme="dark"] .staff-bookings .archive-booking-btn {
+  background: #0f172a !important;
+  border-color: var(--lm-line) !important;
+  color: var(--lm-muted) !important;
+}
+
+[data-theme="dark"] .staff-bookings .booking-filter-tabs button.active {
+  background: rgba(37, 99, 235, 0.2) !important;
+  border-color: #2563eb !important;
+  color: #93c5fd !important;
+}
+
+[data-theme="dark"] .staff-bookings .archive-booking-btn:hover:not(:disabled) {
+  background: rgba(245, 158, 11, 0.15) !important;
+  border-color: #f59e0b !important;
+  color: #fbbf24 !important;
+}
+
+[data-theme="dark"] .staff-bookings .archive-confirm-modal {
+  background: var(--lm-surface) !important;
+  color: var(--lm-ink) !important;
+}
+
+[data-theme="dark"] .staff-bookings .archive-confirm-meta > div {
+  background: #0f172a !important;
+  border-color: var(--lm-line) !important;
+}
+
+[data-theme="dark"] .staff-bookings .archive-confirm-actions .secondary-btn {
+  background: #1e293b !important;
+  color: var(--lm-ink) !important;
+}
+
+[data-theme="dark"] .staff-dashboard .orders-toolbar,
+[data-theme="dark"] .staff-dashboard .orders-card-footer,
+[data-theme="dark"] .staff-payments-page .payments-table th,
+[data-theme="dark"] .staff-bookings-page .bookings-table th,
+[data-theme="dark"] .staff-bookings .bookings-table th {
+  background: #0f172a !important;
+  border-color: var(--lm-line) !important;
+  color: var(--lm-muted) !important;
+}
+
+[data-theme="dark"] .staff-payments-page .payments-table td,
+[data-theme="dark"] .staff-bookings-page .bookings-table td,
+[data-theme="dark"] .staff-bookings .bookings-table td {
+  border-color: var(--lm-line) !important;
+  color: var(--lm-ink) !important;
+}
+
+[data-theme="dark"] .staff-payments-page .payments-table tbody tr:hover,
+[data-theme="dark"] .staff-bookings-page .bookings-table tbody tr:hover,
+[data-theme="dark"] .staff-bookings .bookings-table tbody tr:hover {
+  background: #1e293b !important;
+}
+
+[data-theme="dark"] .staff-dashboard .dashboard-live-badge {
+  background: #14532d !important;
+  color: #86efac !important;
+}
+
+[data-theme="dark"] .staff-dashboard .stat-value-skeleton {
+  background: linear-gradient(90deg, #1e293b 25%, #243044 50%, #1e293b 75%) !important;
+  background-size: 200% 100% !important;
+}
+
+[data-theme="dark"] .staff-dashboard .orders-count {
+  background: #172554 !important;
+  color: #93c5fd !important;
+}
+
+[data-theme="dark"] .payment-load-error {
+  background: #3f1d1d !important;
+  border-color: #7f1d1d !important;
+  color: #fca5a5 !important;
+}
+
+[data-theme="dark"] .status-modal {
+  background: var(--lm-surface) !important;
+  color: var(--lm-ink) !important;
+}
+
+[data-theme="dark"] .status-modal-header h2,
+[data-theme="dark"] .status-detail strong {
+  color: var(--lm-ink) !important;
+}
+
+[data-theme="dark"] .status-modal-header p,
+[data-theme="dark"] .status-detail span {
+  color: var(--lm-muted) !important;
+}
+
+[data-theme="dark"] .status-detail,
+[data-theme="dark"] .status-close-btn {
+  background: #0f172a !important;
+  border-color: var(--lm-line) !important;
+  color: var(--lm-ink) !important;
+}
+
+[data-theme="dark"] .status-divider {
+  background: var(--lm-line) !important;
+}
+
+[data-theme="dark"] .status-actions .secondary-btn {
+  background: #1e293b !important;
+  color: #cbd5e1 !important;
+}
+
+[data-theme="dark"] .status-actions .secondary-btn:hover {
+  background: #243044 !important;
+}
+
+/* -------- Rider content surfaces -------- */
+[data-theme="dark"] .rider-page {
+  color: var(--lm-ink) !important;
+}
+
+[data-theme="dark"] .rider-stats div,
+[data-theme="dark"] .rider-booking,
+[data-theme="dark"] .rider-profile,
+[data-theme="dark"] .rider-security-note {
+  background: var(--lm-surface) !important;
+  border-color: var(--lm-line) !important;
+  color: var(--lm-ink) !important;
+}
+
+[data-theme="dark"] .rider-page h1,
+[data-theme="dark"] .rider-stats strong {
+  color: var(--lm-ink) !important;
+}
+
+[data-theme="dark"] .rider-page-heading p:not(.eyebrow),
+[data-theme="dark"] .rider-stats span {
+  color: var(--lm-muted) !important;
+}
+
+[data-theme="dark"] .eyebrow {
+  color: #5eead4 !important;
+}
+
+/* Broad catch-all for leftover white panels in portals */
+[data-theme="dark"] .customer-layout .customer-content [class*="card"],
+[data-theme="dark"] .staff-layout .content [class*="card"],
+[data-theme="dark"] .rider-layout .rider-content [class*="card"] {
+  background-color: var(--lm-surface);
+  border-color: var(--lm-line);
+  color: var(--lm-ink);
+}

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import {
   Bell,
@@ -13,10 +13,16 @@ import {
   Users,
   UserRoundCog,
   UserRound,
+  Bike,
   X,
 } from "lucide-react";
 import { logout } from "../services/authService";
 import { useAuth } from "../context/AuthContext";
+import LogoutConfirmModal from "../components/LogoutConfirmModal";
+import ThemeToggleBar from "../components/ThemeToggleBar";
+import { subscribeToAllBookings } from "../services/bookingService";
+import { subscribeToAllNotifications } from "../services/notificationService";
+import { subscribeToAllPayments } from "../services/paymentService";
 import "../styles/AdminPortal.css";
 const nav = [
   [
@@ -31,6 +37,7 @@ const nav = [
       ["Services", "/admin/services", Sparkles],
       ["Customers", "/admin/customers", Users],
       ["Staff", "/admin/staff", UserRoundCog],
+      ["Rider", "/admin/riders", Bike],
     ],
   ],
   [
@@ -47,21 +54,81 @@ export default function AdminPortalLayout() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [drawer, setDrawer] = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
-  const name = user?.displayName || user?.email?.split("@")[0] || "Admin";
-  const signOut = async () => {
-    if (loggingOut || !window.confirm("Log out of the Admin Portal?")) return;
+  const [unreadCount, setUnreadCount] = useState(0);
+  const name =
+    user?.name ||
+    user?.displayName ||
+    user?.email?.split("@")[0] ||
+    "Admin";
+
+  useEffect(() => {
+    let pendingPayments = 0;
+    let pendingBookings = 0;
+    let unreadNotifications = 0;
+
+    const emit = () => {
+      setUnreadCount(pendingPayments + pendingBookings + unreadNotifications);
+    };
+
+    const unsubPayments = subscribeToAllPayments(
+      (payments) => {
+        pendingPayments = payments.filter(
+          (payment) => payment.payment_status === "Pending"
+        ).length;
+        emit();
+      },
+      (error) => console.error(error)
+    );
+
+    const unsubBookings = subscribeToAllBookings(
+      (bookings) => {
+        pendingBookings = bookings.filter(
+          (booking) => String(booking.status || "").toLowerCase() === "pending"
+        ).length;
+        emit();
+      },
+      (error) => console.error(error)
+    );
+
+    const unsubNotifications = subscribeToAllNotifications(
+      (notifications) => {
+        unreadNotifications = notifications.filter(
+          (item) => item.read !== true
+        ).length;
+        emit();
+      },
+      (error) => console.error(error)
+    );
+
+    return () => {
+      unsubPayments?.();
+      unsubBookings?.();
+      unsubNotifications?.();
+    };
+  }, []);
+
+  const requestLogout = () => {
+    if (loggingOut) return;
+    setShowLogoutModal(true);
+  };
+
+  const confirmLogout = async () => {
+    if (loggingOut) return;
     setLoggingOut(true);
     try {
-      await logout();
       navigate("/", { replace: true });
+      await logout();
     } catch (error) {
       alert(error.message || "Unable to log out. Please try again.");
       setLoggingOut(false);
+      setShowLogoutModal(false);
     }
   };
   return (
     <div className="portal-shell">
+      <ThemeToggleBar />
       <aside className={`portal-sidebar ${drawer ? "open" : ""}`}>
         <div className="portal-brand">
           <span>
@@ -99,7 +166,7 @@ export default function AdminPortalLayout() {
             <UserRound size={18} />
             Profile
           </NavLink>
-          <button type="button" onClick={signOut} disabled={loggingOut}>
+          <button type="button" onClick={requestLogout} disabled={loggingOut}>
             <LogOut size={18} />
             {loggingOut ? "Logging out..." : "Logout"}
           </button>
@@ -120,7 +187,7 @@ export default function AdminPortalLayout() {
           <div className="portal-push" />
           <NavLink className="portal-notice" to="/admin/notifications">
             <Bell size={19} />
-            <i>3</i>
+            {unreadCount > 0 && <i>{unreadCount > 99 ? "99+" : unreadCount}</i>}
           </NavLink>
           <div className="portal-profile">
             <div className="portal-profile-identity">
@@ -136,6 +203,17 @@ export default function AdminPortalLayout() {
           <Outlet context={{ name }} />
         </main>
       </div>
+
+      <LogoutConfirmModal
+        open={showLogoutModal}
+        loading={loggingOut}
+        title="Log out of Admin Portal?"
+        message="Are you sure you want to log out of the LaundryMate Admin Portal?"
+        onCancel={() => {
+          if (!loggingOut) setShowLogoutModal(false);
+        }}
+        onConfirm={confirmLogout}
+      />
     </div>
   );
 }

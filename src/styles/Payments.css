@@ -7,10 +7,10 @@
 }
 
 .payments-page {
-  min-height: 100vh;
+  min-height: 100%;
   padding: 32px;
-  background: #f5f7fb;
-  color: #172033;
+  background: var(--lm-bg, #f5f7fb);
+  color: var(--lm-ink, #172033);
   font-family:
     Inter,
     -apple-system,
@@ -29,6 +29,34 @@
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.booking-picker {
+  min-width: min(320px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.booking-picker label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.booking-picker select {
+  height: 44px;
+  border: 1px solid #dbe3f0;
+  border-radius: 12px;
+  padding: 0 14px;
+  background: #ffffff;
+  color: #172033;
+  font-size: 14px;
+  font-weight: 600;
 }
 
 .page-label,
@@ -599,6 +627,7 @@
    ========================================================= */
 
 .gcash-qr-wrapper {
+  position: relative;
   width: 145px;
   height: 145px;
   padding: 9px;
@@ -610,12 +639,98 @@
   background: white;
 }
 
+.gcash-qr-hit {
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: zoom-in;
+}
+
 .gcash-qr {
   width: 100%;
   height: 100%;
   display: block;
   object-fit: contain;
   border-radius: 5px;
+}
+
+.gcash-qr-toggle {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 2;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #dbe3f0;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.95);
+  color: #1e293b;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12);
+}
+
+.gcash-qr-toggle:hover {
+  background: #eff6ff;
+  border-color: #93c5fd;
+  color: #1d4ed8;
+}
+
+.gcash-qr-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(15, 23, 42, 0.72);
+}
+
+.gcash-qr-lightbox-panel {
+  width: min(92vw, 420px);
+  padding: 14px;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 18px 50px rgba(15, 23, 42, 0.35);
+}
+
+.gcash-qr-lightbox-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.gcash-qr-lightbox-toolbar span {
+  font-size: 14px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.gcash-qr-lightbox-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.gcash-qr-lightbox-actions .gcash-qr-toggle {
+  position: static;
+}
+
+.gcash-qr-lightbox-image {
+  width: 100%;
+  height: auto;
+  max-height: min(70vh, 420px);
+  display: block;
+  object-fit: contain;
+  border-radius: 10px;
+  background: #f8fafc;
 }
 
 .gcash-qr-fallback {
@@ -1515,4 +1630,86 @@
     max-width: 100%;
     text-align: left;
   }
+}
+
+.receipt-error {
+  margin: 8px 0 0;
+  color: #b91c1c;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.receipt-ocr-status {
+  margin: 10px 0 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1e3a8a;
+}
+
+.receipt-ocr-status p {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.receipt-ocr-status.is-success {
+  background: #ecfdf5;
+  border-color: #a7f3d0;
+  color: #065f46;
+}
+
+.receipt-ocr-status.is-warning {
+  background: #fffbeb;
+  border-color: #fde68a;
+  color: #92400e;
+}
+
+.receipt-ocr-bar {
+  margin-top: 8px;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.7);
+  overflow: hidden;
+}
+
+.receipt-ocr-bar span {
+  display: block;
+  height: 100%;
+  background: #2563eb;
+  border-radius: 999px;
+  transition: width 0.2s ease;
+}
+
+.receipt-preview {
+  margin-top: 12px;
+  display: grid;
+  gap: 10px;
+  justify-items: start;
+}
+
+.receipt-preview img {
+  max-width: min(280px, 100%);
+  max-height: 220px;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  object-fit: cover;
+  background: #f8fafc;
+}
+
+.receipt-remove-btn {
+  border: 1px solid #fecaca;
+  background: #fef2f2;
+  color: #b91c1c;
+  border-radius: 8px;
+  min-height: 34px;
+  padding: 0 12px;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.receipt-remove-btn:hover {
+  background: #fee2e2;
 }

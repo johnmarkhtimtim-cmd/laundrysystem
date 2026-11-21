@@ -5,10 +5,10 @@
 ========================================= */
 
 .my-booking-page {
-  min-height: 100vh;
+  min-height: 100%;
   padding: 32px;
-  background: #f5f7fb;
-  color: #172033;
+  background: var(--lm-bg, #f5f7fb);
+  color: var(--lm-ink, #172033);
   font-family:
     "Inter",
     "Poppins",
@@ -414,11 +414,13 @@
 }
 
 .booking-number {
-  color: #9aa3b2;
-
-  font-size: 11px;
-
-  font-weight: 600;
+  display: inline-block;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
 }
 
 
@@ -569,6 +571,15 @@
   font-size: 15px !important;
 }
 
+.amount-breakdown {
+  display: block;
+  margin-top: 2px;
+  color: #94a3b8;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
 
 /* =========================================
    PAYMENT BADGE
@@ -601,6 +612,15 @@
   background: currentColor;
 }
 
+.payment-badge.unpaid {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.payment-badge.unpaid span {
+  background: #94a3b8;
+}
+
 .payment-badge.paid {
   color: #15803d;
 
@@ -611,6 +631,12 @@
   color: #b77900;
 
   background: #fff5dc;
+}
+
+.payment-badge.rejected {
+  color: #b91c1c;
+
+  background: #fef2f2;
 }
 
 

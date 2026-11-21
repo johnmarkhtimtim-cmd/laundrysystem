@@ -1,7 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import { subscribeToCustomerBookings } from "../../services/bookingService";
 import { subscribeToServices } from "../../services/laundryService";
+import { formatShortBookingId, getBookingId } from "../../utils/bookingId";
 import "../../styles/CustomerDashboard.css";
 
 const COMPLETED_STATUSES = new Set([
@@ -17,29 +19,6 @@ const SERVICE_ICONS = {
   "dry cleaning": "👔",
   ironing: "👕",
   "bedding care": "🛏️",
-};
-
-function readCustomerBookings(customerId) {
-  const storedBookings = JSON.parse(
-    localStorage.getItem("laundrymateBookings") || "[]"
-  );
-
-  if (!Array.isArray(storedBookings)) {
-    throw new Error("Saved bookings must be a list.");
-  }
-
-  return storedBookings
-    .filter(
-      (booking) =>
-        booking.userId === customerId ||
-        booking.customerId === customerId ||
-        booking.customer_id === customerId
-    )
-    .sort(
-      (a, b) =>
-        getTimestampValue(b.createdAt || b.booking_date) -
-        getTimestampValue(a.createdAt || a.booking_date)
-    );
 }
 
 function getTimestampValue(value) {
@@ -109,6 +88,7 @@ function formatDate(value) {
 
 function CustomerDashboard() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const customerId = user?.uid;
   const [bookings, setBookings] = useState([]);
@@ -117,38 +97,48 @@ function CustomerDashboard() {
   const [services, setServices] = useState([]);
   const [servicesLoading, setServicesLoading] = useState(true);
   const [servicesError, setServicesError] = useState("");
-
-  const loadBookings = useCallback(() => {
-    try {
-      setBookings(customerId ? readCustomerBookings(customerId) : []);
-      setBookingsError("");
-    } catch (error) {
-      console.error("Unable to load customer dashboard bookings:", error);
-      setBookings([]);
-      setBookingsError("Your bookings could not be loaded. Please refresh and try again.");
-    } finally {
-      setBookingsLoading(false);
-    }
-  }, [customerId]);
+  const [paymentNotice, setPaymentNotice] = useState("");
 
   useEffect(() => {
-    const initialLoad = window.setTimeout(loadBookings, 0);
+    const notice = location.state?.paymentNotice;
+    if (!notice) return undefined;
 
-    const handleStorage = (event) => {
-      if (!event.key || event.key === "laundrymateBookings") {
-        loadBookings();
+    setPaymentNotice(String(notice));
+    navigate(location.pathname, { replace: true, state: null });
+
+    const timer = window.setTimeout(() => setPaymentNotice(""), 4500);
+    return () => window.clearTimeout(timer);
+  }, [location.pathname, location.state, navigate]);
+
+  useEffect(() => {
+    if (!customerId) {
+      setBookings([]);
+      setBookingsLoading(false);
+      setBookingsError("");
+      return undefined;
+    }
+
+    setBookingsLoading(true);
+
+    const unsubscribe = subscribeToCustomerBookings(
+      customerId,
+      (nextBookings) => {
+        setBookings(nextBookings);
+        setBookingsError("");
+        setBookingsLoading(false);
+      },
+      (error) => {
+        console.error("Unable to load customer dashboard bookings:", error);
+        setBookings([]);
+        setBookingsError(
+          "Your bookings could not be loaded. Please refresh and try again."
+        );
+        setBookingsLoading(false);
       }
-    };
+    );
 
-    window.addEventListener("storage", handleStorage);
-    window.addEventListener("laundrymateBookingUpdated", loadBookings);
-
-    return () => {
-      window.clearTimeout(initialLoad);
-      window.removeEventListener("storage", handleStorage);
-      window.removeEventListener("laundrymateBookingUpdated", loadBookings);
-    };
-  }, [loadBookings]);
+    return () => unsubscribe?.();
+  }, [customerId]);
 
   useEffect(() => {
     let isMounted = true;
@@ -221,12 +211,17 @@ function CustomerDashboard() {
 
   return (
     <div className="customer-dashboard">
+      {paymentNotice ? (
+        <p className="dashboard-feedback dashboard-success" role="status">
+          {paymentNotice}
+        </p>
+      ) : null}
+
       <section className="dashboard-hero">
         <div className="hero-content">
-          <div className="welcome-icon" aria-hidden="true">👋</div>
           <div className="hero-text">
             <p className="eyebrow">CUSTOMER DASHBOARD</p>
-            <h1>Welcome back, {customerName}!</h1>
+            <h1>{customerName}</h1>
             <p className="hero-description">
               Keep your laundry fresh, organized, and effortless.
             </p>
@@ -296,7 +291,11 @@ function CustomerDashboard() {
           ) : bookingsError ? (
             <div className="dashboard-feedback dashboard-error" role="alert">
               <p>{bookingsError}</p>
-              <button type="button" className="text-btn" onClick={loadBookings}>
+              <button
+                type="button"
+                className="text-btn"
+                onClick={() => window.location.reload()}
+              >
                 Try again
               </button>
             </div>
@@ -316,16 +315,19 @@ function CustomerDashboard() {
             <div className="orders-list">
               {recentBookings.map((booking, index) => {
                 const status = booking.status || "Pending";
-                const bookingId =
-                  booking.id || booking.bookingId || booking.booking_id || "Booking";
+                const fullBookingId = getBookingId(booking);
+                const shortBookingId = formatShortBookingId(booking);
+                const pickupRider = String(
+                  booking.rider_name || booking.riderName || ""
+                ).trim();
 
                 return (
                   <button
-                    key={bookingId}
+                    key={fullBookingId}
                     type="button"
                     className="order-item"
                     onClick={handleOrderClick}
-                    aria-label={`View booking ${bookingId}, ${getBookingServiceName(booking)}, status ${status}`}
+                    aria-label={`View booking ${shortBookingId}, ${getBookingServiceName(booking)}, status ${status}`}
                   >
                     <span className="order-number">
                       {String(index + 1).padStart(2, "0")}
@@ -333,7 +335,8 @@ function CustomerDashboard() {
                     <span className="order-info">
                       <span className="order-title">{getBookingServiceName(booking)}</span>
                       <span className="order-detail">
-                        #{bookingId} · {formatPickup(booking)}
+                        #{shortBookingId} · {formatPickup(booking)}
+                        {pickupRider ? ` · Rider: ${pickupRider}` : ""}
                       </span>
                     </span>
                     <span className={`status-pill ${getStatusClass(status)}`}>

@@ -1,6 +1,7 @@
-import { 
-  collection, 
-  doc, 
+import {
+  collection,
+  doc,
+  getDoc,
   getDocs,
   setDoc,
   updateDoc,
@@ -8,9 +9,23 @@ import {
   where,
   orderBy,
   onSnapshot,
-  serverTimestamp
+  serverTimestamp,
 } from "firebase/firestore";
 import { db } from "./firebase";
+import {
+  notifyPaymentConfirmed,
+  notifyPaymentRejected,
+  notifyStaffPaymentSubmitted,
+} from "./notificationService";
+import { getUsersByRoles } from "./userService";
+
+const PAYMENT_SETTINGS_DOC = "payment";
+
+const DEFAULT_PAYMENT_SETTINGS = {
+  gcashName: "Prince-Tyler Laundry Shop",
+  gcashNumber: "",
+  gcashQr: "/images/gcash-qr.png",
+};
 
 const getTimestampMilliseconds = (value) => {
   if (!value) return 0;
@@ -21,40 +36,120 @@ const getTimestampMilliseconds = (value) => {
   return Number.isNaN(timestamp) ? 0 : timestamp;
 };
 
+const normalizeMethod = (method) => {
+  if (!method) return "Cash";
+  if (method === "Online Payment" || method === "Cash on Pickup") {
+    return method === "Online Payment" ? "GCash" : "Cash";
+  }
+  return method;
+};
+
+const alertStaffOfSubmittedPayment = async ({
+  bookingId,
+  amount,
+  paymentMethod,
+  customerName,
+  isResubmit = false,
+}) => {
+  try {
+    // Staff inbox only — admin already surfaces pending payments as activity alerts.
+    const recipients = await getUsersByRoles(["staff"]);
+    if (recipients.length === 0) return;
+
+    await notifyStaffPaymentSubmitted({
+      recipientIds: recipients.map((user) => user.id),
+      bookingId,
+      amount,
+      paymentMethod,
+      customerName: customerName || "Customer",
+      isResubmit,
+    });
+  } catch (error) {
+    // Payment should still succeed even if staff alerts fail.
+    console.error("Error notifying staff of payment submission:", error);
+  }
+};
+
 /**
- * Create a payment record
- * @param {string} bookingId - Booking ID
- * @param {string} customerId - Customer ID
- * @param {number} amount - Payment amount
- * @param {string} method - Payment method (Online Payment, Cash on Pickup)
- * @param {string} status - Payment status (Pending, Paid)
- * @returns {Promise<string>} Payment ID
+ * Sync payment fields onto the linked booking document.
+ */
+const syncBookingPaymentFields = async (
+  bookingId,
+  { payment_status, payment_method } = {}
+) => {
+  if (!bookingId) return;
+
+  const bookingRef = doc(db, "bookings", bookingId);
+  const updates = { updated_at: serverTimestamp() };
+
+  if (payment_status) updates.payment_status = payment_status;
+  if (payment_method) updates.payment_method = normalizeMethod(payment_method);
+
+  try {
+    await updateDoc(bookingRef, updates);
+  } catch (error) {
+    // Payment record is the source of truth; booking sync must not block submit.
+    console.error("Error syncing booking payment fields:", error);
+  }
+};
+
+/**
+ * Create a payment record and sync method/status onto the booking.
  */
 export const createPayment = async (
   bookingId,
   customerId,
   amount,
-  method = "Cash on Pickup",
+  method = "Cash",
   status = "Pending",
   details = {}
 ) => {
   try {
     const paymentRef = doc(collection(db, "payments"));
-    
+    const paymentMethod = normalizeMethod(method);
+    const numericAmount = Number(amount) || 0;
+
+    // Only write keys allowed by firestore.rules payments create
     const payment = {
-      ...details,
       payment_id: paymentRef.id,
       booking_id: bookingId,
       customer_id: customerId,
-      amount: amount,
-      payment_method: method,
+      customer_name: details.customer_name || "Customer",
+      amount: numericAmount,
+      // Do not write initial_payment here — customer create rules reject unknown keys.
+      // Rider weight update sets initial_payment later; amount is the deposit.
+      total_amount: Number(details.total_amount ?? numericAmount) || numericAmount,
+      services: details.services || "",
+      payment_method: paymentMethod,
       payment_status: status,
+      gcash_customer_name: details.gcash_customer_name || "",
+      reference_number: details.reference_number || "",
+      receipt_url: details.receipt_url || "",
+      receipt_path: details.receipt_path || "",
+      receipt_name: details.receipt_name || "",
+      receipt_content_type: details.receipt_content_type || "",
+      receipt_size: details.receipt_size ?? null,
       payment_date: status === "Paid" ? serverTimestamp() : null,
       created_at: serverTimestamp(),
       updated_at: serverTimestamp(),
     };
 
     await setDoc(paymentRef, payment);
+    await syncBookingPaymentFields(bookingId, {
+      payment_status: status,
+      payment_method: paymentMethod,
+    });
+
+    if (String(status).toLowerCase() === "pending") {
+      await alertStaffOfSubmittedPayment({
+        bookingId,
+        amount,
+        paymentMethod,
+        customerName: details.customer_name,
+        isResubmit: false,
+      });
+    }
+
     return paymentRef.id;
   } catch (error) {
     console.error("Error creating payment:", error);
@@ -68,12 +163,43 @@ export const createPayment = async (
 export const updateCustomerPayment = async (paymentId, paymentData) => {
   try {
     const paymentRef = doc(db, "payments", paymentId);
+    const paymentSnap = await getDoc(paymentRef);
+    const existing = paymentSnap.exists() ? paymentSnap.data() : {};
+    const paymentMethod = normalizeMethod(paymentData.payment_method);
+
     await updateDoc(paymentRef, {
       amount: paymentData.amount,
-      payment_method: paymentData.payment_method,
+      payment_method: paymentMethod,
+      payment_status: "Pending",
       gcash_customer_name: paymentData.gcash_customer_name || "",
       reference_number: paymentData.reference_number || "",
+      receipt_url: paymentData.receipt_url || existing.receipt_url || "",
+      receipt_path: paymentData.receipt_path || existing.receipt_path || "",
+      receipt_name: paymentData.receipt_name || existing.receipt_name || "",
+      receipt_content_type:
+        paymentData.receipt_content_type || existing.receipt_content_type || "",
+      receipt_size:
+        paymentData.receipt_size ?? existing.receipt_size ?? null,
       updated_at: serverTimestamp(),
+    });
+
+    const bookingId = existing.booking_id || paymentData.booking_id;
+    if (bookingId) {
+      await syncBookingPaymentFields(bookingId, {
+        payment_status: "Pending",
+        payment_method: paymentMethod,
+      });
+    }
+
+    await alertStaffOfSubmittedPayment({
+      bookingId,
+      amount: paymentData.amount ?? existing.amount ?? existing.total_amount,
+      paymentMethod,
+      customerName:
+        paymentData.customer_name ||
+        existing.customer_name ||
+        "Customer",
+      isResubmit: true,
     });
   } catch (error) {
     console.error("Error updating customer payment:", error);
@@ -83,8 +209,6 @@ export const updateCustomerPayment = async (paymentId, paymentData) => {
 
 /**
  * Get payment by booking ID
- * @param {string} bookingId - Booking ID
- * @returns {Promise<object>} Payment details
  */
 export const getPaymentByBookingId = async (bookingId) => {
   try {
@@ -92,14 +216,14 @@ export const getPaymentByBookingId = async (bookingId) => {
       collection(db, "payments"),
       where("booking_id", "==", bookingId)
     );
-    
+
     const querySnapshot = await getDocs(q);
-    
+
     if (!querySnapshot.empty) {
-      const doc = querySnapshot.docs[0];
-      return { id: doc.id, ...doc.data() };
+      const paymentDoc = querySnapshot.docs[0];
+      return { id: paymentDoc.id, ...paymentDoc.data() };
     }
-    
+
     return null;
   } catch (error) {
     console.error("Error getting payment by booking ID:", error);
@@ -109,8 +233,6 @@ export const getPaymentByBookingId = async (bookingId) => {
 
 /**
  * Get payments for a customer
- * @param {string} customerId - Customer ID
- * @returns {Promise<array>} Array of payments
  */
 export const getCustomerPayments = async (customerId) => {
   try {
@@ -118,13 +240,22 @@ export const getCustomerPayments = async (customerId) => {
       collection(db, "payments"),
       where("customer_id", "==", customerId)
     );
-    
+
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs
-      .map((paymentDoc) => ({
-        id: paymentDoc.id,
-        ...paymentDoc.data(),
-      }))
+      .map((paymentDoc) => {
+        const data = paymentDoc.data() || {};
+        const bookingId = data.booking_id || data.bookingId || null;
+
+        return {
+          ...data,
+          id: paymentDoc.id,
+          payment_id: data.payment_id || paymentDoc.id,
+          booking_id: bookingId,
+          bookingId,
+          customer_id: data.customer_id || data.customerId || customerId,
+        };
+      })
       .sort(
         (a, b) =>
           getTimestampMilliseconds(b.created_at || b.createdAt) -
@@ -154,10 +285,20 @@ export const subscribeToCustomerPayments = (
     (querySnapshot) => {
       onPayments(
         querySnapshot.docs
-          .map((paymentDoc) => ({
-            id: paymentDoc.id,
-            ...paymentDoc.data(),
-          }))
+          .map((paymentDoc) => {
+            const data = paymentDoc.data() || {};
+            const bookingId =
+              data.booking_id || data.bookingId || null;
+
+            return {
+              ...data,
+              id: paymentDoc.id,
+              payment_id: data.payment_id || paymentDoc.id,
+              booking_id: bookingId,
+              bookingId,
+              customer_id: data.customer_id || data.customerId || customerId,
+            };
+          })
           .sort(
             (a, b) =>
               getTimestampMilliseconds(b.created_at || b.createdAt) -
@@ -170,8 +311,35 @@ export const subscribeToCustomerPayments = (
 };
 
 /**
+ * Subscribe to every payment record for staff/admin views.
+ */
+export const subscribeToAllPayments = (onPayments, onError) => {
+  return onSnapshot(
+    collection(db, "payments"),
+    (querySnapshot) => {
+      onPayments(
+        querySnapshot.docs
+          .map((paymentDoc) => {
+            const payment = { id: paymentDoc.id, ...paymentDoc.data() };
+
+            return {
+              ...payment,
+              customer: { name: payment.customer_name || "Unknown" },
+            };
+          })
+          .sort(
+            (a, b) =>
+              getTimestampMilliseconds(b.created_at) -
+              getTimestampMilliseconds(a.created_at)
+          )
+      );
+    },
+    onError
+  );
+};
+
+/**
  * Get all payments for staff view with customer details
- * @returns {Promise<array>} Array of payments with customer details
  */
 export const getAllPayments = async () => {
   try {
@@ -179,10 +347,10 @@ export const getAllPayments = async () => {
       collection(db, "payments"),
       orderBy("created_at", "desc")
     );
-    
+
     const querySnapshot = await getDocs(q);
     const payments = [];
-    
+
     for (const docSnapshot of querySnapshot.docs) {
       const payment = { id: docSnapshot.id, ...docSnapshot.data() };
       payment.customer = {
@@ -190,7 +358,7 @@ export const getAllPayments = async () => {
       };
       payments.push(payment);
     }
-    
+
     return payments;
   } catch (error) {
     console.error("Error getting all payments:", error);
@@ -199,19 +367,44 @@ export const getAllPayments = async () => {
 };
 
 /**
- * Update payment status
- * @param {string} paymentId - Payment ID
- * @param {string} newStatus - New payment status
- * @returns {Promise<void>}
+ * Update payment status, sync booking, and notify the customer.
  */
 export const updatePaymentStatus = async (paymentId, newStatus) => {
   try {
     const paymentRef = doc(db, "payments", paymentId);
-    await updateDoc(paymentRef, {
+    const paymentSnap = await getDoc(paymentRef);
+
+    if (!paymentSnap.exists()) {
+      throw new Error("Payment not found");
+    }
+
+    const payment = paymentSnap.data();
+    const updates = {
       payment_status: newStatus,
       payment_date: newStatus === "Paid" ? serverTimestamp() : null,
       updated_at: serverTimestamp(),
-    });
+    };
+
+    await updateDoc(paymentRef, updates);
+
+    if (payment.booking_id) {
+      await syncBookingPaymentFields(payment.booking_id, {
+        payment_status: newStatus,
+        payment_method: payment.payment_method,
+      });
+    }
+
+    const customerId = payment.customer_id;
+    const bookingId = payment.booking_id;
+    const amount = payment.amount ?? payment.total_amount ?? 0;
+
+    if (customerId && bookingId) {
+      if (newStatus === "Paid") {
+        await notifyPaymentConfirmed(customerId, bookingId, amount);
+      } else if (newStatus === "Rejected") {
+        await notifyPaymentRejected(customerId, bookingId, amount);
+      }
+    }
   } catch (error) {
     console.error("Error updating payment status:", error);
     throw error;
@@ -220,8 +413,6 @@ export const updatePaymentStatus = async (paymentId, newStatus) => {
 
 /**
  * Get payments by status
- * @param {string} status - Payment status (Pending, Paid)
- * @returns {Promise<array>} Array of payments
  */
 export const getPaymentsByStatus = async (status) => {
   try {
@@ -230,13 +421,13 @@ export const getPaymentsByStatus = async (status) => {
       where("payment_status", "==", status),
       orderBy("created_at", "desc")
     );
-    
+
     const querySnapshot = await getDocs(q);
     const payments = [];
-    querySnapshot.forEach((doc) => {
-      payments.push({ id: doc.id, ...doc.data() });
+    querySnapshot.forEach((paymentDoc) => {
+      payments.push({ id: paymentDoc.id, ...paymentDoc.data() });
     });
-    
+
     return payments;
   } catch (error) {
     console.error("Error getting payments by status:", error);
@@ -246,23 +437,26 @@ export const getPaymentsByStatus = async (status) => {
 
 /**
  * Get revenue summary
- * @returns {Promise<object>} Revenue statistics
  */
 export const getRevenueSummary = async () => {
   try {
     const allPayments = await getAllPayments();
-    
+
     const totalRevenue = allPayments
-      .filter(p => p.payment_status === "Paid")
+      .filter((p) => p.payment_status === "Paid")
       .reduce((sum, p) => sum + (p.amount || 0), 0);
-    
+
     const pendingRevenue = allPayments
-      .filter(p => p.payment_status === "Pending")
+      .filter((p) => p.payment_status === "Pending")
       .reduce((sum, p) => sum + (p.amount || 0), 0);
-    
-    const paidCount = allPayments.filter(p => p.payment_status === "Paid").length;
-    const pendingCount = allPayments.filter(p => p.payment_status === "Pending").length;
-    
+
+    const paidCount = allPayments.filter(
+      (p) => p.payment_status === "Paid"
+    ).length;
+    const pendingCount = allPayments.filter(
+      (p) => p.payment_status === "Pending"
+    ).length;
+
     return {
       total_revenue: totalRevenue,
       pending_revenue: pendingRevenue,
@@ -274,3 +468,164 @@ export const getRevenueSummary = async () => {
     throw error;
   }
 };
+
+/**
+ * Load shop GCash / payment display settings.
+ */
+export const getPaymentSettings = async () => {
+  try {
+    const settingsRef = doc(db, "settings", PAYMENT_SETTINGS_DOC);
+    const snap = await getDoc(settingsRef);
+
+    if (!snap.exists()) {
+      return { ...DEFAULT_PAYMENT_SETTINGS };
+    }
+
+    return {
+      ...DEFAULT_PAYMENT_SETTINGS,
+      ...snap.data(),
+    };
+  } catch (error) {
+    console.error("Error getting payment settings:", error);
+    return { ...DEFAULT_PAYMENT_SETTINGS };
+  }
+};
+
+/**
+ * Subscribe to shop payment settings.
+ */
+export const subscribeToPaymentSettings = (onSettings, onError) => {
+  const settingsRef = doc(db, "settings", PAYMENT_SETTINGS_DOC);
+
+  return onSnapshot(
+    settingsRef,
+    (snap) => {
+      if (!snap.exists()) {
+        onSettings({ ...DEFAULT_PAYMENT_SETTINGS });
+        return;
+      }
+
+      onSettings({
+        ...DEFAULT_PAYMENT_SETTINGS,
+        ...snap.data(),
+      });
+    },
+    onError
+  );
+};
+
+/**
+ * Save shop payment settings (admin).
+ */
+export const updatePaymentSettings = async (settings) => {
+  try {
+    const settingsRef = doc(db, "settings", PAYMENT_SETTINGS_DOC);
+    await setDoc(
+      settingsRef,
+      {
+        gcashName: settings.gcashName || DEFAULT_PAYMENT_SETTINGS.gcashName,
+        gcashNumber: settings.gcashNumber || "",
+        gcashQr: settings.gcashQr || DEFAULT_PAYMENT_SETTINGS.gcashQr,
+        updated_at: serverTimestamp(),
+      },
+      { merge: true }
+    );
+  } catch (error) {
+    console.error("Error updating payment settings:", error);
+    throw error;
+  }
+};
+
+const DEFAULT_GENERAL_SETTINGS = {
+  businessName: "LaundryMate",
+  pickupWindow: "Same day",
+  // Positive number = max bookings per pickup date.
+  // 0 = no bookings allowed until admin sets a positive limit again.
+  maxBookingsPerDay: 50,
+};
+
+/**
+ * Resolve max bookings.
+ * 0 is allowed (blocks all bookings). Invalid / negative → default.
+ */
+const resolveMaxBookingsPerDay = (value) => {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    return DEFAULT_GENERAL_SETTINGS.maxBookingsPerDay;
+  }
+  return Math.floor(parsed);
+};
+
+const normalizeGeneralSettings = (settings) => ({
+  ...settings,
+  maxBookingsPerDay: resolveMaxBookingsPerDay(settings?.maxBookingsPerDay),
+});
+
+/**
+ * Load general business settings.
+ */
+export const getGeneralSettings = async () => {
+  try {
+    const settingsRef = doc(db, "settings", "general");
+    const snap = await getDoc(settingsRef);
+    if (!snap.exists()) return { ...DEFAULT_GENERAL_SETTINGS };
+    return normalizeGeneralSettings({
+      ...DEFAULT_GENERAL_SETTINGS,
+      ...snap.data(),
+    });
+  } catch (error) {
+    console.error("Error getting general settings:", error);
+    return { ...DEFAULT_GENERAL_SETTINGS };
+  }
+};
+
+/**
+ * Live subscribe to general business settings (admin changes appear without refresh).
+ */
+export const subscribeToGeneralSettings = (onSettings, onError) => {
+  const settingsRef = doc(db, "settings", "general");
+
+  return onSnapshot(
+    settingsRef,
+    (snap) => {
+      if (!snap.exists()) {
+        onSettings({ ...DEFAULT_GENERAL_SETTINGS });
+        return;
+      }
+
+      onSettings(
+        normalizeGeneralSettings({
+          ...DEFAULT_GENERAL_SETTINGS,
+          ...snap.data(),
+        })
+      );
+    },
+    (error) => {
+      console.error("Error listening to general settings:", error);
+      onError?.(error);
+    }
+  );
+};
+
+/**
+ * Save general business settings (admin).
+ */
+export const updateGeneralSettings = async (settings) => {
+  const settingsRef = doc(db, "settings", "general");
+  const maxBookingsPerDay = resolveMaxBookingsPerDay(settings.maxBookingsPerDay);
+
+  await setDoc(
+    settingsRef,
+    {
+      businessName: settings.businessName || DEFAULT_GENERAL_SETTINGS.businessName,
+      pickupWindow: settings.pickupWindow || DEFAULT_GENERAL_SETTINGS.pickupWindow,
+      maxBookingsPerDay,
+      updated_at: serverTimestamp(),
+    },
+    { merge: true }
+  );
+
+  return { maxBookingsPerDay };
+};
+
+export { DEFAULT_PAYMENT_SETTINGS, DEFAULT_GENERAL_SETTINGS, normalizeMethod };

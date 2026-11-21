@@ -1,72 +1,184 @@
-/* REGISTRATION PAGE */
+/* REGISTRATION PAGE — stepped form UI (inspired by SAM register layout) */
 
 .registration-page {
   min-height: 100vh;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 40px 20px;
-  background: #f5f7fa;
+  padding: 28px 20px 40px;
+  background: #f5f5f5;
+  font-family:
+    Inter,
+    Poppins,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
 }
+
+.registration-shell {
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
+}
+
+/* TOP BAR */
+
+.reg-topbar {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 22px;
+}
+
+.reg-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  justify-self: start;
+
+  border: none;
+  background: transparent;
+  padding: 0;
+
+  color: #2563eb;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+
+  cursor: pointer;
+}
+
+.reg-back-circle {
+  width: 28px;
+  height: 28px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 50%;
+  background: #2563eb;
+  color: #ffffff;
+
+  font-size: 14px;
+  line-height: 1;
+}
+
+.reg-topbar-spacer {
+  justify-self: end;
+}
+
+/* STEPPER */
+
+.stepper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: min(280px, 50vw);
+}
+
+.step-bar {
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: #d9d9d9;
+}
+
+.step-bar.active {
+  background: #2563eb;
+}
+
+/* CARD */
 
 .registration-container {
   width: 100%;
-  max-width: 520px;
   background: #ffffff;
-  padding: 35px;
-  border-radius: 12px;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+  padding: 28px 32px 30px;
+  border-radius: 14px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
 }
 
-/* HEADER */
-
-.registration-header {
-  text-align: center;
-  margin-bottom: 28px;
+.step-page-title {
+  margin-bottom: 22px;
 }
 
-.registration-header h1 {
-  margin: 0 0 8px;
-  font-size: 28px;
-  font-weight: 700;
-  color: #222222;
-}
-
-.registration-header p {
+.step-page-title h1 {
   margin: 0;
-  font-size: 14px;
-  color: #777777;
+  font-size: 26px;
+  font-weight: 700;
+  color: #111111;
+  letter-spacing: -0.02em;
 }
 
-/* FORM */
+/* FORM GRIDS */
+
+.registration-form {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.form-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 14px;
+  margin-bottom: 14px;
+}
 
 .form-group {
-  margin-bottom: 18px;
+  margin-bottom: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
 }
 
 .form-group label {
   display: block;
-  margin-bottom: 7px;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
-  color: #333333;
+  color: #374151;
+}
+
+.req {
+  color: #ef4444;
+  font-weight: 700;
 }
 
 .form-group input {
   width: 100%;
   box-sizing: border-box;
-  padding: 12px 14px;
-  border: 1px solid #d6d9dd;
-  border-radius: 7px;
+  padding: 12px 16px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 10px;
   outline: none;
   font-size: 14px;
+  color: #111111;
   background: #ffffff;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .form-group input:focus {
   border-color: #2563eb;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.form-group input.input-error {
+  border-color: #ef4444;
+  background: #fef2f2;
+}
+
+.form-group input.input-error:focus {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15);
+}
+
+.field-error {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #dc2626;
 }
 
 .form-group input:disabled {
@@ -74,13 +186,17 @@
   cursor: not-allowed;
 }
 
+.form-group input::placeholder {
+  color: #9ca3af;
+}
+
 /* DATA PRIVACY CONSENT */
 
 .privacy-consent {
-  margin: 22px 0;
+  margin: 8px 0 18px;
   padding: 14px;
-  border: 1px solid #e1e4e8;
-  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
   background: #fafafa;
 }
 
@@ -103,115 +219,238 @@
 .privacy-checkbox input[type="checkbox"] {
   width: 17px;
   height: 17px;
-
   margin: 2px 0 0 0;
-
   flex: 0 0 17px;
-
   cursor: pointer;
 }
 
 .privacy-checkbox span {
   display: block;
   flex: 1;
-
   margin: 0;
   padding: 0;
-
   text-align: left;
 }
-
-/* DATA PRIVACY LINK */
 
 .privacy-link {
   display: inline;
   width: auto;
   min-width: 0;
-
   margin: 0;
   padding: 0;
-
   border: none;
   outline: none;
   background: transparent;
-
   color: #2563eb;
-
   font-family: inherit;
   font-size: inherit;
   font-weight: 600;
   line-height: inherit;
-
   text-align: left;
   text-decoration: underline;
   text-decoration-thickness: 1px;
   text-underline-offset: 2px;
-
   cursor: pointer;
   vertical-align: baseline;
-
   transition: color 0.2s ease;
 }
 
 .privacy-link:hover {
-  color: #f6f7f8;
+  color: #1d4ed8;
 }
 
+/* EMAIL OTP */
 
-/* ERROR MESSAGE */
+.otp-help-text {
+  margin: 8px 0 0;
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.otp-panel {
+  margin-bottom: 8px;
+}
+
+.otp-copy {
+  margin: 0 0 14px;
+  color: #475569;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.otp-copy strong {
+  color: #0f172a;
+}
+
+.otp-info-message {
+  margin-bottom: 14px;
+  padding: 11px 13px;
+  border-radius: 8px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.otp-steps {
+  margin: 0 0 16px;
+  padding: 12px 12px 12px 28px;
+  border: 1px solid #dbeafe;
+  border-radius: 10px;
+  background: #f8fbff;
+  color: #334155;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.otp-steps li + li {
+  margin-top: 6px;
+}
+
+.otp-input-group {
+  max-width: 100%;
+  align-items: center;
+}
+
+.otp-input-group label {
+  width: 100%;
+  text-align: center;
+}
+
+.otp-boxes {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.otp-box {
+  width: 48px !important;
+  height: 52px;
+  flex: 0 0 48px;
+  padding: 0 !important;
+  border: 1.5px solid #bfdbfe !important;
+  border-radius: 10px !important;
+  text-align: center;
+  font-size: 22px !important;
+  font-weight: 700;
+  color: #0f172a;
+  caret-color: #2563eb;
+  background: #ffffff;
+}
+
+.otp-box:focus {
+  border-color: #2563eb !important;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+.otp-actions {
+  margin-top: 12px;
+  display: flex;
+  justify-content: center;
+}
+
+.otp-resend {
+  border: none;
+  background: transparent;
+  padding: 0;
+  color: #2563eb;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.otp-resend:hover:not(:disabled) {
+  text-decoration: underline;
+}
+
+.otp-resend:disabled {
+  color: #93c5fd;
+  cursor: not-allowed;
+}
+
+.otp-verified-banner {
+  margin-bottom: 16px;
+  padding: 11px 13px;
+  border-radius: 8px;
+  background: #ecfdf5;
+  color: #047857;
+  font-size: 13px;
+}
+
+/* MESSAGES */
 
 .error-message {
   margin-bottom: 15px;
   padding: 11px 13px;
-  border-radius: 7px;
+  border-radius: 8px;
   background: #fee2e2;
   color: #b91c1c;
   font-size: 13px;
 }
 
-/* SUCCESS MESSAGE */
-
 .success-message {
   margin-bottom: 15px;
   padding: 11px 13px;
-  border-radius: 7px;
+  border-radius: 8px;
   background: #dcfce7;
   color: #15803d;
   font-size: 13px;
 }
 
-/* REGISTER BUTTON */
+/* FOOTER ACTIONS */
 
-.register-button {
-  width: 100%;
-  padding: 13px;
-  border: none;
-  border-radius: 7px;
-  background: #2563eb;
-  color: #ffffff;
-  font-size: 15px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.2s ease, transform 0.1s ease;
+.reg-footer {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+  padding-top: 18px;
+  border-top: 1px solid #e5e7eb;
 }
 
+.next-button,
+.register-button {
+  padding: 10px 32px;
+  border: none;
+  border-radius: 10px;
+  background: #2563eb;
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+  transition:
+    background 0.2s ease,
+    transform 0.1s ease;
+}
+
+.next-button:hover:not(:disabled),
 .register-button:hover:not(:disabled) {
   background: #1d4ed8;
 }
 
+.next-button:active:not(:disabled),
 .register-button:active:not(:disabled) {
   transform: scale(0.99);
 }
 
+.next-button:disabled,
 .register-button:disabled {
   background: #93c5fd;
+  box-shadow: none;
   cursor: not-allowed;
 }
 
 /* LOGIN LINK */
 
 .login-link {
-  margin-top: 22px;
+  margin-top: 20px;
   text-align: center;
   font-size: 14px;
   color: #666666;
@@ -232,11 +471,9 @@
 .password-requirements {
   margin-top: 8px;
   padding: 10px 12px;
-  border-radius: 6px;
+  border-radius: 8px;
   background: #f8fafc;
   border: 1px solid #e2e8f0;
-
-  /* Smooth appearance */
   animation: passwordRequirementsIn 0.25s ease forwards;
 }
 
@@ -267,8 +504,6 @@
   color: #16a34a;
 }
 
-/* SMOOTH PASSWORD REQUIREMENTS ANIMATION */
-
 @keyframes passwordRequirementsIn {
   from {
     opacity: 0;
@@ -280,8 +515,6 @@
     transform: translateY(0);
   }
 }
-
-/* PASSWORD MATCH MESSAGE */
 
 .password-match-message {
   display: flex;
@@ -312,13 +545,10 @@
   position: fixed;
   inset: 0;
   z-index: 1000;
-
   display: flex;
   justify-content: center;
   align-items: center;
-
   padding: 20px;
-
   background: rgba(0, 0, 0, 0.55);
 }
 
@@ -326,27 +556,19 @@
   width: 100%;
   max-width: 650px;
   max-height: 85vh;
-
   display: flex;
   flex-direction: column;
-
   background: #ffffff;
   border-radius: 12px;
-
   box-shadow: 0 15px 50px rgba(0, 0, 0, 0.2);
-
   overflow: hidden;
 }
-
-/* PRIVACY MODAL HEADER */
 
 .privacy-modal-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-
   padding: 20px 24px;
-
   border-bottom: 1px solid #e5e7eb;
 }
 
@@ -359,25 +581,18 @@
 .close-button {
   width: 34px;
   height: 34px;
-
   border: none;
   border-radius: 50%;
-
   background: transparent;
-
   font-size: 25px;
   line-height: 1;
-
   color: #555555;
-
   cursor: pointer;
 }
 
 .close-button:hover {
   background: #f1f1f1;
 }
-
-/* PRIVACY MODAL CONTENT */
 
 .privacy-modal-content {
   padding: 24px;
@@ -397,31 +612,22 @@
   color: #555555;
 }
 
-/* PRIVACY MODAL FOOTER */
-
 .privacy-modal-footer {
   display: flex;
   justify-content: flex-end;
-
   padding: 18px 24px;
-
   border-top: 1px solid #e5e7eb;
 }
 
 .privacy-agree-button {
   padding: 11px 18px;
-
   border: none;
-  border-radius: 7px;
-
+  border-radius: 10px;
   background: #2563eb;
   color: #ffffff;
-
   font-size: 14px;
   font-weight: 600;
-
   cursor: pointer;
-
   transition: background 0.2s ease;
 }
 
@@ -429,21 +635,44 @@
   background: #1d4ed8;
 }
 
-/* RESPONSIVE DESIGN */
+/* RESPONSIVE */
 
-@media (max-width: 600px) {
+@media (max-width: 640px) {
   .registration-page {
-    padding: 20px 15px;
-    align-items: flex-start;
+    padding: 16px 12px 28px;
   }
 
   .registration-container {
-    margin-top: 20px;
-    padding: 25px 20px;
+    padding: 22px 18px 24px;
   }
 
-  .registration-header h1 {
-    font-size: 24px;
+  .step-page-title h1 {
+    font-size: 22px;
+  }
+
+  .form-grid-2 {
+    grid-template-columns: 1fr;
+  }
+
+  .reg-topbar {
+    grid-template-columns: auto 1fr;
+  }
+
+  .reg-topbar-spacer {
+    display: none;
+  }
+
+  .stepper {
+    width: 100%;
+  }
+
+  .next-button,
+  .register-button {
+    width: 100%;
+  }
+
+  .reg-footer {
+    justify-content: stretch;
   }
 
   .privacy-modal-overlay {
@@ -454,19 +683,18 @@
     max-height: 90vh;
   }
 
-  .privacy-modal-header {
-    padding: 16px 18px;
-  }
-
-  .privacy-modal-content {
-    padding: 18px;
-  }
-
-  .privacy-modal-footer {
-    padding: 15px 18px;
-  }
-
   .privacy-agree-button {
     width: 100%;
+  }
+
+  .otp-boxes {
+    gap: 6px;
+  }
+
+  .otp-box {
+    width: 42px !important;
+    height: 48px;
+    flex-basis: 42px;
+    font-size: 20px !important;
   }
 }

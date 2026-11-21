@@ -1,17 +1,21 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { Maximize2, Minimize2, X } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { getCustomerBookings } from "../../services/bookingService";
 import {
   createPayment,
+  DEFAULT_PAYMENT_SETTINGS,
   getCustomerPayments,
+  subscribeToPaymentSettings,
   updateCustomerPayment,
 } from "../../services/paymentService";
+import { uploadPaymentReceipt } from "../../services/fileUploadService";
+import { validateUserUpload } from "../../utils/fileValidation";
+import { extractGcashReceiptFields } from "../../utils/gcashReceiptOcr";
+import { formatShortBookingId, getBookingId } from "../../utils/bookingId";
 import { subscribeToServices } from "../../services/laundryService";
 import "../../styles/Payments.css";
-
-const DEFAULT_GCASH_NAME = "Prince-Tyler Laundry Shop";
-const DEFAULT_GCASH_NUMBER = "";
-const DEFAULT_GCASH_QR = "/images/gcash-qr.png";
 
 function getDateMilliseconds(value) {
   if (!value) return 0;
@@ -30,6 +34,8 @@ function normalizePayment(payment) {
     paymentMethod: payment.payment_method || payment.paymentMethod,
     paymentStatus: payment.payment_status || payment.paymentStatus,
     referenceNumber: payment.reference_number || payment.referenceNumber,
+    receiptUrl: payment.receipt_url || payment.receiptUrl || "",
+    receiptName: payment.receipt_name || payment.receiptName || "",
     gcashCustomerName:
       payment.gcash_customer_name || payment.gcashCustomerName,
     totalAmount: payment.total_amount ?? payment.totalAmount ?? payment.amount,
@@ -38,12 +44,15 @@ function normalizePayment(payment) {
 }
 
 function Payment() {
+  const navigate = useNavigate();
   const { user } = useAuth();
 
   // =========================================================
   // STATE
   // =========================================================
 
+  const [bookings, setBookings] = useState([]);
+  const [selectedBookingId, setSelectedBookingId] = useState("");
   const [booking, setBooking] = useState(null);
   const [payments, setPayments] = useState([]);
   const [services, setServices] = useState([]);
@@ -58,15 +67,23 @@ function Payment() {
   const [referenceNumber, setReferenceNumber] =
     useState("");
 
+  const [receiptFile, setReceiptFile] = useState(null);
+  const [receiptPreview, setReceiptPreview] = useState("");
+  const [receiptError, setReceiptError] = useState("");
+  const [ocrStatus, setOcrStatus] = useState("");
+  const [ocrProgress, setOcrProgress] = useState(0);
+
   // SHOP GCASH SETTINGS
   const [gcashName, setGcashName] =
-    useState(DEFAULT_GCASH_NAME);
+    useState(DEFAULT_PAYMENT_SETTINGS.gcashName);
 
   const [gcashNumber, setGcashNumber] =
-    useState(DEFAULT_GCASH_NUMBER);
+    useState(DEFAULT_PAYMENT_SETTINGS.gcashNumber);
 
   const [gcashQr, setGcashQr] =
-    useState(DEFAULT_GCASH_QR);
+    useState(DEFAULT_PAYMENT_SETTINGS.gcashQr);
+
+  const [qrMaximized, setQrMaximized] = useState(false);
 
   const [isSubmitting, setIsSubmitting] =
     useState(false);
@@ -87,29 +104,40 @@ function Payment() {
 
   const loadData = useCallback(async () => {
     if (!user?.uid) {
+      setBookings([]);
       setBooking(null);
+      setSelectedBookingId("");
       setPayments([]);
-    } else {
-      const [userBookings, storedPayments] = await Promise.all([
-        getCustomerBookings(user.uid),
-        getCustomerPayments(user.uid),
-      ]);
-
-      const sortedBookings = [...userBookings].sort(
-        (a, b) =>
-          getDateMilliseconds(b.booking_date || b.created_at || b.createdAt) -
-          getDateMilliseconds(a.booking_date || a.created_at || a.createdAt)
-      );
-      setBooking(sortedBookings[0] || null);
-      setPayments(storedPayments.map(normalizePayment));
+      return;
     }
 
-    const settings = JSON.parse(
-      localStorage.getItem("laundrymatePaymentSettings") || "{}"
+    const [userBookings, storedPayments] = await Promise.all([
+      getCustomerBookings(user.uid),
+      getCustomerPayments(user.uid),
+    ]);
+
+    const sortedBookings = [...userBookings].sort(
+      (a, b) =>
+        getDateMilliseconds(b.booking_date || b.created_at || b.createdAt) -
+        getDateMilliseconds(a.booking_date || a.created_at || a.createdAt)
     );
-    setGcashName(settings.gcashName || DEFAULT_GCASH_NAME);
-    setGcashNumber(settings.gcashNumber || DEFAULT_GCASH_NUMBER);
-    setGcashQr(settings.gcashQr || DEFAULT_GCASH_QR);
+
+    setBookings(sortedBookings);
+    setPayments(storedPayments.map(normalizePayment));
+
+    setSelectedBookingId((currentId) => {
+      if (
+        currentId &&
+        sortedBookings.some(
+          (item) => String(item.bookingId || item.id) === String(currentId)
+        )
+      ) {
+        return currentId;
+      }
+      return sortedBookings[0]
+        ? String(sortedBookings[0].bookingId || sortedBookings[0].id)
+        : "";
+    });
   }, [user]);
 
   // =========================================================
@@ -125,6 +153,7 @@ function Payment() {
       } catch (error) {
         console.error("Failed to load payment data:", error);
         if (isMounted) {
+          setBookings([]);
           setBooking(null);
           setPayments([]);
           setError("Unable to load your booking or payment records. Please refresh to try again.");
@@ -136,11 +165,6 @@ function Payment() {
 
     window.addEventListener(
       "laundrymatePaymentUpdated",
-      refreshData
-    );
-
-    window.addEventListener(
-      "laundrymatePaymentSettingsUpdated",
       refreshData
     );
 
@@ -157,16 +181,78 @@ function Payment() {
       );
 
       window.removeEventListener(
-        "laundrymatePaymentSettingsUpdated",
-        refreshData
-      );
-
-      window.removeEventListener(
         "laundrymateBookingUpdated",
         refreshData
       );
     };
   }, [loadData]);
+
+  useEffect(() => {
+    const unsubscribe = subscribeToPaymentSettings(
+      (settings) => {
+        setGcashName(settings.gcashName || DEFAULT_PAYMENT_SETTINGS.gcashName);
+        setGcashNumber(settings.gcashNumber || DEFAULT_PAYMENT_SETTINGS.gcashNumber);
+        setGcashQr(settings.gcashQr || DEFAULT_PAYMENT_SETTINGS.gcashQr);
+      },
+      (settingsError) => {
+        console.error("Unable to load payment settings:", settingsError);
+      }
+    );
+
+    return () => unsubscribe?.();
+  }, []);
+
+  useEffect(() => {
+    if (!qrMaximized) return undefined;
+
+    const onKeyDown = (event) => {
+      if (event.key === "Escape") {
+        setQrMaximized(false);
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [qrMaximized]);
+
+  useEffect(() => {
+    if (!selectedBookingId) {
+      setBooking(null);
+      return;
+    }
+
+    const matched = bookings.find(
+      (item) => String(item.bookingId || item.id) === String(selectedBookingId)
+    );
+    setBooking(matched || null);
+
+    const relatedPayment = payments.find(
+      (payment) =>
+        String(payment.bookingId) === String(selectedBookingId) &&
+        ["pending", "rejected"].includes(
+          String(payment.paymentStatus || payment.status || "").toLowerCase()
+        )
+    );
+
+    if (relatedPayment) {
+      setEditingPayment(relatedPayment);
+      setPaymentMethod(relatedPayment.paymentMethod || "GCash");
+      setGcashCustomerName(relatedPayment.gcashCustomerName || "");
+      setReferenceNumber(relatedPayment.referenceNumber || "");
+      // Show previously uploaded receipt while editing (unless a new file is chosen)
+      setReceiptFile(null);
+      setReceiptPreview(relatedPayment.receiptUrl || "");
+      setReceiptError("");
+    } else {
+      setEditingPayment(null);
+      setPaymentMethod("GCash");
+      setGcashCustomerName("");
+      setReferenceNumber("");
+      setReceiptFile(null);
+      setReceiptPreview("");
+      setReceiptError("");
+    }
+  }, [selectedBookingId, bookings, payments]);
 
   // =========================================================
   // LOAD LIVE SERVICE PRICING (ADMIN SERVICES/PRICING MODULE)
@@ -283,7 +369,7 @@ function Payment() {
         .toLowerCase()
         .includes("pickup only")
     ) {
-      return 20;
+      return 15;
     }
 
     return 30;
@@ -489,6 +575,85 @@ function Payment() {
     }
   };
 
+  const clearReceiptSelection = () => {
+    setReceiptFile(null);
+    setReceiptError("");
+    setOcrStatus("");
+    setOcrProgress(0);
+    setReceiptPreview((current) => {
+      if (current) URL.revokeObjectURL(current);
+      return "";
+    });
+  };
+
+  const handleReceiptChange = async (event) => {
+    const file = event.target.files?.[0] || null;
+    setReceiptError("");
+    setOcrStatus("");
+    setOcrProgress(0);
+
+    if (!file) {
+      clearReceiptSelection();
+      return;
+    }
+
+    const validation = await validateUserUpload(file);
+    if (!validation.ok) {
+      clearReceiptSelection();
+      setReceiptError(validation.error);
+      event.target.value = "";
+      return;
+    }
+
+    setReceiptPreview((current) => {
+      if (current) URL.revokeObjectURL(current);
+      return URL.createObjectURL(validation.file);
+    });
+    setReceiptFile(validation.file);
+    if (error) setError("");
+
+    // Auto-fill name + reference from receipt via browser OCR (no Firebase needed)
+    setOcrStatus("Reading receipt...");
+    try {
+      const extracted = await extractGcashReceiptFields(
+        validation.file,
+        (pct) => {
+          setOcrProgress(pct);
+          setOcrStatus(`Reading receipt... ${pct}%`);
+        }
+      );
+
+      let filled = 0;
+      if (extracted.gcashCustomerName) {
+        setGcashCustomerName(extracted.gcashCustomerName.slice(0, 50));
+        filled += 1;
+      }
+      if (extracted.referenceNumber) {
+        setReferenceNumber(extracted.referenceNumber.slice(0, 30));
+        filled += 1;
+      }
+
+      if (filled === 2) {
+        setOcrStatus("Filled GCash name and reference number from receipt.");
+      } else if (filled === 1) {
+        setOcrStatus(
+          "Partially filled from receipt. Please check and complete the other field."
+        );
+      } else {
+        setOcrStatus(
+          "Could not read name/reference clearly. Please type them manually."
+        );
+      }
+    } catch (ocrError) {
+      console.error("Receipt OCR failed:", ocrError);
+      setOcrStatus(
+        "OCR could not read this image. Please enter name and reference manually."
+      );
+    } finally {
+      setOcrProgress(0);
+    }
+  };
+
   // =========================================================
   // CONFIRM PAYMENT
   // =========================================================
@@ -511,27 +676,27 @@ function Payment() {
     // DUPLICATE PENDING PAYMENT
     // =====================================================
 
-    const duplicatePayment =
-      payments.find(
-        (payment) =>
-          String(payment.bookingId) ===
-            String(bookingId) &&
-          String(
-            payment.paymentStatus ||
-              payment.status ||
-              ""
-          ).toLowerCase() ===
-            "pending"
-      );
+    const paidPayment = payments.find(
+      (payment) =>
+        String(payment.bookingId) === String(bookingId) &&
+        String(payment.paymentStatus || payment.status || "").toLowerCase() ===
+          "paid"
+    );
 
-    if (
-      duplicatePayment &&
-      editingPayment?.id !==
-        duplicatePayment.id
-    ) {
-      setError(
-        "This booking already has a pending payment."
-      );
+    if (paidPayment) {
+      setError("This booking is already marked as paid.");
+      return;
+    }
+
+    const duplicatePayment = payments.find(
+      (payment) =>
+        String(payment.bookingId) === String(bookingId) &&
+        String(payment.paymentStatus || payment.status || "").toLowerCase() ===
+          "pending"
+    );
+
+    if (duplicatePayment && editingPayment?.id !== duplicatePayment.id) {
+      setError("This booking already has a pending payment.");
       return;
     }
 
@@ -573,6 +738,14 @@ function Payment() {
         );
         return;
       }
+
+      if (!receiptFile && !editingPayment?.receiptUrl) {
+        setError(
+          "Please upload your GCash payment receipt (JPG, PNG, or WEBP, max 2 MB)."
+        );
+        return;
+      }
+
     }
 
     // =====================================================
@@ -585,6 +758,15 @@ function Payment() {
     try {
       if (!user?.uid) {
         throw new Error("You must be signed in to submit a payment.");
+      }
+
+      let receiptMeta = {};
+      if (paymentMethod === "GCash" && receiptFile) {
+        receiptMeta = await uploadPaymentReceipt({
+          file: receiptFile,
+          userId: user.uid,
+          bookingId,
+        });
       }
 
       const paymentDetails = {
@@ -604,6 +786,7 @@ function Payment() {
             : "",
         services: bookingServices.join(", "),
         total_amount: calculatedTotal,
+        ...receiptMeta,
       };
 
       let paymentId;
@@ -661,48 +844,43 @@ function Payment() {
         )
       );
 
-      setSubmittedPayment(
-        paymentData
-      );
-
-      setShowPaymentSummary(
-        true
-      );
-
-      setReferenceNumber("");
-
-      setGcashCustomerName("");
-
+      setSubmittedPayment(paymentData);
       setEditingPayment(null);
-
       setSuccessMessage(
-        "Payment submitted successfully!"
+        "Payment submitted successfully! It is pending staff verification."
       );
+      clearReceiptSelection();
 
-      // =====================================================
-      // EVENTS
-      // =====================================================
+      window.dispatchEvent(new Event("laundrymatePaymentUpdated"));
+      window.dispatchEvent(new Event("laundrymateBookingUpdated"));
 
-      window.dispatchEvent(
-        new Event(
-          "laundrymatePaymentUpdated"
-        )
-      );
-
-      window.dispatchEvent(
-        new Event(
-          "laundrymateBookingUpdated"
-        )
-      );
+      // Return to customer dashboard after successful submit/update
+      navigate("/customer", {
+        replace: true,
+        state: {
+          paymentNotice:
+            "Payment submitted successfully! It is pending staff verification.",
+        },
+      });
     } catch (error) {
       console.error(
         "Payment submission error:",
         error
       );
 
-      setError(
-        "Something went wrong while submitting your payment. Please try again."
-      );
+      const code = String(error?.code || "");
+      const message = String(error?.message || "");
+      if (code.includes("permission") || message.toLowerCase().includes("permission")) {
+        setError(
+          "Payment was blocked by permissions. Please sign out, sign in again, then retry."
+        );
+      } else if (message) {
+        setError(message);
+      } else {
+        setError(
+          "Something went wrong while submitting your payment. Please try again."
+        );
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -730,24 +908,14 @@ function Payment() {
 
   const handleDone = () => {
     setShowPaymentSummary(false);
-
     setSubmittedPayment(null);
-
-    setSuccessMessage("");
-
-    setPaymentMethod("GCash");
-
-    setGcashCustomerName("");
-
-    setReferenceNumber("");
-
-    setEditingPayment(null);
-
-    loadData();
-
-    window.scrollTo({
-      top: 0,
-      behavior: "smooth",
+    clearReceiptSelection();
+    navigate("/customer", {
+      replace: true,
+      state: {
+        paymentNotice:
+          "Payment submitted successfully! It is pending staff verification.",
+      },
     });
   };
 
@@ -755,7 +923,24 @@ function Payment() {
   // NO BOOKING
   // =========================================================
 
-  if (!booking) {
+  const selectedPaymentStatus = useMemo(() => {
+    if (!booking) return "";
+    const bookingId = booking.bookingId || booking.id;
+    const related = payments.find(
+      (payment) => String(payment.bookingId) === String(bookingId)
+    );
+    return String(
+      related?.paymentStatus ||
+        related?.status ||
+        booking.payment_status ||
+        ""
+    );
+  }, [booking, payments]);
+
+  const isSelectedBookingPaid =
+    selectedPaymentStatus.toLowerCase() === "paid";
+
+  if (!bookings.length || !booking) {
     return (
       <div className="payments-page">
 
@@ -825,7 +1010,36 @@ function Payment() {
 
         </div>
 
+        <div className="booking-picker">
+          <label htmlFor="bookingPicker">Select booking</label>
+          <select
+            id="bookingPicker"
+            value={selectedBookingId}
+            onChange={(event) => setSelectedBookingId(event.target.value)}
+          >
+            {bookings.map((item) => {
+              const id = getBookingId(item);
+              return (
+                <option key={id} value={id}>
+                  #{formatShortBookingId(id)} · {item.status || "Pending"} ·{" "}
+                  {item.payment_status || "Unpaid"}
+                </option>
+              );
+            })}
+          </select>
+        </div>
+
       </div>
+
+      {isSelectedBookingPaid && (
+        <div className="payment-success-alert">
+          <span>✓</span>
+          <div>
+            <strong>This booking is already paid.</strong>
+            <p>Select another booking if you still need to submit a payment.</p>
+          </div>
+        </div>
+      )}
 
       {/* =====================================================
           SUCCESS ALERT
@@ -923,10 +1137,8 @@ function Payment() {
               Booking ID
             </span>
 
-            <strong>
-              {booking.bookingId ||
-                booking.id ||
-                "—"}
+            <strong title={`#${getBookingId(booking)}`}>
+              #{formatShortBookingId(booking)}
             </strong>
 
           </div>
@@ -1246,48 +1458,96 @@ function Payment() {
                 {/* QR */}
 
                 <div className="gcash-qr-wrapper">
-
                   {gcashQr ? (
-                    <img
-                      src={gcashQr}
-                      alt="Prince-Tyler Laundry Shop GCash QR"
-                      className="gcash-qr"
-                      onError={(event) => {
-                        event.currentTarget.style.display =
-                          "none";
-
-                        const fallback =
-                          event.currentTarget
-                            .nextElementSibling;
-
-                        if (fallback) {
-                          fallback.style.display =
-                            "flex";
-                        }
-                      }}
-                    />
+                    <>
+                      <button
+                        type="button"
+                        className="gcash-qr-toggle"
+                        onClick={() => setQrMaximized(true)}
+                        aria-label="Maximize GCash QR"
+                        title="Maximize"
+                      >
+                        <Maximize2 size={14} />
+                      </button>
+                      <button
+                        type="button"
+                        className="gcash-qr-hit"
+                        onClick={() => setQrMaximized(true)}
+                        aria-label="Maximize GCash QR image"
+                      >
+                        <img
+                          src={gcashQr}
+                          alt="Prince-Tyler Laundry Shop GCash QR"
+                          className="gcash-qr"
+                          onError={(event) => {
+                            event.currentTarget.style.display = "none";
+                            const fallback =
+                              event.currentTarget
+                                .closest(".gcash-qr-wrapper")
+                                ?.querySelector(".gcash-qr-fallback");
+                            if (fallback) {
+                              fallback.style.display = "flex";
+                            }
+                          }}
+                        />
+                      </button>
+                    </>
                   ) : null}
 
                   <div
                     className="gcash-qr-fallback"
                     style={{
-                      display:
-                        gcashQr
-                          ? "none"
-                          : "flex",
+                      display: gcashQr ? "none" : "flex",
                     }}
                   >
-                    <span>
-                      QR
-                    </span>
-
-                    <small>
-                      GCash QR
-                      unavailable
-                    </small>
+                    <span>QR</span>
+                    <small>GCash QR unavailable</small>
                   </div>
-
                 </div>
+
+                {qrMaximized && gcashQr ? (
+                  <div
+                    className="gcash-qr-lightbox"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label="Maximized GCash QR"
+                    onClick={() => setQrMaximized(false)}
+                  >
+                    <div
+                      className="gcash-qr-lightbox-panel"
+                      onClick={(event) => event.stopPropagation()}
+                    >
+                      <div className="gcash-qr-lightbox-toolbar">
+                        <span>GCash QR</span>
+                        <div className="gcash-qr-lightbox-actions">
+                          <button
+                            type="button"
+                            className="gcash-qr-toggle"
+                            onClick={() => setQrMaximized(false)}
+                            aria-label="Minimize GCash QR"
+                            title="Minimize"
+                          >
+                            <Minimize2 size={16} />
+                          </button>
+                          <button
+                            type="button"
+                            className="gcash-qr-toggle"
+                            onClick={() => setQrMaximized(false)}
+                            aria-label="Close maximized GCash QR"
+                            title="Close"
+                          >
+                            <X size={16} />
+                          </button>
+                        </div>
+                      </div>
+                      <img
+                        src={gcashQr}
+                        alt="Maximized Prince-Tyler Laundry Shop GCash QR"
+                        className="gcash-qr-lightbox-image"
+                      />
+                    </div>
+                  </div>
+                ) : null}
 
                 {/* SHOP DETAILS */}
 
@@ -1337,7 +1597,77 @@ function Payment() {
 
               </div>
 
-              {/* CUSTOMER GCASH NAME */}
+              {/* RECEIPT FIRST — OCR fills name + reference below */}
+
+              <div className="form-group">
+                <label htmlFor="paymentReceipt">
+                  Payment Receipt Screenshot
+                  <span>*</span>
+                </label>
+
+                <input
+                  id="paymentReceipt"
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
+                  onChange={handleReceiptChange}
+                />
+
+                <small>
+                  Upload a clear JPG, PNG, or WEBP screenshot of your GCash receipt (max 2 MB).
+                  OCR will auto-fill your GCash name and reference number below.
+                </small>
+
+                {ocrStatus && (
+                  <div
+                    className={
+                      "receipt-ocr-status" +
+                      (ocrStatus.startsWith("Could") ||
+                      ocrStatus.startsWith("OCR")
+                        ? " is-warning"
+                        : ocrStatus.startsWith("Filled") ||
+                            ocrStatus.startsWith("Partially")
+                          ? " is-success"
+                          : "")
+                    }
+                    role="status"
+                  >
+                    <p>{ocrStatus}</p>
+                    {ocrProgress > 0 && ocrProgress < 100 && (
+                      <div className="receipt-ocr-bar">
+                        <span style={{ width: `${ocrProgress}%` }} />
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {receiptError && (
+                  <p className="receipt-error" role="alert">
+                    {receiptError}
+                  </p>
+                )}
+
+                {receiptPreview && (
+                  <div className="receipt-preview">
+                    <img
+                      src={receiptPreview}
+                      alt="Selected GCash receipt preview"
+                    />
+                    <button
+                      type="button"
+                      className="receipt-remove-btn"
+                      onClick={() => {
+                        clearReceiptSelection();
+                        const input = document.getElementById("paymentReceipt");
+                        if (input) input.value = "";
+                      }}
+                    >
+                      Remove file
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* CUSTOMER GCASH NAME (auto-filled by OCR) */}
 
               <div className="form-group">
 
@@ -1360,13 +1690,12 @@ function Payment() {
                 />
 
                 <small>
-                  Enter the GCash account name
-                  used to make the payment.
+                  Auto-filled from your receipt when possible. Check and edit if needed.
                 </small>
 
               </div>
 
-              {/* REFERENCE NUMBER */}
+              {/* REFERENCE NUMBER (auto-filled by OCR) */}
 
               <div className="form-group">
 
@@ -1389,9 +1718,7 @@ function Payment() {
                 />
 
                 <small>
-                  The reference number can
-                  be found on your GCash
-                  payment receipt.
+                  Auto-filled from your receipt when possible. Check and edit if needed.
                 </small>
 
               </div>
@@ -1474,7 +1801,7 @@ function Payment() {
             onClick={
               handleConfirmPayment
             }
-            disabled={isSubmitting}
+            disabled={isSubmitting || isSelectedBookingPaid || !booking}
           >
 
             {isSubmitting ? (
@@ -1482,8 +1809,13 @@ function Payment() {
                 <span className="spinner" />
                 Submitting...
               </>
+            ) : isSelectedBookingPaid ? (
+              "Already Paid"
             ) : editingPayment ? (
-              "Update Payment"
+              String(editingPayment.paymentStatus || "").toLowerCase() ===
+              "rejected"
+                ? "Resubmit Payment"
+                : "Update Payment"
             ) : (
               "Confirm Payment"
             )}

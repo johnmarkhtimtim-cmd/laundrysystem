@@ -1,6 +1,10 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { subscribeToCustomerPayments } from "../../services/paymentService";
+import {
+  formatBookingIdLabel,
+  getBookingId as resolveBookingId,
+} from "../../utils/bookingId";
 import "../../styles/Transactions.css";
 
 function Transactions() {
@@ -9,21 +13,23 @@ function Transactions() {
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(Boolean(user?.uid));
   const [loadError, setLoadError] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
 
   // =========================================================
-  // LOAD TRANSACTIONS
-  // =========================================================
-
-  // =========================================================
-  // LOAD ON PAGE OPEN
+  // LIVE AUTO-FETCH TRANSACTIONS
   // =========================================================
 
   useEffect(() => {
     if (!user?.uid) {
+      setTransactions([]);
+      setLoading(false);
       return undefined;
     }
 
-    return subscribeToCustomerPayments(
+    setLoading(true);
+
+    const unsubscribe = subscribeToCustomerPayments(
       user.uid,
       (payments) => {
         setTransactions(payments);
@@ -37,7 +43,21 @@ function Transactions() {
         setLoading(false);
       }
     );
-  }, [user]);
+
+    const nudgeRefresh = () => {
+      // Snapshot listener already streams updates; keep same-tab events in sync.
+      setLoading((current) => current);
+    };
+
+    window.addEventListener("laundrymateBookingUpdated", nudgeRefresh);
+    window.addEventListener("laundrymatePaymentUpdated", nudgeRefresh);
+
+    return () => {
+      unsubscribe?.();
+      window.removeEventListener("laundrymateBookingUpdated", nudgeRefresh);
+      window.removeEventListener("laundrymatePaymentUpdated", nudgeRefresh);
+    };
+  }, [user?.uid]);
 
   // =========================================================
   // FORMAT CURRENCY
@@ -77,29 +97,6 @@ function Transactions() {
   };
 
   // =========================================================
-  // GET STATUS
-  // =========================================================
-
-  const getStatus = (transaction) => {
-    return (
-      transaction.paymentStatus ||
-      transaction.payment_status ||
-      transaction.status ||
-      "Pending"
-    );
-  };
-
-  // =========================================================
-  // GET STATUS CLASS
-  // =========================================================
-
-  const getStatusClass = (transaction) => {
-    return String(
-      getStatus(transaction)
-    ).toLowerCase();
-  };
-
-  // =========================================================
   // GET PAYMENT ID
   // =========================================================
 
@@ -113,16 +110,12 @@ function Transactions() {
   };
 
   // =========================================================
-  // GET BOOKING ID
+  // GET BOOKING ID (same short label as My Bookings / rider)
   // =========================================================
 
   const getBookingId = (transaction) => {
-    return (
-      transaction.bookingId ||
-      transaction.booking_id ||
-      transaction.booking?.id ||
-      "—"
-    );
+    const label = formatBookingIdLabel(transaction);
+    return label === "N/A" ? "—" : label;
   };
 
   // =========================================================
@@ -148,6 +141,42 @@ function Transactions() {
       transaction.amount ??
       0
     );
+  };
+
+  // =========================================================
+  // FILTERS
+  // =========================================================
+
+  const getTransactionDate = (transaction) => {
+    const raw =
+      transaction.createdAt ||
+      transaction.created_at ||
+      transaction.payment_date;
+
+    if (!raw) return null;
+
+    const parsed = typeof raw.toDate === "function" ? raw.toDate() : new Date(raw);
+
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  };
+
+  const filteredTransactions = transactions.filter((transaction) => {
+    if (!dateFrom && !dateTo) return true;
+
+    const date = getTransactionDate(transaction);
+    if (!date) return false;
+
+    if (dateFrom && date < new Date(`${dateFrom}T00:00:00`)) return false;
+    if (dateTo && date > new Date(`${dateTo}T23:59:59.999`)) return false;
+
+    return true;
+  });
+
+  const hasActiveFilters = dateFrom || dateTo;
+
+  const clearFilters = () => {
+    setDateFrom("");
+    setDateTo("");
   };
 
   // =========================================================
@@ -246,15 +275,53 @@ function Transactions() {
           </div>
 
           <div className="transaction-count">
-            {transactions.length}{" "}
-            {transactions.length === 1
+            {filteredTransactions.length}{" "}
+            {filteredTransactions.length === 1
               ? "Transaction"
               : "Transactions"}
           </div>
 
         </div>
 
-        {transactions.length === 0 ? (
+        {transactions.length > 0 && (
+          <div className="transaction-filters">
+
+            <div className="transaction-filter-field">
+              <label htmlFor="filter-from">From</label>
+              <input
+                id="filter-from"
+                type="date"
+                value={dateFrom}
+                max={dateTo || undefined}
+                onChange={(e) => setDateFrom(e.target.value)}
+              />
+            </div>
+
+            <div className="transaction-filter-field">
+              <label htmlFor="filter-to">To</label>
+              <input
+                id="filter-to"
+                type="date"
+                value={dateTo}
+                min={dateFrom || undefined}
+                onChange={(e) => setDateTo(e.target.value)}
+              />
+            </div>
+
+            {hasActiveFilters && (
+              <button
+                type="button"
+                className="transaction-filter-clear"
+                onClick={clearFilters}
+              >
+                Clear filters
+              </button>
+            )}
+
+          </div>
+        )}
+
+        {filteredTransactions.length === 0 ? (
 
           /* =================================================
              EMPTY STATE
@@ -267,13 +334,15 @@ function Transactions() {
             </div>
 
             <h3>
-              No Transactions Yet
+              {transactions.length === 0
+                ? "No Transactions Yet"
+                : "No Matching Transactions"}
             </h3>
 
             <p>
-              Your payment transactions will
-              automatically appear here after
-              you make a payment.
+              {transactions.length === 0
+                ? "Your payment transactions will automatically appear here after you make a payment."
+                : "No transactions match the selected date range."}
             </p>
 
           </div>
@@ -324,16 +393,8 @@ function Transactions() {
 
               <tbody>
 
-                {transactions.map(
+                {filteredTransactions.map(
                   (transaction) => {
-
-                    const status =
-                      getStatus(transaction);
-
-                    const statusClass =
-                      getStatusClass(
-                        transaction
-                      );
 
                     return (
                       <tr
@@ -372,10 +433,11 @@ function Transactions() {
 
                         <td>
 
-                          <span className="transaction-booking-id">
-                            {getBookingId(
-                              transaction
-                            )}
+                          <span
+                            className="transaction-booking-id"
+                            title={`#${resolveBookingId(transaction)}`}
+                          >
+                            {getBookingId(transaction)}
                           </span>
 
                         </td>
@@ -437,20 +499,18 @@ function Transactions() {
 
                         </td>
 
-                        {/* STATUS */}
-
                         <td>
-
                           <span
-                            className={`transaction-status ${statusClass}`}
+                            className={`transaction-status ${String(
+                              transaction.paymentStatus ||
+                                transaction.payment_status ||
+                                "Pending"
+                            ).toLowerCase()}`}
                           >
-
-                            <span className="transaction-status-dot" />
-
-                            {status}
-
+                            {transaction.paymentStatus ||
+                              transaction.payment_status ||
+                              "Pending"}
                           </span>
-
                         </td>
 
                       </tr>

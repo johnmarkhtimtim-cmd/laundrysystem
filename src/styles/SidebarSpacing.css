@@ -1,0 +1,20 @@
+/**
+ * Shared sidebar spacing aligned to MedConnect admin sidebar
+ * Reference: https://medconnect.bccbsis.com/assets/css/sidebar.css
+ * --sb-width: 260px | padding: 0 12px 24px | item: 9px 12px / gap 11px
+ */
+
+:root {
+  --lm-sidebar-width: 260px;
+  --lm-sidebar-pad-x: 12px;
+  --lm-sidebar-pad-bottom: 24px;
+  --lm-sidebar-nav-gap: 2px;
+  --lm-sidebar-item-pad-y: 9px;
+  --lm-sidebar-item-pad-x: 12px;
+  --lm-sidebar-item-gap: 11px;
+  --lm-sidebar-item-radius: 10px;
+  --lm-sidebar-icon: 18px;
+  --lm-sidebar-section-pad: 10px 10px 4px;
+  --lm-sidebar-brand-height: 68px;
+  --lm-sidebar-mini-width: 72px;
+}

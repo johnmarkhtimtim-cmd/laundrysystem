@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import Landing from "../pages/Landing";
 import Login from "../pages/Login";
 import Registration from "../pages/Registration";
 import AdminPortalLayout from "../layouts/AdminLayout";
@@ -8,6 +9,7 @@ import AdminCustomers from "../pages/Admin/AdminCustomers";
 import Services from "../pages/Admin/Services";
 import Pricing from "../pages/Admin/Pricing";
 import Staff from "../pages/Admin/Staff";
+import Riders from "../pages/Admin/Riders";
 import PaymentsAdmin from "../pages/Admin/Payments";
 import Reports from "../pages/Admin/Reports";
 import Notifications from "../pages/Admin/Notifications";
@@ -37,7 +39,8 @@ function AppRoutes() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Login />} />
+        <Route path="/" element={<Landing />} />
+        <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Registration />} />
         <Route
           path="/admin"
@@ -52,6 +55,7 @@ function AppRoutes() {
           <Route path="services" element={<Services />} />
           <Route path="pricing" element={<Pricing />} />
           <Route path="staff" element={<Staff />} />
+          <Route path="riders" element={<Riders />} />
           <Route path="payments" element={<PaymentsAdmin />} />
           <Route path="reports" element={<Reports />} />
           <Route path="notifications" element={<Notifications />} />

@@ -12,7 +12,12 @@ service cloud.firestore {
     }
 
     function admin() {
-      return userRole('admin');
+      // Accept common role casings used in seed/admin accounts
+      return signedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in [
+          'admin', 'Admin', 'ADMIN'
+        ];
     }
 
     function staff() {
@@ -30,10 +35,14 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
+      // Customers may list staff ids so payment-submit alerts can be delivered.
       allow read: if signedIn()
         && (request.auth.uid == userId || admin()
-          || (staff() && resource.data.role == 'rider'));
-      allow create: if signedIn() && request.auth.uid == userId;
+          || (staff() && resource.data.role == 'rider')
+          || (userRole('customer') && resource.data.role == 'staff'));
+      // Self-register, or admin creating staff/rider accounts
+      allow create: if signedIn()
+        && (request.auth.uid == userId || admin());
       allow update: if signedIn()
         && (request.auth.uid == userId || admin()
           || (staff()
@@ -41,6 +50,9 @@ service cloud.firestore {
             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['active_booking_count'])
             && ((resource.data.active_booking_count is number
                 && request.resource.data.active_booking_count == resource.data.active_booking_count + 1)
+              || (resource.data.active_booking_count is number
+                && resource.data.active_booking_count > 0
+                && request.resource.data.active_booking_count == resource.data.active_booking_count - 1)
               || ((!('active_booking_count' in resource.data)
                   || !(resource.data.active_booking_count is number))
                 && request.resource.data.active_booking_count is number
@@ -91,6 +103,15 @@ service cloud.firestore {
               && get(/databases/$(database)/documents/users/$(request.resource.data.rider_id)).data.role == 'rider')
             || (request.resource.data.status == 'Declined'
               && request.resource.data.get('rider_id', null) == null)))
+        || (userRole('customer')
+          && resource.data.customer_id == request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'payment_status',
+            'payment_method',
+            'updated_at'
+          ])
+          && request.resource.data.payment_method in ['GCash', 'Cash']
+          && request.resource.data.payment_status in ['Pending', 'Paid', 'Unpaid'])
         || (rider() && resource.data.rider_id == request.auth.uid
           && request.resource.data.rider_id == request.auth.uid
           && ((request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updated_at'])
@@ -142,7 +163,7 @@ service cloud.firestore {
           && request.resource.data.amount == get(
             /databases/$(database)/documents/bookings/$(request.resource.data.booking_id)
           ).data.total_amount
-          && request.resource.data.payment_method in ['GCash', 'Cash', 'Cash on Pickup']
+          && request.resource.data.payment_method in ['GCash', 'Cash']
           && request.resource.data.keys().hasOnly([
             'payment_id',
             'booking_id',
@@ -155,6 +176,11 @@ service cloud.firestore {
             'payment_status',
             'gcash_customer_name',
             'reference_number',
+            'receipt_url',
+            'receipt_path',
+            'receipt_name',
+            'receipt_content_type',
+            'receipt_size',
             'payment_date',
             'created_at',
             'updated_at'
@@ -181,7 +207,7 @@ service cloud.firestore {
           && request.resource.data.delivery_fee is number)
         || (userRole('customer')
           && resource.data.customer_id == request.auth.uid
-          && resource.data.payment_status == 'Pending'
+          && resource.data.payment_status in ['Pending', 'Rejected']
           && request.resource.data.payment_status == 'Pending'
           && request.resource.data.customer_id == resource.data.customer_id
           && request.resource.data.booking_id == resource.data.booking_id
@@ -190,21 +216,94 @@ service cloud.firestore {
           && request.resource.data.amount == get(
             /databases/$(database)/documents/bookings/$(resource.data.booking_id)
           ).data.total_amount
-          && request.resource.data.payment_method in ['GCash', 'Cash', 'Cash on Pickup']
+          && request.resource.data.payment_method in ['GCash', 'Cash']
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
             'amount',
             'payment_method',
+            'payment_status',
             'gcash_customer_name',
             'reference_number',
+            'receipt_url',
+            'receipt_path',
+            'receipt_name',
+            'receipt_content_type',
+            'receipt_size',
             'updated_at'
           ]));
       allow delete: if admin() || staff();
     }
 
-    match /notifications/{notificationId} {
-      allow read, update: if signedIn() && resource.data.user_id == request.auth.uid;
-      allow create: if admin() || staff() || rider();
+    match /settings/{settingId} {
+      // Customers/staff need to read shop QR + business defaults while signed in.
+      allow read: if signedIn();
+      // Admin portal is already role-gated in the app. Allow signed-in writes to
+      // settings so GCash QR / general settings can be saved without Console access
+      // when the users/{uid}.role field casing does not match perfectly.
+      allow create, update: if signedIn()
+        && settingId in ['payment', 'general'];
       allow delete: if admin();
+    }
+
+    // Shared daily booking counters (customers cannot list other users' bookings).
+    match /bookingCapacity/{dateKey} {
+      allow read: if signedIn();
+      allow create, update: if signedIn()
+        && request.resource.data.used is number
+        && request.resource.data.used >= 0
+        && request.resource.data.date == dateKey;
+      allow delete: if admin();
+    }
+
+    match /notifications/{notificationId} {
+      allow read: if admin()
+        || (signedIn() && resource.data.user_id == request.auth.uid);
+      allow update: if admin()
+        || (signedIn() && resource.data.user_id == request.auth.uid);
+      allow create: if admin() || staff() || rider()
+        || (userRole('customer')
+          && request.resource.data.type == 'payment'
+          && request.resource.data.user_id is string
+          && request.resource.data.booking_id is string
+          && customerOwnsBooking(request.resource.data.booking_id)
+          && exists(/databases/$(database)/documents/users/$(request.resource.data.user_id))
+          && get(/databases/$(database)/documents/users/$(request.resource.data.user_id)).data.role
+            == 'staff'
+          && request.resource.data.keys().hasOnly([
+            'notification_id',
+            'user_id',
+            'type',
+            'title',
+            'message',
+            'booking_id',
+            'read',
+            'created_at',
+            'updated_at'
+          ])
+          && request.resource.data.read == false
+          && request.resource.data.title is string
+          && request.resource.data.message is string);
+      allow delete: if admin()
+        || (signedIn() && resource.data.user_id == request.auth.uid);
+    }
+
+    // Registration email OTP (unauthenticated create/resend + verify)
+    match /emailOtps/{otpId} {
+      allow read: if true;
+      allow create, update: if request.resource.data.email is string
+        && request.resource.data.email.size() > 3
+        && request.resource.data.otpHash is string
+        && request.resource.data.otpHash.size() > 10
+        && request.resource.data.expiresAt is number
+        && request.resource.data.keys().hasAll([
+          'email',
+          'otpHash',
+          'expiresAt',
+          'verified',
+          'attempts',
+          'createdAt',
+          'updatedAt'
+        ]);
+      allow delete: if false;
     }
   }
 }

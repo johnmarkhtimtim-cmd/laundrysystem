@@ -5,10 +5,10 @@
 
 .notification-page {
   width: 100%;
-  min-height: 100vh;
+  min-height: 100%;
   padding: 30px;
-  background: #f5f7fb;
-  color: #172033;
+  background: var(--lm-bg, #f5f7fb);
+  color: var(--lm-ink, #172033);
   box-sizing: border-box;
 }
 

@@ -3,10 +3,9 @@
 ========================================= */
 
 .profile-page {
-  min-height: 100vh;
-  padding: 32px;
-  background: #f5f7fb;
-  color: #172033;
+  padding: 0;
+  color: var(--lm-ink, #172033);
+  background: transparent;
   font-family: "Inter", "Poppins", Arial, sans-serif;
   box-sizing: border-box;
 }
@@ -17,20 +16,21 @@
 ========================================= */
 
 .profile-header {
-  margin-bottom: 24px;
+  margin-bottom: 12px;
 }
 
 .profile-header h1 {
   margin: 0;
-  font-size: 28px;
+  font-size: 22px;
   font-weight: 700;
+  letter-spacing: -0.01em;
   color: #172033;
 }
 
 .profile-header p {
-  margin: 7px 0 0;
+  margin: 3px 0 0;
   color: #667085;
-  font-size: 14px;
+  font-size: 13px;
 }
 
 
@@ -38,12 +38,35 @@
    COMMON CARD
 ========================================= */
 
-.profile-card,
-.password-card {
-  background: #ffffff;
-  border: 1px solid #e7ebf2;
-  border-radius: 18px;
-  box-shadow: 0 4px 16px rgba(16, 24, 40, 0.04);
+.acct-card,
+.acct-password-card {
+  background: var(--lm-surface, #ffffff);
+  border: 1px solid var(--lm-line, #e7ebf2);
+  border-radius: 14px;
+  box-shadow: 0 4px 14px rgba(16, 24, 40, 0.04);
+  color: var(--lm-ink, #172033);
+}
+
+.profile-page > * {
+  max-width: 960px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.acct-card {
+  overflow: hidden;
+}
+
+
+/* =========================================
+   COVER
+========================================= */
+
+.profile-cover {
+  height: 56px;
+  background:
+    radial-gradient(circle at 85% 20%, rgba(255, 255, 255, 0.22), transparent 45%),
+    linear-gradient(120deg, #1e3a8a, #2563eb 60%, #38bdf8);
 }
 
 
@@ -54,21 +77,24 @@
 .profile-top {
   display: flex;
   align-items: center;
-  gap: 18px;
-  padding: 25px;
+  gap: 14px;
+  padding: 12px 20px 14px;
   border-bottom: 1px solid #edf0f5;
 }
 
-.profile-avatar {
-  width: 72px;
-  height: 72px;
+.acct-avatar {
+  width: 64px;
+  height: 64px;
   flex-shrink: 0;
+  align-self: flex-start;
+  margin-top: -36px;
 
   display: flex;
   align-items: center;
   justify-content: center;
 
   border-radius: 50%;
+  border: 3px solid #ffffff;
   background: linear-gradient(
     135deg,
     #2563eb,
@@ -76,38 +102,39 @@
   );
 
   color: #ffffff;
-  font-size: 23px;
+  font-size: 22px;
   font-weight: 700;
 
-  box-shadow: 0 8px 20px rgba(37, 99, 235, 0.22);
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.22);
 }
 
 .profile-user {
   flex: 1;
+  padding-top: 0;
 }
 
 .profile-user h2 {
-  margin: 0 0 6px;
-  font-size: 20px;
+  margin: 0 0 2px;
+  font-size: 18px;
   font-weight: 700;
 }
 
 .profile-user p {
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: 5px;
 
-  margin: 0 0 9px;
+  margin: 0 0 5px;
 
   color: #667085;
-  font-size: 13px;
+  font-size: 12.5px;
 }
 
 .customer-badge {
   display: inline-flex;
   align-items: center;
 
-  padding: 5px 10px;
+  padding: 2px 9px;
 
   border-radius: 20px;
 
@@ -126,16 +153,16 @@
 .edit-profile-btn {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 
   border: 1px solid #d9e1ee;
   background: #ffffff;
 
-  padding: 10px 15px;
-  border-radius: 9px;
+  padding: 7px 12px;
+  border-radius: 8px;
 
   color: #344054;
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 600;
 
   cursor: pointer;
@@ -153,8 +180,13 @@
    FORM
 ========================================= */
 
-.profile-form {
-  padding: 25px;
+.acct-form {
+  padding: 16px 20px;
+}
+
+.acct-form .acct-section-title {
+  padding-bottom: 8px;
+  border-bottom: 1px solid #f0f2f7;
 }
 
 
@@ -162,45 +194,45 @@
    SECTION TITLE
 ========================================= */
 
-.section-title {
+.acct-section-title {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 9px;
 
-  margin-bottom: 20px;
+  margin-bottom: 12px;
 }
 
-.section-icon {
-  width: 38px;
-  height: 38px;
+.acct-section-icon {
+  width: 30px;
+  height: 30px;
 
   display: flex;
   align-items: center;
   justify-content: center;
 
-  border-radius: 10px;
+  border-radius: 8px;
 
   background: #eff6ff;
   color: #2563eb;
 }
 
-.section-title h3 {
+.acct-section-title h3 {
   margin: 0;
 
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 700;
   color: #172033;
 }
 
-.section-title p {
-  margin: 3px 0 0;
+.acct-section-title p {
+  margin: 1px 0 0;
 
-  font-size: 12px;
+  font-size: 11.5px;
   color: #98a2b3;
 }
 
 .address-title {
-  margin-top: 30px;
+  margin-top: 18px;
 }
 
 
@@ -208,10 +240,10 @@
    FORM GRID
 ========================================= */
 
-.form-grid {
+.acct-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 18px;
+  gap: 10px 14px;
 }
 
 
@@ -219,13 +251,13 @@
    FORM GROUP
 ========================================= */
 
-.form-group {
+.acct-field {
   display: flex;
   flex-direction: column;
-  gap: 7px;
+  gap: 4px;
 }
 
-.form-group label {
+.acct-field label {
   font-size: 12px;
   font-weight: 600;
   color: #344054;
@@ -236,34 +268,34 @@
    INPUT
 ========================================= */
 
-.input-wrapper {
-  height: 45px;
+.acct-input {
+  height: 36px;
 
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 
-  padding: 0 13px;
+  padding: 0 10px;
 
   border: 1px solid #dfe4ec;
-  border-radius: 9px;
+  border-radius: 8px;
 
   background: #ffffff;
 
   transition: 0.2s ease;
 }
 
-.input-wrapper svg {
+.acct-input svg {
   flex-shrink: 0;
   color: #98a2b3;
 }
 
-.input-wrapper:focus-within {
+.acct-input:focus-within {
   border-color: #2563eb;
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.08);
 }
 
-.input-wrapper input {
+.acct-input input {
   width: 100%;
   height: 100%;
 
@@ -276,13 +308,18 @@
   font-size: 13px;
 }
 
-.input-wrapper input::placeholder {
+.acct-input input::placeholder {
   color: #a4acb9;
 }
 
-.input-wrapper input:disabled {
+.acct-input:has(input:disabled) {
+  background: #f8fafc;
+}
+
+.acct-input input:disabled {
   cursor: default;
-  color: #667085;
+  color: #475467;
+  -webkit-text-fill-color: #475467;
 }
 
 
@@ -293,25 +330,25 @@
 .profile-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 10px;
+  gap: 8px;
 
-  margin-top: 25px;
-  padding-top: 20px;
+  margin-top: 14px;
+  padding-top: 12px;
 
   border-top: 1px solid #edf0f5;
 }
 
-.cancel-btn,
-.save-btn {
+.acct-cancel-btn,
+.acct-save-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 6px;
 
-  height: 42px;
-  padding: 0 17px;
+  height: 36px;
+  padding: 0 14px;
 
-  border-radius: 9px;
+  border-radius: 8px;
 
   font-size: 13px;
   font-weight: 600;
@@ -320,23 +357,23 @@
   transition: 0.2s ease;
 }
 
-.cancel-btn {
+.acct-cancel-btn {
   border: 1px solid #dfe4ec;
   background: #ffffff;
   color: #475467;
 }
 
-.cancel-btn:hover {
+.acct-cancel-btn:hover {
   background: #f8fafc;
 }
 
-.save-btn {
+.acct-save-btn {
   border: none;
   background: #2563eb;
   color: #ffffff;
 }
 
-.save-btn:hover {
+.acct-save-btn:hover {
   background: #1d4ed8;
 }
 
@@ -345,9 +382,9 @@
    PASSWORD CARD
 ========================================= */
 
-.password-card {
-  margin-top: 20px;
-  padding: 25px;
+.acct-password-card {
+  margin-top: 14px;
+  padding: 16px 20px;
 }
 
 .password-icon {
@@ -358,7 +395,7 @@
 .password-form {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 18px;
+  gap: 10px 14px;
   align-items: end;
 }
 
@@ -401,17 +438,17 @@
 ========================================= */
 
 .change-password-btn {
-  height: 45px;
+  height: 36px;
 
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 6px;
 
-  padding: 0 18px;
+  padding: 0 14px;
 
   border: none;
-  border-radius: 9px;
+  border-radius: 8px;
 
   background: #172033;
   color: #ffffff;
@@ -446,17 +483,16 @@
 
 @media (max-width: 700px) {
 
-  .profile-page {
-    padding: 20px 16px;
-  }
-
   .profile-top {
     align-items: flex-start;
-    flex-wrap: wrap;
+    flex-direction: column;
+    gap: 10px;
+    padding: 10px 16px 14px;
   }
 
   .profile-user {
     min-width: 200px;
+    padding-top: 0;
   }
 
   .edit-profile-btn {
@@ -464,7 +500,7 @@
     justify-content: center;
   }
 
-  .form-grid {
+  .acct-grid {
     grid-template-columns: 1fr;
   }
 
@@ -480,41 +516,42 @@
 
 @media (max-width: 480px) {
 
-  .profile-page {
-    padding: 16px 12px;
-  }
-
   .profile-header h1 {
-    font-size: 24px;
+    font-size: 20px;
   }
 
-  .profile-card,
-  .password-card {
-    border-radius: 14px;
+  .acct-card,
+  .acct-password-card {
+    border-radius: 12px;
   }
 
   .profile-top,
-  .profile-form,
-  .password-card {
-    padding: 18px;
+  .acct-form,
+  .acct-password-card {
+    padding: 14px;
   }
 
-  .profile-avatar {
-    width: 60px;
-    height: 60px;
+  .profile-top {
+    padding-top: 10px;
+  }
+
+  .acct-avatar {
+    width: 56px;
+    height: 56px;
+    margin-top: -32px;
     font-size: 20px;
   }
 
   .profile-user h2 {
-    font-size: 17px;
+    font-size: 16px;
   }
 
   .profile-actions {
     flex-direction: column-reverse;
   }
 
-  .cancel-btn,
-  .save-btn {
+  .acct-cancel-btn,
+  .acct-save-btn {
     width: 100%;
   }
 }

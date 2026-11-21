@@ -1,520 +1,166 @@
-/* =========================================
-   PROFILE PAGE
-========================================= */
+/* Staff profile: full width, readable type, compact spacing */
 
-.profile-page {
-  min-height: 100vh;
-  padding: 32px;
-  background: #f5f7fb;
-  color: #172033;
-  font-family: "Inter", "Poppins", Arial, sans-serif;
-  box-sizing: border-box;
+.staff-layout .profile-page {
+  width: 100%;
+  max-width: none;
+  min-height: 0;
+  padding: 0;
+  background: transparent;
 }
 
-
-/* =========================================
-   HEADER
-========================================= */
-
-.profile-header {
-  margin-bottom: 24px;
+.staff-layout .profile-page > * {
+  max-width: none;
+  width: 100%;
+  margin-left: 0;
+  margin-right: 0;
 }
 
-.profile-header h1 {
-  margin: 0;
-  font-size: 28px;
-  font-weight: 700;
-  color: #172033;
+.staff-layout .profile-header {
+  margin-bottom: 12px;
 }
 
-.profile-header p {
-  margin: 7px 0 0;
-  color: #667085;
+.staff-layout .profile-header h1 {
+  font-size: 26px;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+}
+
+.staff-layout .profile-header p {
+  margin-top: 4px;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.staff-layout .profile-cover {
+  height: 52px;
+}
+
+.staff-layout .profile-top {
+  gap: 14px;
+  padding: 12px 20px 14px;
+}
+
+.staff-layout .acct-avatar {
+  width: 64px;
+  height: 64px;
+  margin-top: -32px;
+  font-size: 22px;
+}
+
+.staff-layout .profile-user h2 {
+  font-size: 18px;
+  margin-bottom: 2px;
+}
+
+.staff-layout .profile-user p {
+  margin-bottom: 6px;
+  font-size: 13.5px;
+}
+
+.staff-layout .customer-badge {
+  font-size: 12px;
+  padding: 3px 10px;
+}
+
+.staff-layout .edit-profile-btn {
+  padding: 8px 14px;
+  font-size: 13px;
+}
+
+.staff-layout .acct-form {
+  padding: 16px 20px 18px;
+}
+
+.staff-layout .acct-section-title {
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.staff-layout .acct-section-icon {
+  width: 34px;
+  height: 34px;
+}
+
+.staff-layout .acct-section-icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.staff-layout .acct-section-title h3 {
+  font-size: 15px;
+}
+
+.staff-layout .acct-section-title p {
+  font-size: 13px;
+  margin-top: 2px;
+}
+
+.staff-layout .address-title {
+  margin-top: 16px;
+}
+
+.staff-layout .acct-grid {
+  gap: 12px 16px;
+}
+
+.staff-layout .acct-field {
+  gap: 5px;
+}
+
+.staff-layout .acct-field label {
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.staff-layout .acct-input {
+  height: 42px;
+  padding: 0 12px;
+  gap: 10px;
+}
+
+.staff-layout .acct-input svg {
+  width: 17px;
+  height: 17px;
+}
+
+.staff-layout .acct-input input {
   font-size: 14px;
 }
 
-
-/* =========================================
-   COMMON CARD
-========================================= */
-
-.profile-card,
-.password-card {
-  background: #ffffff;
-  border: 1px solid #e7ebf2;
-  border-radius: 18px;
-  box-shadow: 0 4px 16px rgba(16, 24, 40, 0.04);
-}
-
-
-/* =========================================
-   PROFILE TOP
-========================================= */
-
-.profile-top {
-  display: flex;
-  align-items: center;
-  gap: 18px;
-  padding: 25px;
-  border-bottom: 1px solid #edf0f5;
-}
-
-.profile-avatar {
-  width: 72px;
-  height: 72px;
-  flex-shrink: 0;
-
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  border-radius: 50%;
-  background: linear-gradient(
-    135deg,
-    #2563eb,
-    #1d4ed8
-  );
-
-  color: #ffffff;
-  font-size: 23px;
-  font-weight: 700;
-
-  box-shadow: 0 8px 20px rgba(37, 99, 235, 0.22);
-}
-
-.profile-user {
-  flex: 1;
-}
-
-.profile-user h2 {
-  margin: 0 0 6px;
-  font-size: 20px;
-  font-weight: 700;
-}
-
-.profile-user p {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-
-  margin: 0 0 9px;
-
-  color: #667085;
-  font-size: 13px;
-}
-
-.customer-badge {
-  display: inline-flex;
-  align-items: center;
-
-  padding: 5px 10px;
-
-  border-radius: 20px;
-
-  background: #eff6ff;
-  color: #2563eb;
-
-  font-size: 11px;
-  font-weight: 600;
-}
-
-
-/* =========================================
-   EDIT BUTTON
-========================================= */
-
-.edit-profile-btn {
-  display: flex;
-  align-items: center;
+.staff-layout .profile-actions {
+  margin-top: 14px;
+  padding-top: 12px;
   gap: 8px;
-
-  border: 1px solid #d9e1ee;
-  background: #ffffff;
-
-  padding: 10px 15px;
-  border-radius: 9px;
-
-  color: #344054;
-  font-size: 13px;
-  font-weight: 600;
-
-  cursor: pointer;
-  transition: 0.2s ease;
 }
 
-.edit-profile-btn:hover {
-  border-color: #2563eb;
-  color: #2563eb;
-  background: #f8fbff;
+.staff-layout .acct-cancel-btn,
+.staff-layout .acct-save-btn,
+.staff-layout .change-password-btn {
+  height: 40px;
+  padding: 0 16px;
+  font-size: 13.5px;
 }
 
-
-/* =========================================
-   FORM
-========================================= */
-
-.profile-form {
-  padding: 25px;
+.staff-layout .acct-password-card {
+  margin-top: 12px;
+  padding: 16px 20px;
 }
 
-
-/* =========================================
-   SECTION TITLE
-========================================= */
-
-.section-title {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-
-  margin-bottom: 20px;
+.staff-layout .password-form {
+  gap: 12px 16px;
 }
-
-.section-icon {
-  width: 38px;
-  height: 38px;
-
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  border-radius: 10px;
-
-  background: #eff6ff;
-  color: #2563eb;
-}
-
-.section-title h3 {
-  margin: 0;
-
-  font-size: 15px;
-  font-weight: 700;
-  color: #172033;
-}
-
-.section-title p {
-  margin: 3px 0 0;
-
-  font-size: 12px;
-  color: #98a2b3;
-}
-
-.address-title {
-  margin-top: 30px;
-}
-
-
-/* =========================================
-   FORM GRID
-========================================= */
-
-.form-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 18px;
-}
-
-
-/* =========================================
-   FORM GROUP
-========================================= */
-
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-}
-
-.form-group label {
-  font-size: 12px;
-  font-weight: 600;
-  color: #344054;
-}
-
-
-/* =========================================
-   INPUT
-========================================= */
-
-.input-wrapper {
-  height: 45px;
-
-  display: flex;
-  align-items: center;
-  gap: 10px;
-
-  padding: 0 13px;
-
-  border: 1px solid #dfe4ec;
-  border-radius: 9px;
-
-  background: #ffffff;
-
-  transition: 0.2s ease;
-}
-
-.input-wrapper svg {
-  flex-shrink: 0;
-  color: #98a2b3;
-}
-
-.input-wrapper:focus-within {
-  border-color: #2563eb;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.08);
-}
-
-.input-wrapper input {
-  width: 100%;
-  height: 100%;
-
-  border: none;
-  outline: none;
-
-  background: transparent;
-
-  color: #172033;
-  font-size: 13px;
-}
-
-.input-wrapper input::placeholder {
-  color: #a4acb9;
-}
-
-.input-wrapper input:disabled {
-  cursor: default;
-  color: #667085;
-}
-
-
-/* =========================================
-   PROFILE ACTIONS
-========================================= */
-
-.profile-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-
-  margin-top: 25px;
-  padding-top: 20px;
-
-  border-top: 1px solid #edf0f5;
-}
-
-.cancel-btn,
-.save-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-
-  height: 42px;
-  padding: 0 17px;
-
-  border-radius: 9px;
-
-  font-size: 13px;
-  font-weight: 600;
-
-  cursor: pointer;
-  transition: 0.2s ease;
-}
-
-.cancel-btn {
-  border: 1px solid #dfe4ec;
-  background: #ffffff;
-  color: #475467;
-}
-
-.cancel-btn:hover {
-  background: #f8fafc;
-}
-
-.save-btn {
-  border: none;
-  background: #2563eb;
-  color: #ffffff;
-}
-
-.save-btn:hover {
-  background: #1d4ed8;
-}
-
-
-/* =========================================
-   PASSWORD CARD
-========================================= */
-
-.password-card {
-  margin-top: 20px;
-  padding: 25px;
-}
-
-.password-icon {
-  background: #f0fdf4;
-  color: #16a34a;
-}
-
-.password-form {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 18px;
-  align-items: end;
-}
-
-
-/* =========================================
-   PASSWORD INPUT
-========================================= */
-
-.password-wrapper {
-  position: relative;
-}
-
-.password-wrapper input {
-  padding-right: 30px;
-}
-
-.password-toggle {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  position: absolute;
-  right: 10px;
-
-  border: none;
-  background: transparent;
-
-  color: #98a2b3;
-
-  cursor: pointer;
-}
-
-.password-toggle:hover {
-  color: #2563eb;
-}
-
-
-/* =========================================
-   CHANGE PASSWORD BUTTON
-========================================= */
-
-.change-password-btn {
-  height: 45px;
-
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-
-  padding: 0 18px;
-
-  border: none;
-  border-radius: 9px;
-
-  background: #172033;
-  color: #ffffff;
-
-  font-size: 13px;
-  font-weight: 600;
-
-  cursor: pointer;
-  transition: 0.2s ease;
-}
-
-.change-password-btn:hover {
-  background: #101828;
-}
-
-
-/* =========================================
-   RESPONSIVE
-========================================= */
-
-@media (max-width: 900px) {
-
-  .password-form {
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .change-password-btn {
-    grid-column: span 2;
-  }
-}
-
 
 @media (max-width: 700px) {
-
-  .profile-page {
-    padding: 20px 16px;
+  .staff-layout .profile-header h1 {
+    font-size: 23px;
   }
 
-  .profile-top {
-    align-items: flex-start;
-    flex-wrap: wrap;
+  .staff-layout .profile-top {
+    padding: 12px 16px 14px;
   }
 
-  .profile-user {
-    min-width: 200px;
-  }
-
-  .edit-profile-btn {
-    width: 100%;
-    justify-content: center;
-  }
-
-  .form-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .password-form {
-    grid-template-columns: 1fr;
-  }
-
-  .change-password-btn {
-    grid-column: auto;
-  }
-}
-
-
-@media (max-width: 480px) {
-
-  .profile-page {
-    padding: 16px 12px;
-  }
-
-  .profile-header h1 {
-    font-size: 24px;
-  }
-
-  .profile-card,
-  .password-card {
-    border-radius: 14px;
-  }
-
-  .profile-top,
-  .profile-form,
-  .password-card {
-    padding: 18px;
-  }
-
-  .profile-avatar {
-    width: 60px;
-    height: 60px;
-    font-size: 20px;
-  }
-
-  .profile-user h2 {
-    font-size: 17px;
-  }
-
-  .profile-actions {
-    flex-direction: column-reverse;
-  }
-
-  .cancel-btn,
-  .save-btn {
-    width: 100%;
+  .staff-layout .acct-form,
+  .staff-layout .acct-password-card {
+    padding: 14px 16px;
   }
 }

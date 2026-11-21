@@ -1,6 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../../context/AuthContext";
-import { getCustomerBookings } from "../../services/bookingService";
+import { subscribeToCustomerBookings } from "../../services/bookingService";
+import { subscribeToCustomerPayments } from "../../services/paymentService";
+import {
+  formatShortBookingId,
+  getBookingId as resolveBookingId,
+} from "../../utils/bookingId";
 import "../../styles/MyBookings.css";
 
 function normalizeBookingStatus(status) {
@@ -39,10 +44,20 @@ function getTimestampValue(timestamp) {
     : date.getTime();
 }
 
+function normalizePaymentStatus(status, hasPaymentRecord = false) {
+  const value = String(status || "").trim().toLowerCase();
+  if (value === "paid") return "Paid";
+  if (value === "rejected") return "Rejected";
+  if (value === "unpaid") return "Unpaid";
+  if (value === "pending") return hasPaymentRecord ? "Pending" : "Unpaid";
+  return hasPaymentRecord ? "Pending" : "Unpaid";
+}
+
 function MyBooking() {
   const { user } = useAuth();
 
   const [bookings, setBookings] = useState([]);
+  const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedBooking, setSelectedBooking] = useState(null);
 
@@ -87,113 +102,97 @@ function MyBooking() {
   };
 
   // =====================================
-  // FETCH BOOKINGS
+  // LIVE BOOKINGS + PAYMENTS
   // =====================================
 
   useEffect(() => {
-    let isMounted = true;
+    if (!user?.uid) {
+      setBookings([]);
+      setPayments([]);
+      setLoading(false);
+      return undefined;
+    }
 
-    const fetchBookings = async () => {
-      setLoading(true);
+    setLoading(true);
+    let bookingsReady = false;
+    let paymentsReady = false;
 
-      try {
-        let localBookings = [];
-        if (user?.uid) {
-          try {
-            const savedBookings = JSON.parse(
-              localStorage.getItem("laundrymateBookings") || "[]"
-            );
-
-            if (!Array.isArray(savedBookings)) {
-              throw new Error("Saved bookings must be a list.");
-            }
-
-            localBookings = savedBookings.filter(
-              (booking) =>
-                booking.userId === user.uid ||
-                booking.customerId === user.uid ||
-                booking.customer_id === user.uid
-            );
-          } catch (error) {
-            console.error("Error reading locally saved bookings:", error);
-          }
-        }
-
-        let customerBookings = [];
-        if (user?.uid) {
-          try {
-            customerBookings = await getCustomerBookings(user.uid);
-          } catch (error) {
-            console.error("Error fetching Firestore bookings:", error);
-            if (localBookings.length === 0) {
-              throw error;
-            }
-          }
-        }
-
-        const bookingsById = new Map();
-        customerBookings.forEach((booking) => {
-          bookingsById.set(String(booking.id), booking);
-        });
-        localBookings.forEach((booking) => {
-          const bookingId = booking.id || booking.bookingId || booking.booking_id;
-          if (bookingId) {
-            bookingsById.set(String(bookingId), {
-              ...bookingsById.get(String(bookingId)),
-              ...booking,
-              id: String(bookingId),
-            });
-          }
-        });
-
-        const sortedBookings = [...bookingsById.values()].sort(
-          (a, b) => {
-            const dateA = getTimestampValue(
-              a.booking_date || a.createdAt
-            );
-
-            const dateB = getTimestampValue(
-              b.booking_date || b.createdAt
-            );
-
-            return dateB - dateA;
-          }
-        );
-
-        if (isMounted) {
-          setBookings(sortedBookings);
-        }
-      } catch (error) {
-        console.error(
-          "Error fetching bookings:",
-          error
-        );
-        if (isMounted) {
-          setBookings([]);
-        }
-      } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
+    const markReady = () => {
+      if (bookingsReady && paymentsReady) {
+        setLoading(false);
       }
     };
 
-    const handleStorage = (event) => {
-      if (!event.key || event.key === "laundrymateBookings") {
-        fetchBookings();
+    const unsubBookings = subscribeToCustomerBookings(
+      user.uid,
+      (nextBookings) => {
+        setBookings(nextBookings);
+        bookingsReady = true;
+        markReady();
+      },
+      (error) => {
+        console.error("Live bookings error:", error);
+        bookingsReady = true;
+        markReady();
       }
+    );
+
+    const unsubPayments = subscribeToCustomerPayments(
+      user.uid,
+      (nextPayments) => {
+        setPayments(nextPayments);
+        paymentsReady = true;
+        markReady();
+      },
+      (error) => {
+        console.error("Live payments error:", error);
+        paymentsReady = true;
+        markReady();
+      }
+    );
+
+    const refreshFromEvent = () => {
+      // Snapshots already keep data live; this is a safety nudge for same-tab events.
+      bookingsReady = true;
+      paymentsReady = true;
+      markReady();
     };
-    const initialLoad = window.setTimeout(fetchBookings, 0);
-    window.addEventListener("storage", handleStorage);
-    window.addEventListener("laundrymateBookingUpdated", fetchBookings);
+
+    window.addEventListener("laundrymateBookingUpdated", refreshFromEvent);
+    window.addEventListener("laundrymatePaymentUpdated", refreshFromEvent);
 
     return () => {
-      isMounted = false;
-      window.clearTimeout(initialLoad);
-      window.removeEventListener("storage", handleStorage);
-      window.removeEventListener("laundrymateBookingUpdated", fetchBookings);
+      unsubBookings?.();
+      unsubPayments?.();
+      window.removeEventListener("laundrymateBookingUpdated", refreshFromEvent);
+      window.removeEventListener("laundrymatePaymentUpdated", refreshFromEvent);
     };
   }, [user?.uid]);
+
+  const paymentsByBookingId = useMemo(() => {
+    const map = new Map();
+    payments.forEach((payment) => {
+      const bookingId = String(
+        payment.booking_id || payment.bookingId || ""
+      );
+      if (!bookingId) return;
+      const existing = map.get(bookingId);
+      if (!existing) {
+        map.set(bookingId, payment);
+        return;
+      }
+      const existingTime = getTimestampValue(
+        existing.created_at || existing.createdAt || existing.updated_at
+      );
+      const nextTime = getTimestampValue(
+        payment.created_at || payment.createdAt || payment.updated_at
+      );
+      if (nextTime >= existingTime) {
+        map.set(bookingId, payment);
+      }
+    });
+    return map;
+  }, [payments]);
 
   // =====================================
   // STATUS INDEX
@@ -261,6 +260,22 @@ function MyBooking() {
       return "N/A";
     }
 
+    // Already a single calendar day key (YYYY-MM-DD) — show that day only
+    if (
+      typeof timestamp === "string" &&
+      /^\d{4}-\d{2}-\d{2}/.test(timestamp.trim())
+    ) {
+      const [year, month, day] = timestamp.trim().slice(0, 10).split("-");
+      const localDate = new Date(Number(year), Number(month) - 1, Number(day));
+      if (!Number.isNaN(localDate.getTime())) {
+        return localDate.toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        });
+      }
+    }
+
     let date;
 
     try {
@@ -284,6 +299,16 @@ function MyBooking() {
     });
   };
 
+  const getBookingDay = (booking) =>
+    booking?.schedule ||
+    booking?.pickup_date ||
+    booking?.pickupDate ||
+    booking?.booking_date ||
+    booking?.createdAt;
+
+  const getPickupRiderName = (booking) =>
+    String(booking?.rider_name || booking?.riderName || "").trim();
+
   // =====================================
   // CURRENCY FORMAT
   // =====================================
@@ -298,20 +323,71 @@ function MyBooking() {
     );
   };
 
-  // =====================================
-  // BOOKING ID
-  // =====================================
-
-  const getBookingId = (booking) => {
-    const id =
-      booking.booking_id ||
-      booking.id ||
-      "N/A";
-
-    return id.length > 8
-      ? id.slice(-8).toUpperCase()
-      : id;
+  const getBookingTotalAmount = (booking, linkedPayment = null) => {
+    const total = Number(
+      booking?.total_amount ??
+        booking?.totalAmount ??
+        booking?.estimatedTotal ??
+        linkedPayment?.total_amount ??
+        linkedPayment?.totalAmount ??
+        0
+    );
+    return Number.isNaN(total) ? 0 : total;
   };
+
+  // Verified down payment. Prefer initial_payment (set when rider saves weight);
+  // fall back to the original payment.amount (createPayment stores the deposit there).
+  const getBookingInitialPayment = (booking, linkedPayment = null) => {
+    const candidates = [
+      linkedPayment?.initial_payment,
+      linkedPayment?.initialPayment,
+      booking?.initial_payment,
+      booking?.initialPayment,
+      booking?.downPayment,
+      booking?.down_payment,
+      booking?.amountPaid,
+      booking?.initialPaid,
+      linkedPayment?.amount,
+    ];
+
+    for (const candidate of candidates) {
+      if (candidate === undefined || candidate === null || candidate === "") {
+        continue;
+      }
+      const initial = Number(candidate);
+      if (!Number.isNaN(initial) && initial >= 0) {
+        return initial;
+      }
+    }
+
+    return 0;
+  };
+
+  // Remaining balance after initial payment (what customer pays on delivery).
+  const getBookingAmountDue = (booking, linkedPayment = null) => {
+    const stored = Number(
+      booking?.amount_to_be_paid ??
+        booking?.amountToBePaid ??
+        linkedPayment?.amount_to_be_paid ??
+        linkedPayment?.amountToBePaid
+    );
+
+    if (Number.isFinite(stored) && stored >= 0) {
+      return stored;
+    }
+
+    return Math.max(
+      0,
+      getBookingTotalAmount(booking, linkedPayment) -
+        getBookingInitialPayment(booking, linkedPayment)
+    );
+  };
+
+  // =====================================
+  // BOOKING ID (same short label as staff/rider, e.g. 2mkDRq)
+  // =====================================
+
+  const getBookingId = (booking) => formatShortBookingId(booking);
 
   // =====================================
   // STATS
@@ -580,16 +656,46 @@ function MyBooking() {
                 booking.services?.join(", ") ||
                 "Laundry Service";
 
-              const bookingAmount =
-                booking.total_amount ??
-                booking.estimatedTotal ??
-                booking.totalAmount ??
-                0;
+              const linkedPayment =
+                paymentsByBookingId.get(String(booking.id)) ||
+                paymentsByBookingId.get(
+                  String(booking.booking_id || booking.bookingId || "")
+                ) ||
+                null;
 
-              const paymentStatus =
-                booking.payment_status ||
-                booking.paymentStatus ||
-                "Pending";
+              const totalAmount = getBookingTotalAmount(booking, linkedPayment);
+              const initialPayment = getBookingInitialPayment(
+                booking,
+                linkedPayment
+              );
+              const amountDue = getBookingAmountDue(booking, linkedPayment);
+              const hasWeighedTotal =
+                Number(booking.weight) > 0 ||
+                Number(booking.laundryWeight) > 0 ||
+                status === "Delivered";
+              // After weight/delivery: show total minus initial payment.
+              const displayAmount = hasWeighedTotal ? amountDue : totalAmount;
+              const amountLabel =
+                status === "Delivered"
+                  ? "Final Amount"
+                  : hasWeighedTotal
+                    ? "Amount Due"
+                    : "Amount";
+
+              const paymentStatus = normalizePaymentStatus(
+                linkedPayment?.payment_status ||
+                  linkedPayment?.paymentStatus ||
+                  booking.payment_status ||
+                  booking.paymentStatus,
+                Boolean(linkedPayment)
+              );
+
+              const paymentMethod =
+                linkedPayment?.payment_method ||
+                linkedPayment?.paymentMethod ||
+                booking.payment_method ||
+                booking.paymentMethod ||
+                "";
 
               return (
 
@@ -644,11 +750,11 @@ function MyBooking() {
                           )}
                         </p>
 
-                        <span className="booking-number">
-                          Booking #
-                          {getBookingId(
-                            booking
-                          )}
+                        <span
+                          className="booking-number"
+                          title={`#${resolveBookingId(booking)}`}
+                        >
+                          Booking #{getBookingId(booking)}
                         </span>
 
                       </div>
@@ -667,14 +773,11 @@ function MyBooking() {
                     <div className="detail-item">
 
                       <span className="detail-label">
-                        Booking Date
+                        Pickup Date
                       </span>
 
                       <strong>
-                        {formatDate(
-                          booking.booking_date ||
-                          booking.createdAt
-                        )}
+                        {formatDate(getBookingDay(booking))}
                       </strong>
 
                     </div>
@@ -698,15 +801,19 @@ function MyBooking() {
                     <div className="detail-item">
 
                       <span className="detail-label">
-                        Amount
+                        {amountLabel}
                       </span>
 
                       <strong className="booking-amount">
-                        ₱
-                        {formatCurrency(
-                          bookingAmount
-                        )}
+                        ₱{formatCurrency(displayAmount)}
                       </strong>
+
+                      {hasWeighedTotal && initialPayment > 0 ? (
+                        <small className="amount-breakdown">
+                          Total ₱{formatCurrency(totalAmount)} − Initial ₱
+                          {formatCurrency(initialPayment)}
+                        </small>
+                      ) : null}
 
                     </div>
 
@@ -721,15 +828,32 @@ function MyBooking() {
                         className={`payment-badge ${
                           paymentStatus === "Paid"
                             ? "paid"
-                            : "pending"
+                            : paymentStatus === "Rejected"
+                              ? "rejected"
+                              : paymentStatus === "Unpaid"
+                                ? "unpaid"
+                                : "pending"
                         }`}
                       >
                         <span></span>
-
                         {paymentStatus}
-
+                        {paymentStatus === "Pending" && paymentMethod
+                          ? ` · ${paymentMethod}`
+                          : ""}
                       </span>
 
+                    </div>
+
+                    <div className="detail-item">
+                      <span className="detail-label">
+                        Pickup Rider
+                      </span>
+                      <strong>
+                        {getPickupRiderName(booking) ||
+                          (status === "Pending"
+                            ? "Waiting for assignment"
+                            : "Not assigned yet")}
+                      </strong>
                     </div>
 
                   </div>
@@ -938,10 +1062,14 @@ function MyBooking() {
                             </strong>
 
                             <p>
-                              Your laundry order
-                              has been delivered.
-                              Thank you for using
-                              LaundryMate!
+                              Your laundry order has been delivered.
+                              {initialPayment > 0
+                                ? ` Final amount due was ₱${formatCurrency(
+                                    amountDue
+                                  )} after subtracting your initial payment of ₱${formatCurrency(
+                                    initialPayment
+                                  )}.`
+                                : " Thank you for using LaundryMate!"}
                             </p>
 
                           </div>
@@ -964,9 +1092,7 @@ function MyBooking() {
                           </span>
 
                           <strong>
-                            {formatDate(
-                              booking.booking_date
-                            )}
+                            {formatDate(getBookingDay(booking))}
                           </strong>
 
                         </div>
@@ -1010,6 +1136,16 @@ function MyBooking() {
                             kg
                           </strong>
 
+                        </div>
+
+                        <div className="expanded-info-card">
+                          <span>Pickup Rider</span>
+                          <strong>
+                            {getPickupRiderName(booking) ||
+                              (status === "Pending"
+                                ? "Waiting for assignment"
+                                : "Not assigned yet")}
+                          </strong>
                         </div>
 
                       </div>
