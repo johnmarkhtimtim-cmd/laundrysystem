@@ -8,6 +8,9 @@ import heroImage from "../assets/landing-hero.jpg";
 import brandLogo from "../assets/laundrymate-logo.jpg";
 import "../styles/Landing.css";
 
+const APK_DOWNLOAD_URL =
+  "https://raw.githubusercontent.com/johnmarkhtimtim-cmd/laundrysystem/main/public/downloads/laundrymate.apk";
+
 function Landing() {
   const navigate = useNavigate();
   const { user, sessionExpired } = useAuth();
@@ -171,7 +174,7 @@ function Landing() {
           <div className="landing-hero-actions">
             <a
               className="btn-primary"
-              href="/downloads/laundrymate.apk"
+              href={APK_DOWNLOAD_URL}
               download="LaundryMate.apk"
             >
               Download Android App
@@ -265,7 +268,7 @@ function Landing() {
           <strong>LaundryMate</strong>
           <p>Clean clothes. Easy booking. Better service.</p>
           <div className="landing-footer-links">
-            <a href="/downloads/laundrymate.apk" download="LaundryMate.apk">
+            <a href={APK_DOWNLOAD_URL} download="LaundryMate.apk">
               Download APK
             </a>
             <button type="button" className="landing-footer-signin" onClick={openSignIn}>
