@@ -132,7 +132,8 @@ async function sendOtpWithEmailjs({ email, otp, firstName }) {
         sdkErr?.text || sdkErr?.message || primaryErr?.message || ""
       ).trim();
       throw new Error(
-        rawDetail || "Unable to send OTP email via EmailJS. Please try again."
+        rawDetail || "Unable to send OTP email via EmailJS. Please try again.",
+        { cause: sdkErr }
       );
     }
   }
@@ -176,16 +177,19 @@ async function sendOtpWithFormSubmit({ email, otp, firstName }) {
     );
   } catch (error) {
     if (error?.name === "AbortError") {
-      throw new Error("Email request timed out. Please tap Resend OTP.");
+      throw new Error("Email request timed out. Please tap Resend OTP.", {
+        cause: error,
+      });
     }
     throw new Error(
-      "Unable to reach the email service. Check your internet and try again."
+      "Unable to reach the email service. Check your internet and try again.",
+      { cause: error }
     );
   } finally {
     clearTimeout(timeout);
   }
 
-  let payload = {};
+  let payload;
   try {
     payload = await response.json();
   } catch {
@@ -268,7 +272,8 @@ export async function sendRegistrationOtp({ email, firstName = "" }) {
   } catch (error) {
     console.error("OTP store error:", error);
     throw new Error(
-      "Unable to start email verification (database permissions). Please refresh and try again."
+      "Unable to start email verification (database permissions). Please refresh and try again.",
+      { cause: error }
     );
   }
 

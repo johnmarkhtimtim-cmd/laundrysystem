@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { subscribeToServices } from "../../services/laundryService";
 import {
@@ -154,7 +154,9 @@ export default function BookNow() {
   const [serviceLoadError, setServiceLoadError] = useState("");
   const [pickup, setPickup] = useState("");
 
-  const [schedule, setSchedule] = useState("");
+  const [schedule, setSchedule] = useState(
+    () => getLocalDateKey() || new Date().toISOString().slice(0, 10)
+  );
   const [pickupWindow, setPickupWindow] = useState("Same day");
   const [capacityStatus, setCapacityStatus] = useState(null);
   const [capacityLoading, setCapacityLoading] = useState(false);
@@ -692,7 +694,7 @@ export default function BookNow() {
       window.LaundryMateAndroid.requestCurrentLocation();
       return;
     }
-    useCurrentLocation();
+    detectCurrentLocation();
   };
 
   const openDeviceLocationSettings = () => {
@@ -808,7 +810,18 @@ export default function BookNow() {
     );
   };
 
-  const useCurrentLocation = () => {
+  const locationCallbacksRef = useRef({
+    applyDetectedCoordinates,
+    requestGeolocationCoordinates,
+  });
+  useEffect(() => {
+    locationCallbacksRef.current = {
+      applyDetectedCoordinates,
+      requestGeolocationCoordinates,
+    };
+  });
+
+  const detectCurrentLocation = () => {
     setError("");
     setLocationPermissionIssue(false);
 
@@ -845,7 +858,7 @@ export default function BookNow() {
         Number.isFinite(Number(detail.latitude)) &&
         Number.isFinite(Number(detail.longitude))
       ) {
-        applyDetectedCoordinates(
+        locationCallbacksRef.current.applyDetectedCoordinates(
           Number(detail.latitude),
           Number(detail.longitude),
           Number(detail.accuracy)
@@ -879,7 +892,7 @@ export default function BookNow() {
           window.LaundryMateAndroid.requestCurrentLocation();
         }
         if (navigator.geolocation && window.isSecureContext) {
-          requestGeolocationCoordinates();
+          locationCallbacksRef.current.requestGeolocationCoordinates();
         }
       } else if (isLocating) {
         setIsLocating(false);
@@ -906,7 +919,7 @@ export default function BookNow() {
           window.LaundryMateAndroid.requestCurrentLocation();
         }
         if (navigator.geolocation && window.isSecureContext) {
-          requestGeolocationCoordinates();
+          locationCallbacksRef.current.requestGeolocationCoordinates();
         }
       }
     };
@@ -943,12 +956,8 @@ export default function BookNow() {
   // Live capacity — updates when admin changes max bookings (no refresh)
   useEffect(() => {
     if (!schedule) {
-      setCapacityStatus(null);
-      setCapacityLoading(false);
       return undefined;
     }
-
-    setCapacityLoading(true);
 
     return subscribeToDailyBookingCapacityStatus(
       schedule,
@@ -968,21 +977,22 @@ export default function BookNow() {
   useEffect(() => {
     return subscribeToGeneralSettings(
       (settings) => {
-        setPickupWindow(settings?.pickupWindow || "Same day");
+        const nextWindow = settings?.pickupWindow || "Same day";
+        setPickupWindow(nextWindow);
+        const todayKey =
+          getLocalDateKey() || new Date().toISOString().slice(0, 10);
+        const nextAllowed = String(nextWindow).toLowerCase().includes("next")
+          ? addDaysToDateKey(todayKey, 1) || todayKey
+          : todayKey;
+        setSchedule((current) =>
+          current === nextAllowed ? current : nextAllowed
+        );
       },
       (settingsError) => {
         console.error("Unable to load pickup window settings:", settingsError);
       }
     );
   }, []);
-
-  // Keep schedule locked to the single allowed pickup day
-  useEffect(() => {
-    if (!allowedPickupDate) return;
-    setSchedule((current) =>
-      current === allowedPickupDate ? current : allowedPickupDate
-    );
-  }, [allowedPickupDate]);
 
   // SUBMIT BOOKING
   // ====================================================
@@ -1671,7 +1681,7 @@ export default function BookNow() {
                 type="button"
                 className="location-button"
                 onClick={
-                  useCurrentLocation
+                  detectCurrentLocation
                 }
                 disabled={
                   isLocating

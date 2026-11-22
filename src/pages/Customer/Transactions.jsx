@@ -22,12 +22,8 @@ function Transactions() {
 
   useEffect(() => {
     if (!user?.uid) {
-      setTransactions([]);
-      setLoading(false);
       return undefined;
     }
-
-    setLoading(true);
 
     const unsubscribe = subscribeToCustomerPayments(
       user.uid,

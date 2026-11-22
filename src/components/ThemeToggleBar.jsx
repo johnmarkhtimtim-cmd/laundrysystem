@@ -7,31 +7,39 @@ import "../styles/ThemeToggleBar.css";
  * Day / Dark mode switch placed above each portal navbar,
  * plus an Android native permissions activator when running inside the APK.
  */
+function readAndroidPermissionState(bridge) {
+  if (!bridge) return false;
+  try {
+    if (typeof bridge.hasAllPermissions === "function") {
+      return Boolean(bridge.hasAllPermissions());
+    }
+    if (typeof bridge.hasLocationPermission === "function") {
+      return Boolean(bridge.hasLocationPermission());
+    }
+  } catch {
+    // ignore bridge read error
+  }
+  return false;
+}
+
 function ThemeToggleBar() {
   const { theme, setLight, setDark } = useTheme();
-  const [isAndroidApp, setIsAndroidApp] = useState(false);
-  const [allPermissionsGranted, setAllPermissionsGranted] = useState(false);
+  const isAndroidApp =
+    typeof window !== "undefined" && Boolean(window.LaundryMateAndroid);
+  const [allPermissionsGranted, setAllPermissionsGranted] = useState(() => {
+    const bridge =
+      typeof window !== "undefined" ? window.LaundryMateAndroid : null;
+    return readAndroidPermissionState(bridge);
+  });
 
   useEffect(() => {
     const bridge =
       typeof window !== "undefined" ? window.LaundryMateAndroid : null;
-    if (!bridge) return;
-
-    setIsAndroidApp(true);
+    if (!bridge) return undefined;
 
     const refreshStatus = () => {
-      try {
-        if (typeof bridge.hasAllPermissions === "function") {
-          setAllPermissionsGranted(Boolean(bridge.hasAllPermissions()));
-        } else if (typeof bridge.hasLocationPermission === "function") {
-          setAllPermissionsGranted(Boolean(bridge.hasLocationPermission()));
-        }
-      } catch {
-        // ignore bridge read error
-      }
+      setAllPermissionsGranted(readAndroidPermissionState(bridge));
     };
-
-    refreshStatus();
 
     const onPermStatus = (e) => {
       if (e?.detail && typeof e.detail.allGranted === "boolean") {

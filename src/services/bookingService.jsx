@@ -4,7 +4,6 @@ import {
   getDoc, 
   getDocs, 
   runTransaction,
-  setDoc, 
   updateDoc, 
   query, 
   where,
@@ -984,9 +983,18 @@ export const updateRiderBookingDetails = async (
       throw new Error("Weight can only be recorded for a ready pickup.");
     }
 
-    const paymentSnapshot = await getDocs(
-      query(collection(db, "payments"), where("booking_id", "==", bookingId))
-    );
+    let paymentDocs = [];
+    try {
+      const paymentSnapshot = await getDocs(
+        query(collection(db, "payments"), where("booking_id", "==", bookingId))
+      );
+      paymentDocs = paymentSnapshot.docs;
+    } catch {
+      const directPayment = await getDoc(doc(db, "payments", `pay_${bookingId}`));
+      if (directPayment.exists()) {
+        paymentDocs = [directPayment];
+      }
+    }
     const batch = writeBatch(db);
     batch.update(bookingRef, {
       weight: details.weight,
@@ -1006,7 +1014,7 @@ export const updateRiderBookingDetails = async (
       updated_at: serverTimestamp(),
     });
 
-    paymentSnapshot.docs.forEach((paymentDoc) => {
+    paymentDocs.forEach((paymentDoc) => {
       batch.update(paymentDoc.ref, {
         total_amount: details.total_amount,
         weight: details.weight,
@@ -1066,15 +1074,10 @@ export const subscribeToRiderBookings = (
   );
 
   let bookings = [];
-  let payments = [];
+  const paymentByBooking = new Map();
+  const paymentListeners = new Map();
 
   const emitBookings = () => {
-    const paymentByBooking = new Map(
-      payments
-        .filter((payment) => payment.booking_id)
-        .map((payment) => [String(payment.booking_id), payment])
-    );
-
     onBookings(
       bookings
         .map((booking) => attachPaymentToBooking(booking, paymentByBooking))
@@ -1091,29 +1094,82 @@ export const subscribeToRiderBookings = (
     onError(error);
   };
 
+  const syncAssignedPaymentListeners = (assignedBookings) => {
+    if (!includePayments) return;
+
+    const activeIds = new Set(
+      assignedBookings.map((booking) => String(booking.id)).filter(Boolean)
+    );
+
+    paymentListeners.forEach((unsubscribe, bookingId) => {
+      if (!activeIds.has(bookingId)) {
+        unsubscribe();
+        paymentListeners.delete(bookingId);
+        paymentByBooking.delete(bookingId);
+      }
+    });
+
+    activeIds.forEach((bookingId) => {
+      if (paymentListeners.has(bookingId)) return;
+
+      const paymentQuery = query(
+        collection(db, "payments"),
+        where("booking_id", "==", bookingId)
+      );
+
+      const unsubscribe = onSnapshot(
+        paymentQuery,
+        (snapshot) => {
+          if (snapshot.empty) {
+            paymentByBooking.delete(bookingId);
+          } else {
+            paymentByBooking.set(bookingId, mapPaymentDoc(snapshot.docs[0]));
+          }
+          emitBookings();
+        },
+        (paymentError) => {
+          // Fall back to direct deterministic payment doc if list rule is restricted
+          const directRef = doc(db, "payments", `pay_${bookingId}`);
+          const fallbackUnsubscribe = onSnapshot(
+            directRef,
+            (docSnap) => {
+              if (docSnap.exists()) {
+                paymentByBooking.set(bookingId, mapPaymentDoc(docSnap));
+              } else {
+                paymentByBooking.delete(bookingId);
+              }
+              emitBookings();
+            },
+            (fallbackErr) => {
+              console.warn(
+                `Unable to load payment for assigned booking ${bookingId}:`,
+                paymentError,
+                fallbackErr
+              );
+            }
+          );
+          paymentListeners.set(bookingId, fallbackUnsubscribe);
+        }
+      );
+
+      paymentListeners.set(bookingId, unsubscribe);
+    });
+  };
+
   const bookingsUnsubscribe = onSnapshot(
     q,
     (querySnapshot) => {
       bookings = querySnapshot.docs.map(mapBookingDoc);
+      syncAssignedPaymentListeners(bookings);
       emitBookings();
     },
     handleError
   );
 
-  const paymentsUnsubscribe = includePayments
-    ? onSnapshot(
-        collection(db, "payments"),
-        (snapshot) => {
-          payments = snapshot.docs.map(mapPaymentDoc);
-          emitBookings();
-        },
-        handleError
-      )
-    : () => {};
-
   return () => {
     bookingsUnsubscribe();
-    paymentsUnsubscribe();
+    paymentListeners.forEach((unsubscribe) => unsubscribe());
+    paymentListeners.clear();
   };
 };
 

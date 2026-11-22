@@ -11,7 +11,7 @@ import {
   updateCustomerPayment,
 } from "../../services/paymentService";
 import { uploadPaymentReceipt } from "../../services/fileUploadService";
-import { validateUserUpload } from "../../utils/fileValidation";
+import { materializeFileInMemory, validateUserUpload } from "../../utils/fileValidation";
 import { extractGcashReceiptFields } from "../../utils/gcashReceiptOcr";
 import { formatShortBookingId, getBookingId } from "../../utils/bookingId";
 import { subscribeToServices } from "../../services/laundryService";
@@ -98,14 +98,17 @@ function Payment() {
         isDraft: true,
       };
     }
-    return null;
+    return readStoredBookingDraft(user?.uid);
   });
   const [selectedBookingId, setSelectedBookingId] = useState(() =>
-    location.state?.pendingBookingDraft ? DRAFT_BOOKING_ID : ""
+    location.state?.pendingBookingDraft || readStoredBookingDraft(user?.uid)
+      ? DRAFT_BOOKING_ID
+      : ""
   );
-  const [booking, setBooking] = useState(null);
+  const selectedBookingIdRef = useRef(selectedBookingId);
   const isSubmittingRef = useRef(false);
   const draftCreatedBookingIdRef = useRef(null);
+  const [draftCreatedBookingId, setDraftCreatedBookingId] = useState(null);
   const [payments, setPayments] = useState([]);
   const [services, setServices] = useState([]);
 
@@ -160,38 +163,86 @@ function Payment() {
   const [successMessage, setSuccessMessage] =
     useState("");
 
-  useEffect(() => {
-    if (!user?.uid) {
-      setPendingBookingDraft(null);
-      return;
-    }
+  const activePendingDraft = useMemo(() => {
+    if (!user?.uid) return null;
     const fromState = location.state?.pendingBookingDraft;
     if (fromState && Array.isArray(fromState.services) && fromState.services.length > 0) {
-      const normalizedDraft = {
+      return {
         ...fromState,
         id: DRAFT_BOOKING_ID,
         booking_id: DRAFT_BOOKING_ID,
         isDraft: true,
       };
-      setPendingBookingDraft(normalizedDraft);
-      setSelectedBookingId(DRAFT_BOOKING_ID);
-      return;
     }
-    const stored = readStoredBookingDraft(user.uid);
-    if (stored) {
-      setPendingBookingDraft(stored);
-      setSelectedBookingId((current) => current || DRAFT_BOOKING_ID);
-    }
-  }, [user?.uid, location.state]);
+    return pendingBookingDraft;
+  }, [user?.uid, location.state, pendingBookingDraft]);
 
   const selectableBookings = useMemo(() => {
-    return pendingBookingDraft ? [pendingBookingDraft, ...bookings] : bookings;
-  }, [pendingBookingDraft, bookings]);
+    return activePendingDraft ? [activePendingDraft, ...bookings] : bookings;
+  }, [activePendingDraft, bookings]);
+
+  const booking = useMemo(() => {
+    if (!selectedBookingId) return null;
+    return (
+      selectableBookings.find(
+        (item) => String(getBookingId(item)) === String(selectedBookingId)
+      ) || null
+    );
+  }, [selectedBookingId, selectableBookings]);
+
+  const syncPaymentFormForSelection = useCallback(
+    (nextBookingId, nextSelectable, nextPayments) => {
+      if (!nextBookingId) return;
+
+      const matched = nextSelectable.find(
+        (item) => String(getBookingId(item)) === String(nextBookingId)
+      );
+
+      const relatedPayment =
+        matched?.isDraft
+          ? null
+          : nextPayments.find(
+              (payment) =>
+                String(getBookingId(payment)) === String(nextBookingId) &&
+                ["pending", "rejected"].includes(
+                  String(payment.paymentStatus || payment.status || "").toLowerCase()
+                )
+            );
+
+      ocrRunIdRef.current += 1;
+      manualEditsRef.current = {
+        gcashCustomerName: false,
+        referenceNumber: false,
+      };
+      setOcrStatus("");
+      setOcrStatusTone("neutral");
+      setOcrProgress(0);
+
+      if (relatedPayment) {
+        setEditingPayment(relatedPayment);
+        setPaymentMethod(relatedPayment.paymentMethod || "GCash");
+        setGcashCustomerName(relatedPayment.gcashCustomerName || "");
+        setReferenceNumber(relatedPayment.referenceNumber || "");
+        setReceiptFile(null);
+        setReceiptPreview(relatedPayment.receiptUrl || "");
+        setReceiptError("");
+      } else {
+        setEditingPayment(null);
+        setPaymentMethod("GCash");
+        setGcashCustomerName("");
+        setReferenceNumber("");
+        setReceiptFile(null);
+        setReceiptPreview("");
+        setReceiptError("");
+      }
+    },
+    []
+  );
 
   const loadData = useCallback(async () => {
     if (!user?.uid) {
       setBookings([]);
-      setBooking(null);
+      selectedBookingIdRef.current = "";
       setSelectedBookingId("");
       setPayments([]);
       return;
@@ -208,29 +259,46 @@ function Payment() {
         getDateMilliseconds(a.booking_date || a.created_at || a.createdAt)
     );
 
+    const normalizedPayments = storedPayments.map(normalizePayment);
     setBookings(sortedBookings);
-    setPayments(storedPayments.map(normalizePayment));
+    setPayments(normalizedPayments);
 
-    const hasDraft = Boolean(
-      location.state?.pendingBookingDraft || readStoredBookingDraft(user.uid)
-    );
+    const fromState = location.state?.pendingBookingDraft;
+    const draftItem =
+      fromState && Array.isArray(fromState.services) && fromState.services.length > 0
+        ? {
+            ...fromState,
+            id: DRAFT_BOOKING_ID,
+            booking_id: DRAFT_BOOKING_ID,
+            isDraft: true,
+          }
+        : readStoredBookingDraft(user.uid);
 
-    setSelectedBookingId((currentId) => {
-      if (currentId === DRAFT_BOOKING_ID && hasDraft) {
-        return DRAFT_BOOKING_ID;
-      }
-      if (
-        currentId &&
-        sortedBookings.some(
-          (item) => String(getBookingId(item)) === String(currentId)
-        )
-      ) {
-        return currentId;
-      }
-      if (hasDraft) return DRAFT_BOOKING_ID;
-      return sortedBookings[0] ? String(getBookingId(sortedBookings[0])) : "";
-    });
-  }, [user, location.state]);
+    const nextSelectable = draftItem ? [draftItem, ...sortedBookings] : sortedBookings;
+    const hasDraft = Boolean(draftItem);
+
+    let resolvedSelection = selectedBookingIdRef.current;
+    if (resolvedSelection === DRAFT_BOOKING_ID && hasDraft) {
+      resolvedSelection = DRAFT_BOOKING_ID;
+    } else if (
+      resolvedSelection &&
+      sortedBookings.some(
+        (item) => String(getBookingId(item)) === String(resolvedSelection)
+      )
+    ) {
+      // keep current selection
+    } else if (hasDraft) {
+      resolvedSelection = DRAFT_BOOKING_ID;
+    } else {
+      resolvedSelection = sortedBookings[0]
+        ? String(getBookingId(sortedBookings[0]))
+        : "";
+    }
+
+    selectedBookingIdRef.current = resolvedSelection;
+    setSelectedBookingId(resolvedSelection);
+    syncPaymentFormForSelection(resolvedSelection, nextSelectable, normalizedPayments);
+  }, [user, location.state, syncPaymentFormForSelection]);
 
   // =========================================================
   // LOAD DATA
@@ -246,7 +314,6 @@ function Payment() {
         console.error("Failed to load payment data:", error);
         if (isMounted) {
           setBookings([]);
-          setBooking(null);
           setPayments([]);
           setError("Unable to load your booking or payment records. Please refresh to try again.");
         }
@@ -307,56 +374,7 @@ function Payment() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [qrMaximized]);
 
-  useEffect(() => {
-    if (!selectedBookingId) {
-      setBooking(null);
-      return;
-    }
 
-    const matched = selectableBookings.find(
-      (item) => String(getBookingId(item)) === String(selectedBookingId)
-    );
-    setBooking(matched || null);
-
-    const relatedPayment =
-      matched?.isDraft
-        ? null
-        : payments.find(
-            (payment) =>
-              String(getBookingId(payment)) === String(selectedBookingId) &&
-              ["pending", "rejected"].includes(
-                String(payment.paymentStatus || payment.status || "").toLowerCase()
-              )
-          );
-
-    ocrRunIdRef.current += 1;
-    manualEditsRef.current = {
-      gcashCustomerName: false,
-      referenceNumber: false,
-    };
-    setOcrStatus("");
-    setOcrStatusTone("neutral");
-    setOcrProgress(0);
-
-    if (relatedPayment) {
-      setEditingPayment(relatedPayment);
-      setPaymentMethod(relatedPayment.paymentMethod || "GCash");
-      setGcashCustomerName(relatedPayment.gcashCustomerName || "");
-      setReferenceNumber(relatedPayment.referenceNumber || "");
-      // Show previously uploaded receipt while editing (unless a new file is chosen)
-      setReceiptFile(null);
-      setReceiptPreview(relatedPayment.receiptUrl || "");
-      setReceiptError("");
-    } else {
-      setEditingPayment(null);
-      setPaymentMethod("GCash");
-      setGcashCustomerName("");
-      setReferenceNumber("");
-      setReceiptFile(null);
-      setReceiptPreview("");
-      setReceiptError("");
-    }
-  }, [selectedBookingId, selectableBookings, payments]);
 
   // =========================================================
   // LOAD LIVE SERVICE PRICING (ADMIN SERVICES/PRICING MODULE)
@@ -708,14 +726,31 @@ function Payment() {
       return;
     }
 
+    let safeFile;
+    try {
+      safeFile = await materializeFileInMemory(
+        validation.file,
+        validation.safeName,
+        validation.mime
+      );
+    } catch (readErr) {
+      console.error("Unable to buffer selected receipt:", readErr);
+      clearReceiptSelection();
+      setReceiptError(
+        "Unable to read the selected image. Please try choosing it again."
+      );
+      event.target.value = "";
+      return;
+    }
+
     const runId = ocrRunIdRef.current + 1;
     ocrRunIdRef.current = runId;
 
     setReceiptPreview((current) => {
       if (current && current.startsWith("blob:")) URL.revokeObjectURL(current);
-      return URL.createObjectURL(validation.file);
+      return URL.createObjectURL(safeFile);
     });
-    setReceiptFile(validation.file);
+    setReceiptFile(safeFile);
     if (error) setError("");
 
     // Auto-fill name + reference from receipt via browser OCR (no Firebase needed)
@@ -723,7 +758,7 @@ function Payment() {
     setOcrStatusTone("neutral");
     try {
       const extracted = await extractGcashReceiptFields(
-        validation.file,
+        safeFile,
         (pct) => {
           if (ocrRunIdRef.current !== runId) return;
           setOcrProgress(pct);
@@ -921,12 +956,10 @@ function Payment() {
 
       // Create the booking in Firestore ONLY when Confirm Payment is clicked
       if (isDraftBooking && !bookingId) {
-        const {
-          id: _draftId,
-          booking_id: _draftBookingId,
-          isDraft: _isDraft,
-          ...draftPayload
-        } = booking;
+        const draftPayload = { ...booking };
+        delete draftPayload.id;
+        delete draftPayload.booking_id;
+        delete draftPayload.isDraft;
         bookingId = await createBooking(user.uid, "", {
           ...draftPayload,
           total_amount: calculatedTotal,
@@ -938,6 +971,8 @@ function Payment() {
           status: "Pending",
         });
         draftCreatedBookingIdRef.current = bookingId;
+        setDraftCreatedBookingId(bookingId);
+        clearStoredBookingDraft(user.uid);
       }
 
       const paymentDetails = {
@@ -983,6 +1018,7 @@ function Payment() {
         clearStoredBookingDraft(user.uid);
         setPendingBookingDraft(null);
         draftCreatedBookingIdRef.current = null;
+        setDraftCreatedBookingId(null);
       }
 
       const paymentData = {
@@ -1193,7 +1229,12 @@ function Payment() {
           <select
             id="bookingPicker"
             value={selectedBookingId}
-            onChange={(event) => setSelectedBookingId(event.target.value)}
+            onChange={(event) => {
+              const nextId = event.target.value;
+              selectedBookingIdRef.current = nextId;
+              setSelectedBookingId(nextId);
+              syncPaymentFormForSelection(nextId, selectableBookings, payments);
+            }}
           >
             {selectableBookings.map((item) => {
               const id = getBookingId(item);
@@ -1316,8 +1357,20 @@ function Payment() {
               Booking ID
             </span>
 
-            <strong title={`#${getBookingId(booking)}`}>
-              #{formatShortBookingId(booking)}
+            <strong
+              title={
+                booking.isDraft
+                  ? draftCreatedBookingId
+                    ? `#${getBookingId(draftCreatedBookingId)}`
+                    : "A unique Booking ID will be generated when you confirm payment"
+                  : `#${getBookingId(booking)}`
+              }
+            >
+              {booking.isDraft
+                ? draftCreatedBookingId
+                  ? `#${formatShortBookingId(draftCreatedBookingId)}`
+                  : "Assigned on confirm"
+                : `#${formatShortBookingId(booking)}`}
             </strong>
 
           </div>

@@ -14,6 +14,10 @@ function Landing() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [showSignIn, setShowSignIn] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const isSignInOpen =
+    showSignIn ||
+    searchParams.get("signin") === "1" ||
+    (sessionExpired && !user);
   const [downloadingApk, setDownloadingApk] = useState(false);
 
   const handleDownloadApk = async (event) => {
@@ -72,19 +76,7 @@ function Landing() {
     }
   };
 
-  useEffect(() => {
-    if (searchParams.get("signin") === "1") {
-      setShowSignIn(true);
-    }
-  }, [searchParams]);
 
-  // After idle logout, bring the user back to sign-in with a clear message
-  useEffect(() => {
-    if (sessionExpired && !user) {
-      setShowSignIn(true);
-      setSearchParams({ signin: "1" }, { replace: true });
-    }
-  }, [sessionExpired, user, setSearchParams]);
 
   useEffect(() => {
     const redirectUser = async () => {
@@ -338,7 +330,7 @@ function Landing() {
         </div>
       </footer>
 
-      <SignInModal open={showSignIn} onClose={closeSignIn} />
+      <SignInModal open={isSignInOpen} onClose={closeSignIn} />
     </div>
   );
 }

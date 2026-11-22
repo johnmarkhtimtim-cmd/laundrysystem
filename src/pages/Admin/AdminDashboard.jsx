@@ -316,7 +316,19 @@ function DonutChart({ segments }) {
   const circumference = 2 * Math.PI * radius;
   const total = segments.reduce((sum, item) => sum + item.value, 0) || 1;
 
-  let offset = 0;
+  const segmentCircles = segments.reduce(
+    (acc, segment) => {
+      const length = (segment.value / total) * circumference;
+      acc.items.push({
+        ...segment,
+        length,
+        offset: acc.offset,
+      });
+      acc.offset += length;
+      return acc;
+    },
+    { offset: 0, items: [] }
+  ).items;
 
   return (
     <div className="donut-layout">
@@ -329,26 +341,21 @@ function DonutChart({ segments }) {
           stroke="#eef2f7"
           strokeWidth={stroke}
         />
-        {segments.map((segment) => {
-          const length = (segment.value / total) * circumference;
-          const circle = (
-            <circle
-              key={segment.label}
-              cx={size / 2}
-              cy={size / 2}
-              r={radius}
-              fill="none"
-              stroke={segment.color}
-              strokeWidth={stroke}
-              strokeDasharray={`${length} ${circumference - length}`}
-              strokeDashoffset={-offset}
-              strokeLinecap="butt"
-              transform={`rotate(-90 ${size / 2} ${size / 2})`}
-            />
-          );
-          offset += length;
-          return circle;
-        })}
+        {segmentCircles.map((segment) => (
+          <circle
+            key={segment.label}
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            fill="none"
+            stroke={segment.color}
+            strokeWidth={stroke}
+            strokeDasharray={`${segment.length} ${circumference - segment.length}`}
+            strokeDashoffset={-segment.offset}
+            strokeLinecap="butt"
+            transform={`rotate(-90 ${size / 2} ${size / 2})`}
+          />
+        ))}
         <text
           x="50%"
           y="48%"

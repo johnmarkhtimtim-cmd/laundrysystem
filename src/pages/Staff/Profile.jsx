@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   User,
   Mail,
@@ -46,8 +46,10 @@ function Profile() {
 
   const { user, updateUser } = useAuth();
 
-  const [profile, setProfile] = useState(() => buildProfile(user));
-  const [formData, setFormData] = useState(profile);
+  const derivedProfile = useMemo(() => buildProfile(user), [user]);
+  const [draftFormData, setDraftFormData] = useState(null);
+  const profile = derivedProfile;
+  const formData = isEditing && draftFormData ? draftFormData : derivedProfile;
 
   const [passwordData, setPasswordData] = useState({
     currentPassword: "",
@@ -55,16 +57,8 @@ function Profile() {
     confirmPassword: "",
   });
 
-  useEffect(() => {
-    const nextProfile = buildProfile(user);
-    setProfile(nextProfile);
-    if (!isEditing) {
-      setFormData(nextProfile);
-    }
-  }, [user, isEditing]);
-
   const handleChange = (e) => {
-    setFormData({
+    setDraftFormData({
       ...formData,
       [e.target.name]:
         e.target.name === "phone"
@@ -84,12 +78,12 @@ function Profile() {
   };
 
   const handleEdit = () => {
-    setFormData(profile);
+    setDraftFormData(profile);
     setIsEditing(true);
   };
 
   const handleCancel = () => {
-    setFormData(profile);
+    setDraftFormData(null);
     setIsEditing(false);
   };
 
@@ -116,7 +110,7 @@ function Profile() {
       await updateUserProfile(user.uid, changes);
       updateUser(changes);
 
-      setProfile(formData);
+      setDraftFormData(null);
       setIsEditing(false);
       alert("Profile updated successfully!");
     } catch (error) {

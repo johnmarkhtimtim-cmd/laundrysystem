@@ -21,31 +21,31 @@ export function AuthProvider({ children }) {
     const idleCleanupRef = useRef(null);
     const handlingIdleRef = useRef(false);
 
-    const stopIdleWatcher = () => {
-        if (idleCleanupRef.current) {
-            idleCleanupRef.current();
-            idleCleanupRef.current = null;
-        }
-    };
-
-    const handleIdleTimeout = async () => {
-        if (handlingIdleRef.current) return;
-        handlingIdleRef.current = true;
-
-        try {
-            stopIdleWatcher();
-            setSessionExpired(true);
-            clearSession();
-            await logout();
-            setUser(null);
-        } catch (error) {
-            console.error("Failed to end idle session:", error);
-        } finally {
-            handlingIdleRef.current = false;
-        }
-    };
-
     useEffect(() => {
+        const stopIdleWatcher = () => {
+            if (idleCleanupRef.current) {
+                idleCleanupRef.current();
+                idleCleanupRef.current = null;
+            }
+        };
+
+        const handleIdleTimeout = async () => {
+            if (handlingIdleRef.current) return;
+            handlingIdleRef.current = true;
+
+            try {
+                stopIdleWatcher();
+                setSessionExpired(true);
+                clearSession();
+                await logout();
+                setUser(null);
+            } catch (error) {
+                console.error("Failed to end idle session:", error);
+            } finally {
+                handlingIdleRef.current = false;
+            }
+        };
+
         const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
             stopIdleWatcher();
 

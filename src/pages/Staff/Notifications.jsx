@@ -17,12 +17,8 @@ function StaffNotifications() {
 
   useEffect(() => {
     if (!user?.uid) {
-      setLoading(false);
       return undefined;
     }
-
-    setLoading(true);
-    setError("");
 
     const unsubscribe = subscribeToUserNotifications(
       user.uid,

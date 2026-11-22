@@ -166,8 +166,9 @@ export const createPayment = async (
     await runTransaction(db, async (transaction) => {
       const existingSnap = await transaction.get(paymentRef);
       if (existingSnap.exists()) {
+        const existingData = existingSnap.data() || {};
         const currentStatus = String(
-          existingSnap.data()?.payment_status || ""
+          existingData.payment_status || ""
         ).toLowerCase();
         if (currentStatus === "paid") {
           throw new Error("This booking is already marked as paid.");
@@ -175,6 +176,25 @@ export const createPayment = async (
         if (currentStatus === "pending") {
           throw new Error("This booking already has a pending payment.");
         }
+
+        // Resubmitting after a Rejected payment must use update() with only
+        // the keys permitted by Firestore security rules.
+        transaction.update(paymentRef, {
+          amount: numericAmount,
+          payment_method: paymentMethod,
+          payment_status: status,
+          gcash_customer_name: details.gcash_customer_name || "",
+          reference_number: details.reference_number || "",
+          receipt_url: details.receipt_url || existingData.receipt_url || "",
+          receipt_path: details.receipt_path || existingData.receipt_path || "",
+          receipt_name: details.receipt_name || existingData.receipt_name || "",
+          receipt_content_type:
+            details.receipt_content_type || existingData.receipt_content_type || "",
+          receipt_size:
+            details.receipt_size ?? existingData.receipt_size ?? null,
+          updated_at: serverTimestamp(),
+        });
+        return;
       }
 
       transaction.set(paymentRef, payment);

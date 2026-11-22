@@ -30,7 +30,7 @@ function getExtension(filename = "") {
 export function sanitizeFileName(filename = "") {
   const base = String(filename).split(/[/\\]/).pop() || "upload";
   const cleaned = base
-    .replace(/[^\w.\-]+/g, "_")
+    .replace(/[^\w.-]+/g, "_")
     .replace(/_{2,}/g, "_")
     .replace(/^\.+/, "")
     .slice(0, 80);
@@ -56,9 +56,39 @@ function hasDangerousName(filename = "") {
   return false;
 }
 
+async function readSliceAsArrayBuffer(blob) {
+  if (typeof blob.arrayBuffer === "function") {
+    try {
+      return await blob.arrayBuffer();
+    } catch {
+      // Fall back to FileReader on mobile WebViews / content:// URIs
+    }
+  }
+
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () =>
+      reject(reader.error || new Error("Unable to read file bytes."));
+    reader.readAsArrayBuffer(blob);
+  });
+}
+
 async function readFileHeader(file, length = 16) {
-  const buffer = await file.slice(0, length).arrayBuffer();
+  const buffer = await readSliceAsArrayBuffer(file.slice(0, length));
   return new Uint8Array(buffer);
+}
+
+/**
+ * Copy a browser File into an in-memory File so mobile content:// URIs
+ * cannot expire or become unreadable before form submission.
+ */
+export async function materializeFileInMemory(file, safeName, mime) {
+  const buffer = await readSliceAsArrayBuffer(file);
+  return new File([buffer], safeName || file.name || "receipt.jpg", {
+    type: mime || file.type || "image/jpeg",
+    lastModified: Date.now(),
+  });
 }
 
 function matchesMagic(bytes, mime) {
@@ -80,6 +110,21 @@ function matchesMagic(bytes, mime) {
   const signature = MAGIC_SIGNATURES.find((item) => item.mime === mime);
   if (!signature) return false;
   return signature.bytes.every((value, index) => bytes[index] === value);
+}
+
+function detectMagicMime(bytes, allowedMimeTypes) {
+  for (const mime of allowedMimeTypes) {
+    if (matchesMagic(bytes, mime)) {
+      return mime;
+    }
+  }
+  return "";
+}
+
+function normalizeDeclaredMime(rawType = "") {
+  const lower = String(rawType || "").toLowerCase().trim();
+  if (lower === "image/jpg") return "image/jpeg";
+  return lower;
 }
 
 /**
@@ -115,37 +160,26 @@ export async function validateUserUpload(file, rules = PAYMENT_RECEIPT_RULES) {
   }
 
   const extension = getExtension(file.name);
-  if (!rules.allowedExtensions.includes(extension)) {
+  if (extension && !rules.allowedExtensions.includes(extension)) {
     return {
       ok: false,
       error: "Only JPG, PNG, or WEBP image files are allowed.",
     };
   }
 
-  const mime = String(file.type || "").toLowerCase();
-  if (!rules.allowedMimeTypes.includes(mime)) {
+  const declaredMime = normalizeDeclaredMime(file.type);
+  if (declaredMime && !rules.allowedMimeTypes.includes(declaredMime)) {
     return {
       ok: false,
       error: "Unsupported file type. Upload a JPG, PNG, or WEBP image.",
     };
   }
 
-  // Extension must agree with declared MIME type
-  const mimeExtMap = {
-    "image/jpeg": ["jpg", "jpeg"],
-    "image/png": ["png"],
-    "image/webp": ["webp"],
-  };
-  if (!(mimeExtMap[mime] || []).includes(extension)) {
-    return {
-      ok: false,
-      error: "File extension does not match the image type.",
-    };
-  }
-
+  let resolvedMime;
   try {
     const header = await readFileHeader(file, 16);
-    if (!matchesMagic(header, mime)) {
+    resolvedMime = detectMagicMime(header, rules.allowedMimeTypes);
+    if (!resolvedMime) {
       return {
         ok: false,
         error: "File content is not a valid image. Please upload a real JPG, PNG, or WEBP file.",
@@ -159,10 +193,20 @@ export async function validateUserUpload(file, rules = PAYMENT_RECEIPT_RULES) {
     };
   }
 
+  const extByMime = {
+    "image/jpeg": "jpg",
+    "image/png": "png",
+    "image/webp": "webp",
+  };
+  let safeName = sanitizeFileName(file.name);
+  if (!extension && safeName.endsWith(".bin")) {
+    safeName = safeName.replace(/\.bin$/, `.${extByMime[resolvedMime] || "jpg"}`);
+  }
+
   return {
     ok: true,
     file,
-    safeName: sanitizeFileName(file.name),
-    mime,
+    safeName,
+    mime: resolvedMime,
   };
 }

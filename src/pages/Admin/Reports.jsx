@@ -10,7 +10,7 @@ import {
   FileText,
 } from "lucide-react";
 import { subscribeToAllBookings } from "../../services/bookingService";
-import { formatBookingIdLabel, getBookingId } from "../../utils/bookingId";
+import { formatBookingIdLabel } from "../../utils/bookingId";
 
 import "../../styles/Report.css";
 
@@ -256,8 +256,6 @@ function Report() {
   ======================================================= */
 
   useEffect(() => {
-    setLoading(true);
-
     const unsubscribe = subscribeToAllBookings(
       (data) => {
         setBookings(data);

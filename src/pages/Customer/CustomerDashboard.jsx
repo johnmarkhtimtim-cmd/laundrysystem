@@ -97,28 +97,21 @@ function CustomerDashboard() {
   const [services, setServices] = useState([]);
   const [servicesLoading, setServicesLoading] = useState(true);
   const [servicesError, setServicesError] = useState("");
-  const [paymentNotice, setPaymentNotice] = useState("");
+  const [paymentNotice, setPaymentNotice] = useState(() =>
+    location.state?.paymentNotice ? String(location.state.paymentNotice) : ""
+  );
 
   useEffect(() => {
-    const notice = location.state?.paymentNotice;
-    if (!notice) return undefined;
-
-    setPaymentNotice(String(notice));
+    if (!location.state?.paymentNotice) return undefined;
     navigate(location.pathname, { replace: true, state: null });
-
     const timer = window.setTimeout(() => setPaymentNotice(""), 4500);
     return () => window.clearTimeout(timer);
   }, [location.pathname, location.state, navigate]);
 
   useEffect(() => {
     if (!customerId) {
-      setBookings([]);
-      setBookingsLoading(false);
-      setBookingsError("");
       return undefined;
     }
-
-    setBookingsLoading(true);
 
     const unsubscribe = subscribeToCustomerBookings(
       customerId,
@@ -184,17 +177,24 @@ function CustomerDashboard() {
     };
   }, []);
 
+  const visibleBookings = useMemo(
+    () => (customerId ? bookings : []),
+    [customerId, bookings]
+  );
+  const isBookingsLoading = customerId ? bookingsLoading : false;
+  const visibleBookingsError = customerId ? bookingsError : "";
+
   const activeBookings = useMemo(
     () =>
-      bookings.filter(
+      visibleBookings.filter(
         (booking) =>
           !COMPLETED_STATUSES.has(
             String(booking.status || "Pending").toLowerCase()
           )
       ),
-    [bookings]
+    [visibleBookings]
   );
-  const recentBookings = bookings.slice(0, 4);
+  const recentBookings = visibleBookings.slice(0, 4);
 
   const handleBookService = (serviceName) => {
     const destination = serviceName
@@ -244,7 +244,7 @@ function CustomerDashboard() {
             <span className="stat-icon" aria-hidden="true">🧺</span>
           </div>
           <strong className="stat-value">
-            {bookingsLoading ? "—" : activeBookings.length}
+            {isBookingsLoading ? "—" : activeBookings.length}
           </strong>
           <span className="stat-change">Orders in progress or scheduled</span>
         </div>
@@ -254,7 +254,7 @@ function CustomerDashboard() {
             <span className="stat-icon" aria-hidden="true">📋</span>
           </div>
           <strong className="stat-value">
-            {bookingsLoading ? "—" : bookings.length}
+            {isBookingsLoading ? "—" : visibleBookings.length}
           </strong>
           <span className="stat-change">Your laundry orders</span>
         </div>
@@ -286,11 +286,11 @@ function CustomerDashboard() {
             </button>
           </div>
 
-          {bookingsLoading ? (
+          {isBookingsLoading ? (
             <p className="dashboard-feedback" role="status">Loading your bookings…</p>
-          ) : bookingsError ? (
+          ) : visibleBookingsError ? (
             <div className="dashboard-feedback dashboard-error" role="alert">
-              <p>{bookingsError}</p>
+              <p>{visibleBookingsError}</p>
               <button
                 type="button"
                 className="text-btn"

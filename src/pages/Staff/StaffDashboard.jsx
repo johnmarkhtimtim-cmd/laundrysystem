@@ -215,9 +215,6 @@ function StaffDashboard() {
   useEffect(() => {
     if (!user?.uid) return undefined;
 
-    setLoading(true);
-    setActionError("");
-
     return subscribeToStaffBookings(
       user.uid,
       (staffBookings) => {
@@ -326,6 +323,7 @@ function StaffDashboard() {
           className="refresh-dashboard-btn"
           onClick={() => {
             setLoading(true);
+            setActionError("");
             setRefreshKey((key) => key + 1);
           }}
           title="Refresh dashboard"

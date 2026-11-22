@@ -10,6 +10,7 @@ import {
 } from "../../services/paymentService";
 import {
   GCASH_QR_RULES,
+  materializeFileInMemory,
   validateUserUpload,
 } from "../../utils/fileValidation";
 
@@ -120,12 +121,28 @@ export default function Settings() {
       return;
     }
 
+    let safeFile;
+    try {
+      safeFile = await materializeFileInMemory(
+        validation.file,
+        validation.safeName,
+        validation.mime
+      );
+    } catch (readErr) {
+      console.error("Unable to buffer selected QR image:", readErr);
+      clearSelectedQr();
+      setQrError(
+        "Unable to read the selected image. Please try choosing it again."
+      );
+      return;
+    }
+
     if (qrPreview && qrPreview.startsWith("blob:")) {
       URL.revokeObjectURL(qrPreview);
     }
 
-    setQrFile(validation.file);
-    setQrPreview(URL.createObjectURL(validation.file));
+    setQrFile(safeFile);
+    setQrPreview(URL.createObjectURL(safeFile));
   };
 
   const handleSavePaymentSettings = async () => {

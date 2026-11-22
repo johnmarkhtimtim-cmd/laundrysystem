@@ -107,13 +107,8 @@ function MyBooking() {
 
   useEffect(() => {
     if (!user?.uid) {
-      setBookings([]);
-      setPayments([]);
-      setLoading(false);
       return undefined;
     }
-
-    setLoading(true);
     let bookingsReady = false;
     let paymentsReady = false;
 

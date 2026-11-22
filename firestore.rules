@@ -6,11 +6,6 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function userRole(role) {
-      return signedIn()
-        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == role;
-    }
-
     function admin() {
       // Accept common role casings used in seed/admin accounts
       return signedIn()
@@ -20,12 +15,30 @@ service cloud.firestore {
         ];
     }
 
+    function customer() {
+      // Match userService.jsx default: missing/empty role or common casings count as customer
+      return signedIn()
+        && (!exists(/databases/$(database)/documents/users/$(request.auth.uid))
+          || !('role' in get(/databases/$(database)/documents/users/$(request.auth.uid)).data)
+          || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in [
+            'customer', 'Customer', 'CUSTOMER', '', null
+          ]);
+    }
+
     function staff() {
-      return userRole('staff');
+      return signedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in [
+          'staff', 'Staff', 'STAFF'
+        ];
     }
 
     function rider() {
-      return userRole('rider');
+      return signedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in [
+          'rider', 'Rider', 'RIDER'
+        ];
     }
 
     function customerOwnsBooking(bookingId) {
@@ -39,7 +52,7 @@ service cloud.firestore {
       allow read: if signedIn()
         && (request.auth.uid == userId || admin()
           || (staff() && resource.data.role == 'rider')
-          || (userRole('customer') && resource.data.role == 'staff'));
+          || (customer() && resource.data.role == 'staff'));
       // Self-register, or admin creating staff/rider accounts
       allow create: if signedIn()
         && (request.auth.uid == userId || admin());
@@ -67,7 +80,7 @@ service cloud.firestore {
     }
 
     match /services/{serviceId} {
-      allow read: if admin() || userRole('customer');
+      allow read: if admin() || customer();
       allow create, update, delete: if admin();
     }
 
@@ -81,7 +94,7 @@ service cloud.firestore {
         && request.resource.data.staff_id == null
         && request.resource.data.rider_id == null;
       allow read: if admin()
-        || (userRole('customer') && resource.data.customer_id == request.auth.uid)
+        || (customer() && resource.data.customer_id == request.auth.uid)
         || (staff() && (resource.data.staff_id == request.auth.uid || resource.data.status == 'Pending'))
         || (staff() && resource.data.rider_id is string)
         || (rider() && resource.data.rider_id == request.auth.uid);
@@ -103,7 +116,15 @@ service cloud.firestore {
               && get(/databases/$(database)/documents/users/$(request.resource.data.rider_id)).data.role == 'rider')
             || (request.resource.data.status == 'Declined'
               && request.resource.data.get('rider_id', null) == null)))
-        || (userRole('customer')
+        || (staff()
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'payment_status',
+            'payment_method',
+            'updated_at'
+          ])
+          && request.resource.data.payment_method in ['GCash', 'Cash']
+          && request.resource.data.payment_status in ['Pending', 'Paid', 'Rejected', 'Unpaid'])
+        || (customer()
           && resource.data.customer_id == request.auth.uid
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
             'payment_status',
@@ -111,7 +132,7 @@ service cloud.firestore {
             'updated_at'
           ])
           && request.resource.data.payment_method in ['GCash', 'Cash']
-          && request.resource.data.payment_status in ['Pending', 'Paid', 'Unpaid'])
+          && request.resource.data.payment_status in ['Pending', 'Paid', 'Rejected', 'Unpaid'])
         || (rider() && resource.data.rider_id == request.auth.uid
           && request.resource.data.rider_id == request.auth.uid
           && ((request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updated_at'])
@@ -152,17 +173,20 @@ service cloud.firestore {
         || (rider()
           && resource.data.booking_id is string
           && exists(/databases/$(database)/documents/bookings/$(resource.data.booking_id))
-          && get(/databases/$(database)/documents/bookings/$(resource.data.booking_id)).data.rider_id == request.auth.uid
-          && get(/databases/$(database)/documents/bookings/$(resource.data.booking_id)).data.status == 'Ready for Pickup');
+          && get(/databases/$(database)/documents/bookings/$(resource.data.booking_id)).data.rider_id == request.auth.uid);
       allow create: if admin() || staff()
-        || (userRole('customer')
+        || (customer()
           && request.resource.data.customer_id == request.auth.uid
           && customerOwnsBooking(request.resource.data.booking_id)
           && request.resource.data.payment_status == 'Pending'
           && request.resource.data.amount is number
-          && request.resource.data.amount == get(
-            /databases/$(database)/documents/bookings/$(request.resource.data.booking_id)
-          ).data.total_amount
+          && request.resource.data.amount > 0
+          && (
+            !(get(/databases/$(database)/documents/bookings/$(request.resource.data.booking_id)).data.get('total_amount', 0) > 0)
+            || request.resource.data.amount == get(
+              /databases/$(database)/documents/bookings/$(request.resource.data.booking_id)
+            ).data.total_amount
+          )
           && request.resource.data.payment_method in ['GCash', 'Cash']
           && request.resource.data.keys().hasOnly([
             'payment_id',
@@ -205,7 +229,7 @@ service cloud.firestore {
           && request.resource.data.weight is number
           && request.resource.data.laundry_subtotal is number
           && request.resource.data.delivery_fee is number)
-        || (userRole('customer')
+        || (customer()
           && resource.data.customer_id == request.auth.uid
           && resource.data.payment_status in ['Pending', 'Rejected']
           && request.resource.data.payment_status == 'Pending'
@@ -213,9 +237,13 @@ service cloud.firestore {
           && request.resource.data.booking_id == resource.data.booking_id
           && customerOwnsBooking(resource.data.booking_id)
           && request.resource.data.amount is number
-          && request.resource.data.amount == get(
-            /databases/$(database)/documents/bookings/$(resource.data.booking_id)
-          ).data.total_amount
+          && request.resource.data.amount > 0
+          && (
+            !(get(/databases/$(database)/documents/bookings/$(resource.data.booking_id)).data.get('total_amount', 0) > 0)
+            || request.resource.data.amount == get(
+              /databases/$(database)/documents/bookings/$(resource.data.booking_id)
+            ).data.total_amount
+          )
           && request.resource.data.payment_method in ['GCash', 'Cash']
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
             'amount',
@@ -260,7 +288,7 @@ service cloud.firestore {
       allow update: if admin()
         || (signedIn() && resource.data.user_id == request.auth.uid);
       allow create: if admin() || staff() || rider()
-        || (userRole('customer')
+        || (customer()
           && request.resource.data.type == 'payment'
           && request.resource.data.user_id is string
           && request.resource.data.booking_id is string
@@ -268,7 +296,7 @@ service cloud.firestore {
           && (request.resource.data.user_id == request.auth.uid
             || (exists(/databases/$(database)/documents/users/$(request.resource.data.user_id))
               && get(/databases/$(database)/documents/users/$(request.resource.data.user_id)).data.role
-                == 'staff'))
+                in ['staff', 'Staff', 'STAFF']))
           && request.resource.data.keys().hasOnly([
             'notification_id',
             'user_id',

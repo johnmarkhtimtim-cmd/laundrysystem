@@ -13,6 +13,11 @@ import { useAuth } from "../context/AuthContext";
 import "../styles/SignInModal.css";
 
 function SignInModal({ open, onClose }) {
+  if (!open) return null;
+  return <SignInModalContent onClose={onClose} />;
+}
+
+function SignInModalContent({ onClose }) {
   const navigate = useNavigate();
   const { sessionExpired, clearSessionExpired } = useAuth();
 
@@ -28,12 +33,14 @@ function SignInModal({ open, onClose }) {
   const [resetLoading, setResetLoading] = useState(false);
   const [resetMessage, setResetMessage] = useState("");
   const [resetError, setResetError] = useState("");
-  const [error, setError] = useState("");
+  const [error, setError] = useState(() =>
+    sessionExpired
+      ? "Your session expired due to inactivity. Please sign in again."
+      : ""
+  );
   const [fieldErrors, setFieldErrors] = useState({});
 
   useEffect(() => {
-    if (!open) return;
-
     const onKeyDown = (e) => {
       if (e.key === "Escape" && !loading && !resetLoading) {
         if (showForgotPassword) {
@@ -56,34 +63,13 @@ function SignInModal({ open, onClose }) {
       document.removeEventListener("keydown", onKeyDown);
       document.body.style.overflow = prevOverflow;
     };
-  }, [open, onClose, loading, resetLoading, showForgotPassword, showPrivacyNotice]);
+  }, [onClose, loading, resetLoading, showForgotPassword, showPrivacyNotice]);
 
   useEffect(() => {
-    if (!open) {
-      setEmail("");
-      setPassword("");
-      setShowPassword(false);
-      setRememberMe(getRememberMePreference());
-      setPrivacyConsent(false);
-      setShowPrivacyNotice(false);
-      setShowForgotPassword(false);
-      setResetEmail("");
-      setResetMessage("");
-      setResetError("");
-      setError("");
-      setFieldErrors({});
-      setLoading(false);
-    }
-  }, [open]);
-
-  useEffect(() => {
-    if (open && sessionExpired) {
-      setError("Your session expired due to inactivity. Please sign in again.");
+    if (sessionExpired) {
       clearSessionExpired?.();
     }
-  }, [open, sessionExpired, clearSessionExpired]);
-
-  if (!open) return null;
+  }, [sessionExpired, clearSessionExpired]);
 
   const openForgotPassword = () => {
     setResetEmail(email.trim());

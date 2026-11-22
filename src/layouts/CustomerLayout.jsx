@@ -30,10 +30,10 @@ function CustomerLayout() {
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const visibleUnreadNotifications = user?.uid ? unreadNotifications : 0;
 
   useEffect(() => {
     if (!user?.uid) {
-      setUnreadNotifications(0);
       return undefined;
     }
 
@@ -205,7 +205,7 @@ function CustomerLayout() {
             onClick={() => navigate("/customer/notification")}
           >
             <Bell size={19} />
-            {unreadNotifications > 0 && (
+            {visibleUnreadNotifications > 0 && (
               <span className="notification-dot"></span>
             )}
           </button>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import AdminPageHeader from "../../components/admin/AdminPageHeader";
 import { useAuth } from "../../context/AuthContext";
@@ -16,27 +16,18 @@ export default function AdminProfile() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
-  const [fullName, setFullName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
-  const [showNewPassword, setShowNewPassword] = useState(false);
-
-  useEffect(() => {
-    const name =
-      user?.name ||
-      `${user?.firstName || ""} ${user?.lastName || ""}`.trim() ||
-      "Administrator";
-    setFullName(name);
-    setPhone(user?.phone || "");
-  }, [user]);
-
   const email = user?.email || "";
   const displayName =
     user?.name ||
     `${user?.firstName || ""} ${user?.lastName || ""}`.trim() ||
     "Administrator";
+  const savedPhone = user?.phone || "";
+  const [fullName, setFullName] = useState(displayName);
+  const [phone, setPhone] = useState(savedPhone);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
 
   const handleSave = async () => {
     if (!user?.uid) return;
@@ -99,13 +90,17 @@ export default function AdminProfile() {
         <div>
           <h2>{displayName}</h2>
           <p>{email}</p>
-          {phone && <p>{phone}</p>}
+          {(editing ? phone : savedPhone) && <p>{editing ? phone : savedPhone}</p>}
           <span className="status-badge active">Active</span>
         </div>
         <button
           className="light-action"
           type="button"
           onClick={() => {
+            if (!editing) {
+              setFullName(displayName);
+              setPhone(savedPhone);
+            }
             setEditing(!editing);
             setMessage("");
             setError("");

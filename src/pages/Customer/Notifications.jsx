@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../../context/AuthContext";
 import {
   markAllNotificationsAsRead as markAllFirestoreNotificationsAsRead,
@@ -42,7 +42,9 @@ function Notification() {
   // LOAD NOTIFICATIONS
   // =========================================
 
-  const loadNotifications = () => {
+  const currentUid = user?.uid;
+
+  const loadNotifications = useCallback(() => {
     try {
       const bookings = JSON.parse(
         localStorage.getItem("laundrymateBookings") || "[]"
@@ -64,7 +66,7 @@ function Notification() {
           booking.customerId ||
           booking.userId ||
           booking.uid;
-        if (bookingUserId && user?.uid && bookingUserId !== user.uid) {
+        if (bookingUserId && currentUid && bookingUserId !== currentUid) {
           return;
         }
 
@@ -228,7 +230,7 @@ function Notification() {
 
       setLocalNotifications([]);
     }
-  };
+  }, [currentUid]);
 
   // =========================================
   // INITIAL LOAD + AUTO UPDATE
@@ -342,8 +344,6 @@ function Notification() {
           setPaymentNotifications([]);
         }
       );
-    } else {
-      setPaymentNotifications([]);
     }
 
     const handleUpdate = () => {
@@ -384,7 +384,7 @@ function Notification() {
       unsubscribeNotifications();
       unsubscribePayments();
     };
-  }, [user?.uid]);
+  }, [user?.uid, loadNotifications]);
 
   // =========================================
   // UNREAD COUNT
