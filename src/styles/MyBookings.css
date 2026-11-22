@@ -6,7 +6,7 @@
 
 .my-booking-page {
   min-height: 100%;
-  padding: 32px;
+  padding: 0;
   background: var(--lm-bg, #f5f7fb);
   color: var(--lm-ink, #172033);
   font-family:
@@ -1179,7 +1179,7 @@
    EMPTY STATE
 ========================================= */
 
-.empty-state {
+.my-booking-page .empty-state {
   min-height: 300px;
 
   display: flex;
@@ -1281,7 +1281,7 @@
 @media (max-width: 700px) {
 
   .my-booking-page {
-    padding: 18px;
+    padding: 0;
   }
 
   .booking-page-header {
@@ -1381,7 +1381,7 @@
 @media (max-width: 480px) {
 
   .my-booking-page {
-    padding: 12px;
+    padding: 0;
   }
 
   .booking-page-header {

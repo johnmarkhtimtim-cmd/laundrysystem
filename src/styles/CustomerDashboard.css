@@ -7,7 +7,7 @@
 .customer-dashboard {
   width: 100%;
   min-height: 100%;
-  padding: 30px;
+  padding: 0;
   background: var(--lm-bg, #f6f8fb);
   color: var(--lm-ink, #172033);
   font-family: "Inter", "Poppins", Arial, sans-serif;
@@ -1108,7 +1108,7 @@
 
 @media (max-width: 750px) {
   .customer-dashboard {
-    padding: 20px;
+    padding: 0;
   }
 
   .dashboard-hero {
@@ -1153,7 +1153,7 @@
 
 @media (max-width: 560px) {
   .customer-dashboard {
-    padding: 15px 12px;
+    padding: 0;
   }
 
   .dashboard-hero {
@@ -1265,7 +1265,7 @@
 
 @media (max-width: 400px) {
   .customer-dashboard {
-    padding: 12px 10px;
+    padding: 0;
   }
 
   .stats-grid {

@@ -383,6 +383,15 @@
    ========================================= */
 
 @media (max-width: 900px) {
+  .staff-header {
+    height: 68px;
+    padding: 0 14px;
+  }
+
+  .staff-body {
+    padding-top: 68px;
+  }
+
   .staff-menu-toggle {
     display: grid;
   }
@@ -392,6 +401,7 @@
   }
 
   .staff-layout .sidebar {
+    top: 68px;
     width: min(280px, 86vw);
     transform: translateX(-105%);
     box-shadow: 4px 0 24px rgba(15, 23, 42, 0.12);
@@ -412,7 +422,7 @@
   .staff-sidebar-overlay {
     display: block;
     position: fixed;
-    top: 76px;
+    top: 68px;
     left: 0;
     right: 0;
     bottom: 0;
@@ -428,11 +438,6 @@
 }
 
 @media (max-width: 700px) {
-  .staff-header {
-    height: 68px;
-    padding: 0 14px;
-  }
-
   .brand-logo {
     width: 36px;
     height: 36px;
@@ -447,20 +452,8 @@
     font-size: 9px;
   }
 
-  .staff-body {
-    padding-top: 68px;
-  }
-
-  .staff-layout .sidebar {
-    top: 68px;
-  }
-
-  .staff-sidebar-overlay {
-    top: 68px;
-  }
-
   .staff-layout .content {
-    padding: 16px 12px;
+    padding: 14px 12px 22px;
   }
 }
 
@@ -469,8 +462,16 @@
     padding: 0 10px;
   }
 
-  .brand-info {
-    display: none;
+  .brand-wrap {
+    gap: 9px;
+  }
+
+  .brand-info h2 {
+    font-size: 14px;
+  }
+
+  .brand-info span {
+    font-size: 8.5px;
   }
 
   .user-avatar {

@@ -150,6 +150,80 @@
   border-bottom-color: #1f2a3d;
 }
 
+[data-theme="dark"] .service-stat-card,
+[data-theme="dark"] .services-container,
+[data-theme="dark"] .service-modal,
+[data-theme="dark"] .customer-stat-card,
+[data-theme="dark"] .customer-list-container,
+[data-theme="dark"] .customer-details-modal,
+[data-theme="dark"] .sales-summary-card,
+[data-theme="dark"] .report-filter-card,
+[data-theme="dark"] .report-table-card,
+[data-theme="dark"] .analytics-card {
+  background: var(--lm-surface);
+  border-color: var(--lm-line);
+  color: var(--lm-ink);
+  box-shadow: none;
+}
+
+[data-theme="dark"] .admin-services .service-row {
+  border-bottom-color: var(--lm-line);
+}
+
+[data-theme="dark"] .admin-services .service-row:hover,
+[data-theme="dark"] .customer-table tbody tr:hover,
+[data-theme="dark"] .sales-report-table tbody tr:hover {
+  background: #1e293b;
+}
+
+[data-theme="dark"] .services-toolbar,
+[data-theme="dark"] .customer-list-header,
+[data-theme="dark"] .report-table-header {
+  border-bottom-color: var(--lm-line);
+}
+
+[data-theme="dark"] .service-search,
+[data-theme="dark"] .customer-search,
+[data-theme="dark"] .report-search,
+[data-theme="dark"] .date-input,
+[data-theme="dark"] .report-filter select,
+[data-theme="dark"] .metric-tile,
+[data-theme="dark"] .customer-detail-item,
+[data-theme="dark"] .customer-modal-profile,
+[data-theme="dark"] .admin-services .edit-btn,
+[data-theme="dark"] .admin-services .delete-btn,
+[data-theme="dark"] .customer-actions button {
+  background: #0f172a;
+  border-color: var(--lm-line);
+  color: var(--lm-ink);
+}
+
+[data-theme="dark"] .customer-table th,
+[data-theme="dark"] .sales-report-table thead th {
+  background: #0f172a;
+  border-bottom-color: var(--lm-line);
+  color: var(--lm-muted);
+}
+
+[data-theme="dark"] .customer-name strong,
+[data-theme="dark"] .customer-cell strong,
+[data-theme="dark"] .report-title-row h1,
+[data-theme="dark"] .report-table-header h2,
+[data-theme="dark"] .sales-summary-card strong,
+[data-theme="dark"] .analytics-card-head h2,
+[data-theme="dark"] .metric-tile strong,
+[data-theme="dark"] .spark-card .spark-top strong,
+[data-theme="dark"] .donut-legend-item strong,
+[data-theme="dark"] .donut-legend-item em {
+  color: var(--lm-ink);
+}
+
+[data-theme="dark"] .customer-contact span,
+[data-theme="dark"] .service-cell,
+[data-theme="dark"] .sales-report-table tbody td {
+  color: var(--lm-muted);
+}
+
 /* -------- Customer portal -------- */
 [data-theme="dark"] .customer-layout {
   background: var(--lm-bg);
@@ -271,7 +345,9 @@
 [data-theme="dark"] .quick-services-header h2,
 [data-theme="dark"] .order-info h4,
 [data-theme="dark"] .order-info strong,
+[data-theme="dark"] .customer-dashboard .order-title,
 [data-theme="dark"] .service-content h4,
+[data-theme="dark"] .customer-dashboard .service-title,
 [data-theme="dark"] .summary-item strong,
 [data-theme="dark"] .progress-header,
 [data-theme="dark"] .progress-header strong {

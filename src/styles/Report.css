@@ -6,9 +6,9 @@
 .sales-report-page {
   width: 100%;
   min-height: 100%;
-  padding: 28px;
-  background: #f6f8fc;
-  color: #172033;
+  padding: 0;
+  background: transparent;
+  color: var(--portal-ink, #172033);
   box-sizing: border-box;
 }
 
@@ -918,7 +918,7 @@
 @media (max-width: 900px) {
 
   .sales-report-page {
-    padding: 20px;
+    padding: 0;
   }
 
   .report-header {
@@ -954,7 +954,7 @@
 @media (max-width: 640px) {
 
   .sales-report-page {
-    padding: 15px;
+    padding: 0;
   }
 
   /* HEADER */

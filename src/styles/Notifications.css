@@ -6,7 +6,7 @@
 .notification-page {
   width: 100%;
   min-height: 100%;
-  padding: 30px;
+  padding: 0;
   background: var(--lm-bg, #f5f7fb);
   color: var(--lm-ink, #172033);
   box-sizing: border-box;
@@ -502,7 +502,7 @@
 @media (max-width: 1100px) {
 
   .notification-page {
-    padding: 24px;
+    padding: 0;
   }
 
   .notification-stats {
@@ -518,7 +518,7 @@
 @media (max-width: 700px) {
 
   .notification-page {
-    padding: 15px;
+    padding: 0;
   }
 
   .notification-page .notification-header {
@@ -660,7 +660,7 @@
 @media (max-width: 420px) {
 
   .notification-page {
-    padding: 10px;
+    padding: 0;
   }
 
   .notification-page .notification-header {

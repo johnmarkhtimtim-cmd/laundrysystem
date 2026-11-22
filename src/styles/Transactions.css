@@ -1,7 +1,7 @@
 /* ========================================================= LAUNDRYMATE - TRANSACTIONS ========================================================= */
 .transactions-page {
   min-height: 100%;
-  padding: 32px;
+  padding: 0;
   background: var(--lm-bg, #f5f7fb);
   color: var(--lm-ink, #172033);
   font-family:
@@ -395,7 +395,7 @@
 } /* ========================================================= MOBILE ========================================================= */
 @media (max-width: 800px) {
   .transactions-page {
-    padding: 20px 14px;
+    padding: 0;
   }
   .transactions-header {
     align-items: flex-start;
@@ -420,7 +420,7 @@
 }
 @media (max-width: 480px) {
   .transactions-page {
-    padding: 16px 10px;
+    padding: 0;
   }
   .transactions-header h1 {
     font-size: 25px;

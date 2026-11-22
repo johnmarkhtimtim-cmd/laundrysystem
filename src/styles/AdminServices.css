@@ -4,10 +4,10 @@
 
 .admin-services {
   width: 100%;
-  min-height: 100vh;
-  padding: 32px;
-  background: #f5f7fb;
-  color: #172033;
+  min-height: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--portal-ink, #172033);
   font-family: "Inter", "Poppins", Arial, sans-serif;
   box-sizing: border-box;
 }
@@ -224,25 +224,29 @@
    SERVICE LIST
 ========================================= */
 
-.service-list {
+.admin-services .service-list {
   width: 100%;
+  display: block;
 }
 
-.service-row {
+.admin-services .service-row {
   display: grid;
-  grid-template-columns: minmax(280px, 1fr) 130px 120px 90px;
+  grid-template-columns: minmax(260px, 1fr) 130px 120px 90px;
   align-items: center;
   gap: 20px;
   padding: 20px 24px;
+  border: 0;
   border-bottom: 1px solid #edf0f4;
+  border-radius: 0;
+  background: transparent;
   transition: background 0.2s ease;
 }
 
-.service-row:last-child {
+.admin-services .service-row:last-child {
   border-bottom: none;
 }
 
-.service-row:hover {
+.admin-services .service-row:hover {
   background: #fafbfc;
 }
 
@@ -251,14 +255,14 @@
    SERVICE MAIN
 ========================================= */
 
-.service-main {
+.admin-services .service-main {
   display: flex;
   align-items: center;
   gap: 14px;
   min-width: 0;
 }
 
-.service-icon {
+.admin-services .service-icon {
   width: 52px;
   height: 52px;
   flex-shrink: 0;
@@ -271,22 +275,24 @@
   font-size: 24px;
 }
 
-.service-info {
+.admin-services .service-info {
   min-width: 0;
+  flex: 1;
 }
 
-.service-info h3 {
+.admin-services .service-info h3 {
   margin: 0 0 5px;
   font-size: 14px;
   font-weight: 700;
 }
 
-.service-info p {
+.admin-services .service-info p {
   max-width: 440px;
   margin: 0;
   color: #8992a3;
   font-size: 12px;
   line-height: 1.5;
+  overflow-wrap: break-word;
 }
 
 
@@ -294,16 +300,18 @@
    PRICE
 ========================================= */
 
-.service-price span {
+.admin-services .service-price span {
   display: block;
   margin-bottom: 5px;
   color: #98a0ae;
   font-size: 11px;
+  white-space: nowrap;
 }
 
-.service-price strong {
+.admin-services .service-price strong {
   font-size: 15px;
   font-weight: 750;
+  white-space: nowrap;
 }
 
 
@@ -311,7 +319,7 @@
    STATUS
 ========================================= */
 
-.status-badge {
+.admin-services .status-badge {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -320,30 +328,31 @@
   border-radius: 20px;
   font-size: 11px;
   font-weight: 650;
+  white-space: nowrap;
   cursor: pointer;
 }
 
-.status-badge span {
+.admin-services .status-badge span {
   width: 6px;
   height: 6px;
   border-radius: 50%;
 }
 
-.status-badge.active {
+.admin-services .status-badge.active {
   background: #ecfdf5;
   color: #047857;
 }
 
-.status-badge.active span {
+.admin-services .status-badge.active span {
   background: #10b981;
 }
 
-.status-badge.inactive {
+.admin-services .status-badge.inactive {
   background: #f3f4f6;
   color: #6b7280;
 }
 
-.status-badge.inactive span {
+.admin-services .status-badge.inactive span {
   background: #9ca3af;
 }
 
@@ -352,16 +361,21 @@
    ACTIONS
 ========================================= */
 
-.service-actions {
+.admin-services .service-actions {
   display: flex;
   justify-content: flex-end;
   gap: 7px;
+  flex-shrink: 0;
 }
 
-.edit-btn,
-.delete-btn {
+.admin-services .edit-btn,
+.admin-services .delete-btn {
   width: 34px;
   height: 34px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border: 1px solid #e5e8ed;
   border-radius: 8px;
   background: #fff;
@@ -653,13 +667,10 @@
 
 @media (max-width: 1000px) {
 
-  .service-row {
-    grid-template-columns: 1fr 120px 100px;
-  }
-
-  .service-actions {
-    grid-column: 3;
-    grid-row: 1;
+  .admin-services .service-row {
+    display: grid;
+    grid-template-columns: minmax(180px, 1fr) auto auto auto;
+    gap: 16px;
   }
 
 }
@@ -668,7 +679,7 @@
 @media (max-width: 760px) {
 
   .admin-services {
-    padding: 20px;
+    padding: 0;
   }
 
   .services-header {
@@ -683,41 +694,46 @@
 
   .service-stats {
     grid-template-columns: 1fr;
+    gap: 12px;
   }
 
   .services-toolbar {
     align-items: stretch;
     flex-direction: column;
+    padding: 18px 16px;
   }
 
   .service-search {
     width: 100%;
   }
 
-  .service-row {
-    grid-template-columns: 1fr;
-    gap: 14px;
-    padding: 18px;
+  .admin-services .service-row {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    align-items: center;
+    gap: 14px 12px;
+    padding: 16px;
   }
 
-  .service-price,
-  .service-status,
-  .service-actions {
+  .admin-services .service-main {
+    grid-column: 1 / -1;
+    align-items: flex-start;
+  }
+
+  .admin-services .service-info p {
+    max-width: none;
+  }
+
+  .admin-services .service-price,
+  .admin-services .service-status,
+  .admin-services .service-actions {
     grid-column: auto;
     grid-row: auto;
+    padding-left: 0;
   }
 
-  .service-price {
-    padding-left: 66px;
-  }
-
-  .service-status {
-    padding-left: 66px;
-  }
-
-  .service-actions {
-    justify-content: flex-start;
-    padding-left: 66px;
+  .admin-services .service-actions {
+    justify-content: flex-end;
   }
 
 }
@@ -726,7 +742,7 @@
 @media (max-width: 480px) {
 
   .admin-services {
-    padding: 14px;
+    padding: 0;
   }
 
   .services-header h1 {

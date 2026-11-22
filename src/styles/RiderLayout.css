@@ -154,8 +154,6 @@
   min-width: 0;
   max-width: 100%;
   overflow-x: hidden;
-  word-wrap: break-word;
-  overflow-wrap: anywhere;
 }
 
 /* Match staff bookings density when reusing StaffBookings.css */
@@ -187,12 +185,13 @@
 }
 
 .rider-content .rider-transactions .search-wrapper {
-  flex: 1 1 280px;
+  flex: 0 1 480px;
   width: 100%;
   max-width: 480px;
-  height: auto;
+  height: 46px;
   min-height: 46px;
-  align-self: stretch;
+  max-height: 46px;
+  align-self: flex-start;
 }
 
 .rider-content .rider-transactions .table-container {
@@ -260,14 +259,32 @@
   }
 }
 
+@media (max-width: 640px) {
+  .rider-content .rider-transactions .search-wrapper {
+    flex: 0 0 46px;
+    max-width: 100%;
+    width: 100%;
+  }
+}
+
 @media (max-width: 450px) {
   .rider-header {
     height: 64px;
-    padding: 0 10px;
+    padding: 0 12px;
   }
 
-  .rider-brand > span:last-child {
-    display: none;
+  .rider-brand {
+    gap: 10px;
+  }
+
+  .rider-brand strong {
+    font-size: 15px;
+    line-height: 1.15;
+  }
+
+  .rider-brand small {
+    font-size: 9px;
+    margin-top: 2px;
   }
 
   .rider-brand-mark {

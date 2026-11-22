@@ -334,6 +334,14 @@ function Bookings() {
       return undefined;
     }
 
+    if (
+      typeof window !== "undefined" &&
+      typeof window.LaundryMateAndroid?.hasLocationPermission === "function" &&
+      !window.LaundryMateAndroid.hasLocationPermission()
+    ) {
+      window.LaundryMateAndroid.requestLocationPermission?.();
+    }
+
     const watchId = navigator.geolocation.watchPosition(
       ({ coords }) => {
         setRiderLocation({
@@ -1630,6 +1638,20 @@ function Bookings() {
                             ? "Live location is not supported by this browser."
                             : null) ||
                           "Waiting for your live location..."}
+                      {!riderLocation &&
+                        riderLocationError &&
+                        typeof window !== "undefined" &&
+                        window.LaundryMateAndroid?.openAppSettings && (
+                          <button
+                            type="button"
+                            className="rider-permission-settings-btn"
+                            onClick={() =>
+                              window.LaundryMateAndroid.openAppSettings()
+                            }
+                          >
+                            ⚙️ Open Settings
+                          </button>
+                        )}
                     </div>
                   </div>
 
@@ -2129,6 +2151,20 @@ function Bookings() {
                             ? "Live location is not supported by this browser."
                             : null) ||
                           "Waiting for your live location..."}
+                      {!riderLocation &&
+                        riderLocationError &&
+                        typeof window !== "undefined" &&
+                        window.LaundryMateAndroid?.openAppSettings && (
+                          <button
+                            type="button"
+                            className="rider-permission-settings-btn"
+                            onClick={() =>
+                              window.LaundryMateAndroid.openAppSettings()
+                            }
+                          >
+                            ⚙️ Open Settings
+                          </button>
+                        )}
                     </div>
 
                   </div>

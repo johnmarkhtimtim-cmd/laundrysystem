@@ -464,7 +464,7 @@
 
 @media (max-width: 1100px) {
   .staff-payments-page {
-    padding: 24px;
+    padding: 0 0 16px;
   }
 
   .staff-payments-page .revenue-summary {
@@ -482,7 +482,7 @@
 
 @media (max-width: 600px) {
   .staff-payments-page {
-    padding: 20px 14px;
+    padding: 0 0 16px;
   }
 
   .staff-payments-page .page-header {
@@ -570,7 +570,7 @@
 
 @media (max-width: 380px) {
   .staff-payments-page {
-    padding: 18px 10px;
+    padding: 0 0 14px;
   }
 
   .staff-payments-page .summary-card {

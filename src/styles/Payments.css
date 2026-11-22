@@ -8,7 +8,7 @@
 
 .payments-page {
   min-height: 100%;
-  padding: 32px;
+  padding: 0;
   background: var(--lm-bg, #f5f7fb);
   color: var(--lm-ink, #172033);
   font-family:
@@ -328,13 +328,13 @@
   letter-spacing: 0.06em;
 }
 
-.service-list {
+.payments-page .service-list {
   display: flex;
   flex-direction: column;
   gap: 7px;
 }
 
-.service-row {
+.payments-page .service-row {
   padding: 11px 13px;
   display: flex;
   justify-content: space-between;
@@ -344,13 +344,13 @@
   background: #fafbfc;
 }
 
-.service-row span {
+.payments-page .service-row span {
   color: #334155;
   font-size: 13px;
   font-weight: 600;
 }
 
-.service-row strong {
+.payments-page .service-row strong {
   color: #111827;
   font-size: 13px;
 }
@@ -1492,7 +1492,7 @@
 
 @media (max-width: 700px) {
   .payments-page {
-    padding: 20px 14px;
+    padding: 0;
   }
 
   .payments-header {
@@ -1602,7 +1602,7 @@
 
 @media (max-width: 420px) {
   .payments-page {
-    padding: 16px 10px;
+    padding: 0;
   }
 
   .payments-header h1 {

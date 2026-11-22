@@ -10,6 +10,21 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
+
+if (process.argv.includes("--clean-dist")) {
+  for (const rel of [
+    join("dist", "downloads"),
+    join("android", "app", "src", "main", "assets", "public", "downloads"),
+  ]) {
+    const dir = join(root, rel);
+    if (existsSync(dir)) {
+      rmSync(dir, { recursive: true, force: true });
+      console.log("Cleaned", dir);
+    }
+  }
+  process.exit(0);
+}
+
 const source = join(
   root,
   "android",
@@ -21,6 +36,7 @@ const source = join(
   "app-debug.apk"
 );
 const destDir = join(root, "public", "downloads");
+const distDestDir = join(root, "dist", "downloads");
 const dest = join(destDir, "laundrymate.apk");
 
 if (!existsSync(source)) {
@@ -29,7 +45,9 @@ if (!existsSync(source)) {
 }
 
 mkdirSync(destDir, { recursive: true });
+mkdirSync(distDestDir, { recursive: true });
 copyFileSync(source, dest);
+copyFileSync(source, join(distDestDir, "laundrymate.apk"));
 console.log("Copied APK to", dest);
 
 // Also split into 1.5 MB binary chunks (.bin) + manifest so Firebase Hosting
@@ -44,28 +62,30 @@ for (let i = 0; i < totalChunks; i += 1) {
   const name = `apk-part-${i}.bin`;
   const slice = buf.subarray(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
   writeFileSync(join(destDir, name), slice);
+  writeFileSync(join(distDestDir, name), slice);
   chunkNames.push(name);
 }
 
 // Clean up any leftover older chunks
 for (let i = totalChunks; i < 20; i += 1) {
-  const extra = join(destDir, `apk-part-${i}.bin`);
-  if (existsSync(extra)) rmSync(extra);
+  for (const dir of [destDir, distDestDir]) {
+    const extra = join(dir, `apk-part-${i}.bin`);
+    if (existsSync(extra)) rmSync(extra);
+  }
 }
 
-writeFileSync(
-  join(destDir, "apk-manifest.json"),
-  JSON.stringify(
-    {
-      fileName: "LaundryMate.apk",
-      size: buf.length,
-      chunks: chunkNames,
-      updatedAt: new Date().toISOString(),
-    },
-    null,
-    2
-  )
+const manifestJson = JSON.stringify(
+  {
+    fileName: "LaundryMate.apk",
+    size: buf.length,
+    chunks: chunkNames,
+    updatedAt: new Date().toISOString(),
+  },
+  null,
+  2
 );
+writeFileSync(join(destDir, "apk-manifest.json"), manifestJson);
+writeFileSync(join(distDestDir, "apk-manifest.json"), manifestJson);
 console.log(
-  `Generated ${totalChunks} APK chunks (${buf.length} bytes) in ${destDir}`
+  `Generated ${totalChunks} APK chunks (${buf.length} bytes) in ${destDir} and ${distDestDir}`
 );

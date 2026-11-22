@@ -876,8 +876,6 @@ body {
   box-sizing: border-box;
 
   overflow-x: hidden;
-  word-wrap: break-word;
-  overflow-wrap: anywhere;
 
   transition:
     margin-left 0.25s ease;

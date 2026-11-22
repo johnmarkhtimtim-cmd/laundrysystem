@@ -4,12 +4,12 @@
 
 .admin-customer {
   width: 100%;
-  min-height: 100vh;
-  padding: 32px;
+  min-height: 0;
+  padding: 0;
   box-sizing: border-box;
 
-  background: #f5f7fb;
-  color: #172033;
+  background: transparent;
+  color: var(--portal-ink, #172033);
 
   font-family:
     "Inter",
@@ -1084,7 +1084,7 @@
 @media (max-width: 700px) {
 
   .admin-customer {
-    padding: 20px;
+    padding: 0;
   }
 
   .customer-list-header {
@@ -1115,7 +1115,7 @@
 @media (max-width: 480px) {
 
   .admin-customer {
-    padding: 14px;
+    padding: 0;
   }
 
   .customer-page-header h1 {

@@ -411,7 +411,7 @@
 
 @media (max-width: 900px) {
   .staff-notifications-page {
-    padding: 24px;
+    padding: 0 0 16px;
   }
 
   .staff-notifications-page .notification-stats {
@@ -431,7 +431,7 @@
 
 @media (max-width: 600px) {
   .staff-notifications-page {
-    padding: 20px 14px;
+    padding: 0 0 16px;
   }
 
   .staff-notifications-page .page-header {
@@ -548,7 +548,7 @@
 
 @media (max-width: 380px) {
   .staff-notifications-page {
-    padding: 18px 10px;
+    padding: 0 0 14px;
   }
 
   .staff-notifications-page .stat-box {

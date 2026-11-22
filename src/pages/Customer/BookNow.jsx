@@ -200,6 +200,9 @@ export default function BookNow() {
   const [isLocating, setIsLocating] =
     useState(false);
 
+  const [locationPermissionIssue, setLocationPermissionIssue] =
+    useState(false);
+
   // ====================================================
   // PRICE CALCULATION
   // ====================================================
@@ -437,27 +440,27 @@ export default function BookNow() {
   // CURRENT LOCATION
   // ====================================================
 
-  const useCurrentLocation = () => {
-    setError("");
-
-    if (!navigator.geolocation) {
-      setError(
-        "Geolocation is not supported by your browser."
-      );
+  const openPermissionSettings = () => {
+    if (typeof window !== "undefined" && window.LaundryMateAndroid?.openAppSettings) {
+      window.LaundryMateAndroid.openAppSettings();
       return;
     }
-
-    if (!window.isSecureContext) {
-      setError(
-        "Location access requires a secure (HTTPS) connection. Please select your location on the map instead."
-      );
-      setShowMap(true);
+    if (typeof window !== "undefined" && window.LaundryMateAndroid?.requestLocationPermission) {
+      window.LaundryMateAndroid.requestLocationPermission();
       return;
     }
+    useCurrentLocation();
+  };
 
-    setIsLocating(true);
-    setShowMap(true);
+  const openDeviceLocationSettings = () => {
+    if (typeof window !== "undefined" && window.LaundryMateAndroid?.openLocationSettings) {
+      window.LaundryMateAndroid.openLocationSettings();
+      return;
+    }
+    openPermissionSettings();
+  };
 
+  const requestGeolocationCoordinates = () => {
     const handleSuccess = async (position) => {
       const lat = position.coords.latitude;
       const lng = position.coords.longitude;
@@ -466,6 +469,8 @@ export default function BookNow() {
       setLongitude(lng);
       setGpsAccuracy(position.coords.accuracy);
       setIsLocating(false);
+      setLocationPermissionIssue(false);
+      setError("");
 
       await reverseGeocode(lat, lng);
     };
@@ -473,9 +478,20 @@ export default function BookNow() {
     const handleFailure = (geoError) => {
       console.error(geoError);
 
+      const isAndroidBridge =
+        typeof window !== "undefined" && Boolean(window.LaundryMateAndroid);
+
+      if (geoError?.code === 1 || geoError?.code === 2) {
+        setLocationPermissionIssue(true);
+      }
+
       const messages = {
-        1: "Location permission was denied. Allow location access in your browser settings, or select your location on the map.",
-        2: "Your location is currently unavailable. Please select your location on the map.",
+        1: isAndroidBridge
+          ? "Location permission was denied. Tap 'Open Settings to Activate Permission' below to enable Location access, or select your location on the map."
+          : "Location permission was denied. Allow location access in your browser settings, or select your location on the map.",
+        2: isAndroidBridge
+          ? "Your location is currently unavailable. Please turn on device Location (GPS) in Settings, or select your location on the map."
+          : "Your location is currently unavailable. Please select your location on the map.",
         3: "Getting your location timed out. Please try again or select your location on the map.",
       };
 
@@ -514,6 +530,90 @@ export default function BookNow() {
       }
     );
   };
+
+  const useCurrentLocation = () => {
+    setError("");
+    setLocationPermissionIssue(false);
+
+    if (!navigator.geolocation) {
+      setError(
+        "Geolocation is not supported by your browser."
+      );
+      return;
+    }
+
+    if (!window.isSecureContext) {
+      setError(
+        "Location access requires a secure (HTTPS) connection. Please select your location on the map instead."
+      );
+      setShowMap(true);
+      return;
+    }
+
+    setIsLocating(true);
+    setShowMap(true);
+
+    if (
+      typeof window !== "undefined" &&
+      typeof window.LaundryMateAndroid?.hasLocationPermission === "function" &&
+      !window.LaundryMateAndroid.hasLocationPermission()
+    ) {
+      window.LaundryMateAndroid.requestLocationPermission();
+      return;
+    }
+
+    requestGeolocationCoordinates();
+  };
+
+  useEffect(() => {
+    const onAndroidPermissionResult = (event) => {
+      if (event?.detail?.granted) {
+        setLocationPermissionIssue(false);
+        setError("");
+        setIsLocating(true);
+        setShowMap(true);
+        requestGeolocationCoordinates();
+      } else {
+        setIsLocating(false);
+        setLocationPermissionIssue(true);
+        setError(
+          "Location permission was denied. Tap 'Open Settings to Activate Permission' below to enable Location access, or select your location on the map."
+        );
+      }
+    };
+
+    const onVisibilityOrFocus = () => {
+      if (
+        document.visibilityState === "visible" &&
+        locationPermissionIssue &&
+        typeof window !== "undefined" &&
+        typeof window.LaundryMateAndroid?.hasLocationPermission === "function" &&
+        window.LaundryMateAndroid.hasLocationPermission()
+      ) {
+        setLocationPermissionIssue(false);
+        setError("");
+        setIsLocating(true);
+        setShowMap(true);
+        requestGeolocationCoordinates();
+      }
+    };
+
+    window.addEventListener(
+      "laundrymateLocationPermissionResult",
+      onAndroidPermissionResult
+    );
+    window.addEventListener("focus", onVisibilityOrFocus);
+    document.addEventListener("visibilitychange", onVisibilityOrFocus);
+
+    return () => {
+      window.removeEventListener(
+        "laundrymateLocationPermissionResult",
+        onAndroidPermissionResult
+      );
+      window.removeEventListener("focus", onVisibilityOrFocus);
+      document.removeEventListener("visibilitychange", onVisibilityOrFocus);
+    };
+  }, [locationPermissionIssue]);
 
   // ====================================================
   
@@ -838,6 +938,28 @@ export default function BookNow() {
               <p>
                 {error}
               </p>
+
+              {locationPermissionIssue && (
+                <div className="permission-action-row">
+                  <button
+                    type="button"
+                    className="permission-settings-btn"
+                    onClick={openPermissionSettings}
+                  >
+                    ⚙️ Open Settings to Activate Permission
+                  </button>
+                  {typeof window !== "undefined" &&
+                    window.LaundryMateAndroid?.openLocationSettings && (
+                      <button
+                        type="button"
+                        className="permission-settings-btn secondary"
+                        onClick={openDeviceLocationSettings}
+                      >
+                        📍 Turn On Device Location
+                      </button>
+                    )}
+                </div>
+              )}
 
             </div>
 
@@ -1244,6 +1366,28 @@ export default function BookNow() {
                   : "Use My Current Location"}
 
               </button>
+
+              {locationPermissionIssue && (
+                <div className="permission-action-row step-permission-row">
+                  <button
+                    type="button"
+                    className="permission-settings-btn"
+                    onClick={openPermissionSettings}
+                  >
+                    ⚙️ Open Settings to Activate Permission
+                  </button>
+                  {typeof window !== "undefined" &&
+                    window.LaundryMateAndroid?.openLocationSettings && (
+                      <button
+                        type="button"
+                        className="permission-settings-btn secondary"
+                        onClick={openDeviceLocationSettings}
+                      >
+                        📍 Turn On Device Location
+                      </button>
+                    )}
+                </div>
+              )}
 
               {/* MAP */}
 
