@@ -5,6 +5,7 @@ import {
   markNotificationAsRead,
   markAllNotificationsAsRead,
 } from "../../services/notificationService";
+import { formatShortBookingId } from "../../utils/bookingId";
 import "../../styles/StaffNotifications.css";
 
 function StaffNotifications() {
@@ -187,8 +188,7 @@ function StaffNotifications() {
                     </p>
                     {notification.booking_id && (
                       <p className="notification-booking">
-                        Booking: #
-                        {notification.booking_id?.slice(-4) || notification.booking_id}
+                        Booking: #{formatShortBookingId(notification.booking_id)}
                       </p>
                     )}
                   </div>

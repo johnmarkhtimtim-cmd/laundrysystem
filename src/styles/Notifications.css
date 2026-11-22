@@ -16,7 +16,7 @@
    HEADER
 ===================================================== */
 
-.notification-header {
+.notification-page .notification-header {
   width: 100%;
   min-height: 180px;
   padding: 32px;
@@ -35,11 +35,11 @@
   margin-bottom: 24px;
 }
 
-.notification-header-content {
+.notification-page .notification-header-content {
   min-width: 0;
 }
 
-.notification-eyebrow {
+.notification-page .notification-eyebrow {
   margin: 0 0 8px;
   font-size: 12px;
   font-weight: 800;
@@ -47,20 +47,20 @@
   opacity: 0.85;
 }
 
-.notification-header h1 {
+.notification-page .notification-header h1 {
   margin: 0;
   font-size: 32px;
   font-weight: 800;
   line-height: 1.2;
 }
 
-.notification-header p:not(.notification-eyebrow) {
+.notification-page .notification-header p:not(.notification-eyebrow) {
   margin: 10px 0 0;
   font-size: 14px;
   opacity: 0.9;
 }
 
-.notification-header-icon {
+.notification-page .notification-header-icon {
   position: relative;
   width: 72px;
   height: 72px;
@@ -74,7 +74,7 @@
   backdrop-filter: blur(10px);
 }
 
-.header-unread-count {
+.notification-page .header-unread-count {
   position: absolute;
   top: -6px;
   right: -6px;
@@ -521,23 +521,23 @@
     padding: 15px;
   }
 
-  .notification-header {
+  .notification-page .notification-header {
     min-height: auto;
     padding: 24px 20px;
     border-radius: 18px;
     margin-bottom: 16px;
   }
 
-  .notification-header h1 {
+  .notification-page .notification-header h1 {
     font-size: 25px;
   }
 
-  .notification-header p:not(.notification-eyebrow) {
+  .notification-page .notification-header p:not(.notification-eyebrow) {
     font-size: 12px;
     line-height: 1.5;
   }
 
-  .notification-header-icon {
+  .notification-page .notification-header-icon {
     width: 52px;
     height: 52px;
     min-width: 52px;
@@ -545,7 +545,7 @@
     font-size: 24px;
   }
 
-  .header-unread-count {
+  .notification-page .header-unread-count {
     min-width: 21px;
     height: 21px;
     font-size: 9px;
@@ -663,11 +663,11 @@
     padding: 10px;
   }
 
-  .notification-header {
+  .notification-page .notification-header {
     padding: 20px 16px;
   }
 
-  .notification-header-icon {
+  .notification-page .notification-header-icon {
     display: none;
   }
 

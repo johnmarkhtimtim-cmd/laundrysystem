@@ -11,6 +11,7 @@ import {
   serverTimestamp
 } from "firebase/firestore";
 import { db } from "./firebase";
+import { formatShortBookingId } from "../utils/bookingId";
 
 const getTimestampMilliseconds = (value) => {
   if (!value) return 0;
@@ -258,11 +259,12 @@ export const notifyBookingAccepted = async (
  * @returns {Promise<string>} Notification ID
  */
 export const notifyLaundryPickedUp = async (customerId, bookingId) => {
+  const shortId = formatShortBookingId(bookingId);
   return createNotification(
     customerId,
     "pickup",
     "🧺 Laundry Picked Up",
-    `Your laundry from booking #${bookingId} has been picked up and is being processed.`,
+    `Your laundry from booking #${shortId} has been picked up and is being processed.`,
     bookingId
   );
 };
@@ -274,11 +276,12 @@ export const notifyLaundryPickedUp = async (customerId, bookingId) => {
  * @returns {Promise<string>} Notification ID
  */
 export const notifyWashingStarted = async (customerId, bookingId) => {
+  const shortId = formatShortBookingId(bookingId);
   return createNotification(
     customerId,
     "progress",
     "🌊 Washing Started",
-    `Your laundry from booking #${bookingId} is now being washed.`,
+    `Your laundry from booking #${shortId} is now being washed.`,
     bookingId
   );
 };
@@ -290,11 +293,12 @@ export const notifyWashingStarted = async (customerId, bookingId) => {
  * @returns {Promise<string>} Notification ID
  */
 export const notifyDryingStarted = async (customerId, bookingId) => {
+  const shortId = formatShortBookingId(bookingId);
   return createNotification(
     customerId,
     "progress",
     "🌬️ Drying Started",
-    `Your laundry from booking #${bookingId} is now being dried.`,
+    `Your laundry from booking #${shortId} is now being dried.`,
     bookingId
   );
 };
@@ -306,11 +310,12 @@ export const notifyDryingStarted = async (customerId, bookingId) => {
  * @returns {Promise<string>} Notification ID
  */
 export const notifyFoldingStarted = async (customerId, bookingId) => {
+  const shortId = formatShortBookingId(bookingId);
   return createNotification(
     customerId,
     "progress",
     "📦 Folding Started",
-    `Your laundry from booking #${bookingId} is now being folded.`,
+    `Your laundry from booking #${shortId} is now being folded.`,
     bookingId
   );
 };
@@ -322,11 +327,12 @@ export const notifyFoldingStarted = async (customerId, bookingId) => {
  * @returns {Promise<string>} Notification ID
  */
 export const notifyReadyForPickup = async (customerId, bookingId) => {
+  const shortId = formatShortBookingId(bookingId);
   return createNotification(
     customerId,
     "pickup",
     "✅ Ready for Pickup",
-    `Your laundry from booking #${bookingId} is ready for you to pickup!`,
+    `Your laundry from booking #${shortId} is ready for you to pickup!`,
     bookingId
   );
 };
@@ -338,11 +344,12 @@ export const notifyReadyForPickup = async (customerId, bookingId) => {
  * @returns {Promise<string>} Notification ID
  */
 export const notifyBookingCompleted = async (customerId, bookingId) => {
+  const shortId = formatShortBookingId(bookingId);
   return createNotification(
     customerId,
     "status",
     "🎉 Booking Completed",
-    `Your booking #${bookingId} has been completed. Thank you for using LaundryMate!`,
+    `Your booking #${shortId} has been completed. Thank you for using LaundryMate!`,
     bookingId
   );
 };
@@ -371,10 +378,11 @@ export const getBookingStatusNotificationDetails = (
   status,
   extras = {}
 ) => {
+  const shortId = formatShortBookingId(bookingId);
   const riderName = String(extras.riderName || "").trim();
   const acceptedMessage = riderName
-    ? `Your booking #${bookingId} has been accepted. Pickup rider: ${riderName}.`
-    : `Your booking #${bookingId} has been accepted by our staff.`;
+    ? `Your booking #${shortId} has been accepted. Pickup rider: ${riderName}.`
+    : `Your booking #${shortId} has been accepted by our staff.`;
 
   const statusDetails = {
     Accepted: {
@@ -385,70 +393,70 @@ export const getBookingStatusNotificationDetails = (
     Declined: {
       type: "booking",
       title: "Booking Declined",
-      message: `Your booking #${bookingId} has been declined. Please contact us if you need assistance.`,
+      message: `Your booking #${shortId} has been declined. Please contact us if you need assistance.`,
     },
     "Ready for Pickup": {
       type: "pickup",
       title: "✅ Ready for Pickup",
       message: riderName
-        ? `Your laundry from booking #${bookingId} is ready for pickup. Rider: ${riderName}.`
-        : `Your laundry from booking #${bookingId} is ready for pickup.`,
+        ? `Your laundry from booking #${shortId} is ready for pickup. Rider: ${riderName}.`
+        : `Your laundry from booking #${shortId} is ready for pickup.`,
     },
     "Picked Up": {
       type: "pickup",
       title: "🧺 Laundry Picked Up",
       message: riderName
-        ? `Your laundry from booking #${bookingId} has been picked up by ${riderName}.`
-        : `Your laundry from booking #${bookingId} has been picked up.`,
+        ? `Your laundry from booking #${shortId} has been picked up by ${riderName}.`
+        : `Your laundry from booking #${shortId} has been picked up.`,
     },
     "In Laundry": {
       type: "progress",
       title: "Laundry In Progress",
-      message: `Your laundry from booking #${bookingId} is now being processed.`,
+      message: `Your laundry from booking #${shortId} is now being processed.`,
     },
     Washing: {
       type: "progress",
       title: "🌊 Washing Started",
-      message: `Your laundry from booking #${bookingId} is now being washed.`,
+      message: `Your laundry from booking #${shortId} is now being washed.`,
     },
     Drying: {
       type: "progress",
       title: "🌬️ Drying Started",
-      message: `Your laundry from booking #${bookingId} is now being dried.`,
+      message: `Your laundry from booking #${shortId} is now being dried.`,
     },
     Folding: {
       type: "progress",
       title: "📦 Folding Started",
-      message: `Your laundry from booking #${bookingId} is now being folded.`,
+      message: `Your laundry from booking #${shortId} is now being folded.`,
     },
     "To Deliver": {
       type: "progress",
       title: "Laundry Out for Delivery",
       message: riderName
-        ? `Your laundry from booking #${bookingId} is on its way with ${riderName}.`
-        : `Your laundry from booking #${bookingId} is on its way to you.`,
+        ? `Your laundry from booking #${shortId} is on its way with ${riderName}.`
+        : `Your laundry from booking #${shortId} is on its way to you.`,
     },
     "Ready for Customer Pickup": {
       type: "pickup",
       title: "✅ Ready for Pickup",
-      message: `Your laundry from booking #${bookingId} is ready for you to collect.`,
+      message: `Your laundry from booking #${shortId} is ready for you to collect.`,
     },
     Delivered: {
       type: "status",
       title: "Laundry Delivered",
-      message: `Your laundry from booking #${bookingId} has been delivered.`,
+      message: `Your laundry from booking #${shortId} has been delivered.`,
     },
     Completed: {
       type: "status",
       title: "🎉 Booking Completed",
-      message: `Your booking #${bookingId} has been completed. Thank you for using LaundryMate!`,
+      message: `Your booking #${shortId} has been completed. Thank you for using LaundryMate!`,
     },
   };
 
   const details = statusDetails[status] || {
     type: "status",
     title: `${status} Update`,
-    message: `Your booking #${bookingId} status has been updated to ${status}.`,
+    message: `Your booking #${shortId} status has been updated to ${status}.`,
   };
 
   return details;
@@ -462,11 +470,12 @@ export const getBookingStatusNotificationDetails = (
  * @returns {Promise<string>} Notification ID
  */
 export const notifyPaymentConfirmed = async (customerId, bookingId, amount) => {
+  const shortId = formatShortBookingId(bookingId);
   return createNotification(
     customerId,
     "payment",
     "Payment Confirmed",
-    `Payment of ₱${amount} for booking #${bookingId} has been confirmed.`,
+    `Payment of ₱${amount} for booking #${shortId} has been confirmed.`,
     bookingId
   );
 };
@@ -475,11 +484,12 @@ export const notifyPaymentConfirmed = async (customerId, bookingId, amount) => {
  * Notify customer that a payment was rejected and needs resubmission.
  */
 export const notifyPaymentRejected = async (customerId, bookingId, amount) => {
+  const shortId = formatShortBookingId(bookingId);
   return createNotification(
     customerId,
     "payment",
     "Payment Rejected",
-    `Payment of ₱${amount} for booking #${bookingId} was rejected. Please resubmit with correct details.`,
+    `Payment of ₱${amount} for booking #${shortId} was rejected. Please resubmit with correct details.`,
     bookingId
   );
 };
@@ -498,13 +508,14 @@ export const notifyStaffPaymentSubmitted = async ({
   const uniqueRecipientIds = [...new Set(recipientIds.filter(Boolean))];
   if (uniqueRecipientIds.length === 0 || !bookingId) return [];
 
+  const shortId = formatShortBookingId(bookingId);
   const formattedAmount = Number(amount || 0).toLocaleString("en-PH");
   const title = isResubmit
     ? "Payment resubmitted for verification"
     : "Payment pending verification";
   const message = `${customerName} ${
     isResubmit ? "resubmitted" : "submitted"
-  } a ${paymentMethod || "payment"} of ₱${formattedAmount} for booking #${bookingId}.`;
+  } a ${paymentMethod || "payment"} of ₱${formattedAmount} for booking #${shortId}.`;
 
   return Promise.all(
     uniqueRecipientIds.map((recipientId) =>

@@ -121,7 +121,7 @@
 }
 
 .signin-password-wrap input {
-  padding-right: 68px;
+  padding-right: 44px;
 }
 
 .signin-toggle-password {
@@ -129,13 +129,20 @@
   top: 50%;
   right: 10px;
   transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border: none;
   background: transparent;
-  color: #0f7ea8;
+  padding: 4px;
+  color: #64748b;
   font: inherit;
-  font-size: 0.8rem;
-  font-weight: 700;
   cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.signin-toggle-password:hover {
+  color: #0f7ea8;
 }
 
 .signin-options {

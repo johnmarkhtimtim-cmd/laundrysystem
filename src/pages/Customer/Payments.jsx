@@ -129,14 +129,12 @@ function Payment() {
       if (
         currentId &&
         sortedBookings.some(
-          (item) => String(item.bookingId || item.id) === String(currentId)
+          (item) => String(getBookingId(item)) === String(currentId)
         )
       ) {
         return currentId;
       }
-      return sortedBookings[0]
-        ? String(sortedBookings[0].bookingId || sortedBookings[0].id)
-        : "";
+      return sortedBookings[0] ? String(getBookingId(sortedBookings[0])) : "";
     });
   }, [user]);
 
@@ -222,13 +220,13 @@ function Payment() {
     }
 
     const matched = bookings.find(
-      (item) => String(item.bookingId || item.id) === String(selectedBookingId)
+      (item) => String(getBookingId(item)) === String(selectedBookingId)
     );
     setBooking(matched || null);
 
     const relatedPayment = payments.find(
       (payment) =>
-        String(payment.bookingId) === String(selectedBookingId) &&
+        String(getBookingId(payment)) === String(selectedBookingId) &&
         ["pending", "rejected"].includes(
           String(payment.paymentStatus || payment.status || "").toLowerCase()
         )
@@ -668,9 +666,7 @@ function Payment() {
 
     if (isSubmitting) return;
 
-    const bookingId =
-      booking.bookingId ||
-      booking.id;
+    const bookingId = getBookingId(booking);
 
     // =====================================================
     // DUPLICATE PENDING PAYMENT
@@ -678,7 +674,7 @@ function Payment() {
 
     const paidPayment = payments.find(
       (payment) =>
-        String(payment.bookingId) === String(bookingId) &&
+        String(getBookingId(payment)) === String(bookingId) &&
         String(payment.paymentStatus || payment.status || "").toLowerCase() ===
           "paid"
     );
@@ -690,7 +686,7 @@ function Payment() {
 
     const duplicatePayment = payments.find(
       (payment) =>
-        String(payment.bookingId) === String(bookingId) &&
+        String(getBookingId(payment)) === String(bookingId) &&
         String(payment.paymentStatus || payment.status || "").toLowerCase() ===
           "pending"
     );
@@ -925,9 +921,9 @@ function Payment() {
 
   const selectedPaymentStatus = useMemo(() => {
     if (!booking) return "";
-    const bookingId = booking.bookingId || booking.id;
+    const bookingId = getBookingId(booking);
     const related = payments.find(
-      (payment) => String(payment.bookingId) === String(bookingId)
+      (payment) => String(getBookingId(payment)) === String(bookingId)
     );
     return String(
       related?.paymentStatus ||
@@ -1886,10 +1882,8 @@ function Payment() {
                     Booking ID
                   </span>
 
-                  <strong>
-                    {
-                      submittedPayment.bookingId
-                    }
+                  <strong title={`#${getBookingId(submittedPayment.bookingId)}`}>
+                    #{formatShortBookingId(submittedPayment.bookingId)}
                   </strong>
 
                 </div>

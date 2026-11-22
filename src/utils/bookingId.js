@@ -7,19 +7,25 @@ export function getBookingId(bookingOrId) {
   if (bookingOrId == null) return "N/A";
 
   if (typeof bookingOrId === "string" || typeof bookingOrId === "number") {
-    const raw = String(bookingOrId).trim();
+    const raw = String(bookingOrId).trim().replace(/^#/, "");
     return raw || "N/A";
   }
 
+  // When given a payment/transaction or notification object (`booking_id` points
+  // to the booking while `id` is the payment/notification document ID), prefer
+  // the explicit booking reference first. On booking documents `booking_id`,
+  // `bookingId`, and `id` are normalized to the same booking ID.
   const id =
-    bookingOrId.id ||
-    bookingOrId.bookingId ||
     bookingOrId.booking_id ||
-    bookingOrId.booking?.id ||
+    bookingOrId.bookingId ||
+    bookingOrId.bookingNo ||
+    bookingOrId.bookingNumber ||
+    bookingOrId.booking?.booking_id ||
     bookingOrId.booking?.bookingId ||
-    bookingOrId.booking?.booking_id;
+    bookingOrId.booking?.id ||
+    bookingOrId.id;
 
-  return id ? String(id) : "N/A";
+  return id ? String(id).trim().replace(/^#/, "") : "N/A";
 }
 
 export function formatShortBookingId(bookingOrId) {

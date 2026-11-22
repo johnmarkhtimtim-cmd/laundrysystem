@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { Eye, EyeOff } from "lucide-react";
 
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
@@ -92,6 +93,8 @@ const Registration = () => {
   /* DATA PRIVACY */
   const [privacyConsent, setPrivacyConsent] = useState(false);
   const [showPrivacyNotice, setShowPrivacyNotice] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   /* STATUS */
   const [loading, setLoading] = useState(false);
@@ -652,18 +655,28 @@ const Registration = () => {
                     <label htmlFor="password">
                       Password <span className="req">*</span>
                     </label>
-                    <input
-                      type="password"
-                      id="password"
-                      name="password"
-                      value={formData.password}
-                      onChange={handleChange}
-                      placeholder="Create a password"
-                      disabled={loading}
-                      autoComplete="new-password"
-                      required
-                      className={fieldErrors.password ? "input-error" : ""}
-                    />
+                    <div className="reg-password-wrap">
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        id="password"
+                        name="password"
+                        value={formData.password}
+                        onChange={handleChange}
+                        placeholder="Create a password"
+                        disabled={loading}
+                        autoComplete="new-password"
+                        required
+                        className={fieldErrors.password ? "input-error" : ""}
+                      />
+                      <button
+                        type="button"
+                        className="reg-password-toggle"
+                        onClick={() => setShowPassword((prev) => !prev)}
+                        aria-label={showPassword ? "Hide password" : "Show password"}
+                      >
+                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
                     {fieldErrors.password && (
                       <span className="field-error">{fieldErrors.password}</span>
                     )}
@@ -748,20 +761,38 @@ const Registration = () => {
                     <label htmlFor="confirmPassword">
                       Confirm Password <span className="req">*</span>
                     </label>
-                    <input
-                      type="password"
-                      id="confirmPassword"
-                      name="confirmPassword"
-                      value={formData.confirmPassword}
-                      onChange={handleChange}
-                      placeholder="Confirm your password"
-                      disabled={loading}
-                      autoComplete="new-password"
-                      required
-                      className={
-                        fieldErrors.confirmPassword ? "input-error" : ""
-                      }
-                    />
+                    <div className="reg-password-wrap">
+                      <input
+                        type={showConfirmPassword ? "text" : "password"}
+                        id="confirmPassword"
+                        name="confirmPassword"
+                        value={formData.confirmPassword}
+                        onChange={handleChange}
+                        placeholder="Confirm your password"
+                        disabled={loading}
+                        autoComplete="new-password"
+                        required
+                        className={
+                          fieldErrors.confirmPassword ? "input-error" : ""
+                        }
+                      />
+                      <button
+                        type="button"
+                        className="reg-password-toggle"
+                        onClick={() => setShowConfirmPassword((prev) => !prev)}
+                        aria-label={
+                          showConfirmPassword
+                            ? "Hide confirm password"
+                            : "Show confirm password"
+                        }
+                      >
+                        {showConfirmPassword ? (
+                          <EyeOff size={18} />
+                        ) : (
+                          <Eye size={18} />
+                        )}
+                      </button>
+                    </div>
                     {fieldErrors.confirmPassword && (
                       <span className="field-error">
                         {fieldErrors.confirmPassword}

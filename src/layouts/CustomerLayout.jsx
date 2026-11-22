@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { Outlet, useNavigate, NavLink } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { logout } from "../services/authService";
+import { subscribeToUserNotifications } from "../services/notificationService";
+import { subscribeToCustomerPayments } from "../services/paymentService";
 import LogoutConfirmModal from "../components/LogoutConfirmModal";
 import ThemeToggleBar from "../components/ThemeToggleBar";
 
@@ -27,6 +29,100 @@ function CustomerLayout() {
   );
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
+
+  useEffect(() => {
+    if (!user?.uid) {
+      setUnreadNotifications(0);
+      return undefined;
+    }
+
+    let latestFirestore = [];
+    let latestPayments = [];
+
+    const recomputeUnread = () => {
+      const savedReadStatus = JSON.parse(
+        localStorage.getItem("laundrymateNotificationRead") || "{}"
+      );
+
+      const firestoreUnread = latestFirestore.filter(
+        (item) => item.type !== "payment" && item.read !== true
+      ).length;
+
+      const paymentUnread = latestPayments.filter((payment, index) => {
+        const paymentId =
+          payment.payment_id ||
+          payment.id ||
+          `PAY-${String(index + 1).padStart(3, "0")}`;
+        const notificationId = `payment-${paymentId}`;
+        return savedReadStatus[notificationId] !== true;
+      }).length;
+
+      const bookings = JSON.parse(
+        localStorage.getItem("laundrymateBookings") || "[]"
+      );
+      let localUnread = 0;
+      bookings.forEach((booking, index) => {
+        const bookingUserId =
+          booking.customer_id || booking.customerId || booking.userId || booking.uid;
+        if (bookingUserId && bookingUserId !== user.uid) return;
+
+        const bookingId =
+          booking.bookingId ||
+          booking.id ||
+          `LM-${String(index + 1).padStart(3, "0")}`;
+        if (savedReadStatus[`booking-${bookingId}`] !== true) {
+          localUnread += 1;
+        }
+        const pickupDate =
+          booking.pickup_date || booking.pickupDate || booking.schedule || "";
+        const pickupTime = booking.time || "";
+        if (
+          (pickupDate || pickupTime) &&
+          savedReadStatus[`pickup-${bookingId}`] !== true
+        ) {
+          localUnread += 1;
+        }
+      });
+
+      setUnreadNotifications(firestoreUnread + paymentUnread + localUnread);
+    };
+
+    const unsubNotifications = subscribeToUserNotifications(
+      user.uid,
+      (items) => {
+        latestFirestore = items;
+        recomputeUnread();
+      },
+      (error) => console.error("Customer sidebar notifications:", error)
+    );
+
+    const unsubPayments = subscribeToCustomerPayments(
+      user.uid,
+      (payments) => {
+        latestPayments = payments;
+        recomputeUnread();
+      },
+      (error) => console.error("Customer sidebar payments:", error)
+    );
+
+    window.addEventListener("laundrymateBookingUpdated", recomputeUnread);
+    window.addEventListener("laundrymatePaymentUpdated", recomputeUnread);
+    window.addEventListener("laundrymateNotificationUpdated", recomputeUnread);
+    window.addEventListener("storage", recomputeUnread);
+
+    return () => {
+      unsubNotifications?.();
+      unsubPayments?.();
+      window.removeEventListener("laundrymateBookingUpdated", recomputeUnread);
+      window.removeEventListener("laundrymatePaymentUpdated", recomputeUnread);
+      window.removeEventListener(
+        "laundrymateNotificationUpdated",
+        recomputeUnread
+      );
+      window.removeEventListener("storage", recomputeUnread);
+    };
+  }, [user?.uid]);
 
   useEffect(() => {
     const collapseSidebarForViewport = () => {
@@ -109,7 +205,9 @@ function CustomerLayout() {
             onClick={() => navigate("/customer/notification")}
           >
             <Bell size={19} />
-            <span className="notification-dot"></span>
+            {unreadNotifications > 0 && (
+              <span className="notification-dot"></span>
+            )}
           </button>
 
           <div className="header-divider"></div>
@@ -286,9 +384,11 @@ function CustomerLayout() {
                 Notifications
               </span>
 
-              <span className="nav-badge">
-                3
-              </span>
+              {unreadNotifications > 0 && (
+                <span className="nav-badge">
+                  {unreadNotifications > 99 ? "99+" : unreadNotifications}
+                </span>
+              )}
             </NavLink>
 
 

@@ -930,6 +930,37 @@
   gap: 6px;
 }
 
+.employee-password-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.employee-password-input-wrap input {
+  width: 100%;
+  padding-right: 40px;
+}
+
+.employee-password-toggle {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  padding: 4px;
+  color: #64748b;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.employee-password-toggle:hover {
+  color: #0f766e;
+}
+
 .employee-password-field .password-requirements {
   margin-top: 2px;
   padding: 10px 12px;

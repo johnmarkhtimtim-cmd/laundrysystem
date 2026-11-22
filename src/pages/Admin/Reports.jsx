@@ -10,6 +10,7 @@ import {
   FileText,
 } from "lucide-react";
 import { subscribeToAllBookings } from "../../services/bookingService";
+import { formatBookingIdLabel, getBookingId } from "../../utils/bookingId";
 
 import "../../styles/Report.css";
 
@@ -73,13 +74,8 @@ function getCustomerName(booking) {
 ========================================================= */
 
 function getBookingNumber(booking) {
-  return (
-    booking.bookingNo ||
-    booking.bookingNumber ||
-    booking.id ||
-    booking.bookingId ||
-    "—"
-  );
+  const label = formatBookingIdLabel(booking);
+  return label === "N/A" ? "—" : label;
 }
 
 /* =========================================================

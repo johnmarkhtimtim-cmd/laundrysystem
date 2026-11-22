@@ -35,6 +35,8 @@ const buildProfile = (user) => {
 function Profile() {
   const [isEditing, setIsEditing] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const { user, updateUser } = useAuth();
 
@@ -459,16 +461,25 @@ function Profile() {
           <div className="acct-field">
             <label>New Password</label>
 
-            <div className="acct-input">
+            <div className="acct-input password-wrapper">
               <Lock size={17} />
 
               <input
-                type="password"
+                type={showNewPassword ? "text" : "password"}
                 name="newPassword"
                 value={passwordData.newPassword}
                 onChange={handlePasswordChange}
                 placeholder="Enter new password"
               />
+
+              <button
+                type="button"
+                className="password-toggle"
+                onClick={() => setShowNewPassword((prev) => !prev)}
+                aria-label={showNewPassword ? "Hide new password" : "Show new password"}
+              >
+                {showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
             </div>
           </div>
 
@@ -476,16 +487,29 @@ function Profile() {
           <div className="acct-field">
             <label>Confirm New Password</label>
 
-            <div className="acct-input">
+            <div className="acct-input password-wrapper">
               <Lock size={17} />
 
               <input
-                type="password"
+                type={showConfirmPassword ? "text" : "password"}
                 name="confirmPassword"
                 value={passwordData.confirmPassword}
                 onChange={handlePasswordChange}
                 placeholder="Confirm new password"
               />
+
+              <button
+                type="button"
+                className="password-toggle"
+                onClick={() => setShowConfirmPassword((prev) => !prev)}
+                aria-label={
+                  showConfirmPassword
+                    ? "Hide confirm password"
+                    : "Show confirm password"
+                }
+              >
+                {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
             </div>
           </div>
 

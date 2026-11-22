@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
 import { createEmployeeAccount } from "../../services/userService";
 
 const EMPTY_FORM = {
@@ -72,6 +73,8 @@ export default function CreateEmployeeModal({
   const [form, setForm] = useState(EMPTY_FORM);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   if (!open) return null;
 
@@ -254,16 +257,26 @@ export default function CreateEmployeeModal({
               <label htmlFor="employee-password">
                 Password <span>*</span>
               </label>
-              <input
-                id="employee-password"
-                name="password"
-                type="password"
-                value={form.password}
-                onChange={handleChange}
-                placeholder="Create a password"
-                autoComplete="new-password"
-                required
-              />
+              <div className="employee-password-input-wrap">
+                <input
+                  id="employee-password"
+                  name="password"
+                  type={showPassword ? "text" : "password"}
+                  value={form.password}
+                  onChange={handleChange}
+                  placeholder="Create a password"
+                  autoComplete="new-password"
+                  required
+                />
+                <button
+                  type="button"
+                  className="employee-password-toggle"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
               {form.password && (
                 <div className="password-requirements password-requirements-visible">
                   <p className="password-requirements-title">
@@ -291,16 +304,34 @@ export default function CreateEmployeeModal({
               <label htmlFor="employee-confirm-password">
                 Confirm password <span>*</span>
               </label>
-              <input
-                id="employee-confirm-password"
-                name="confirmPassword"
-                type="password"
-                value={form.confirmPassword}
-                onChange={handleChange}
-                placeholder="Confirm your password"
-                autoComplete="new-password"
-                required
-              />
+              <div className="employee-password-input-wrap">
+                <input
+                  id="employee-confirm-password"
+                  name="confirmPassword"
+                  type={showConfirmPassword ? "text" : "password"}
+                  value={form.confirmPassword}
+                  onChange={handleChange}
+                  placeholder="Confirm your password"
+                  autoComplete="new-password"
+                  required
+                />
+                <button
+                  type="button"
+                  className="employee-password-toggle"
+                  onClick={() => setShowConfirmPassword((prev) => !prev)}
+                  aria-label={
+                    showConfirmPassword
+                      ? "Hide confirm password"
+                      : "Show confirm password"
+                  }
+                >
+                  {showConfirmPassword ? (
+                    <EyeOff size={18} />
+                  ) : (
+                    <Eye size={18} />
+                  )}
+                </button>
+              </div>
               {form.confirmPassword && (
                 <div
                   className={

@@ -6,6 +6,7 @@ import {
   subscribeToUserNotifications,
 } from "../../services/notificationService";
 import { subscribeToCustomerPayments } from "../../services/paymentService";
+import { formatShortBookingId } from "../../utils/bookingId";
 import "../../styles/Notifications.css";
 
 function Notification() {
@@ -58,10 +59,20 @@ function Notification() {
       // =========================================
 
       bookings.forEach((booking, index) => {
+        const bookingUserId =
+          booking.customer_id ||
+          booking.customerId ||
+          booking.userId ||
+          booking.uid;
+        if (bookingUserId && user?.uid && bookingUserId !== user.uid) {
+          return;
+        }
+
         const bookingId =
           booking.bookingId ||
           booking.id ||
           `LM-${String(index + 1).padStart(3, "0")}`;
+        const shortBookingId = formatShortBookingId(bookingId);
 
         const services =
           booking.services ||
@@ -108,12 +119,12 @@ function Notification() {
 
         if (bookingStatus.toLowerCase() === "to deliver") {
           title = "Laundry Out for Delivery";
-          message = `Your laundry from booking ${bookingId} is on its way to you.`;
+          message = `Your laundry from booking #${shortBookingId} is on its way to you.`;
         }
 
         if (bookingStatus.toLowerCase() === "delivered") {
           title = "Laundry Delivered";
-          message = `Your laundry from booking ${bookingId} has been delivered.`;
+          message = `Your laundry from booking #${shortBookingId} has been delivered.`;
         }
 
         if (
@@ -136,7 +147,7 @@ function Notification() {
           bookingStatus.toLowerCase() === "canceled"
         ) {
           title = "Booking Cancelled";
-          message = `Your booking ${bookingId} has been cancelled.`;
+          message = `Your booking #${shortBookingId} has been cancelled.`;
         }
 
         generatedNotifications.push({
@@ -279,6 +290,7 @@ function Notification() {
                 payment.id ||
                 `PAY-${String(index + 1).padStart(3, "0")}`;
               const bookingId = payment.booking_id || "N/A";
+              const shortBookingId = formatShortBookingId(bookingId);
               const amount = Number(payment.total_amount || payment.amount || 0);
               const paymentStatus = String(
                 payment.payment_status || "Pending"
@@ -297,18 +309,18 @@ function Notification() {
               let title = "Payment Pending";
               let message = `Your payment of ${formatCurrency(
                 amount
-              )} for booking ${bookingId} is pending verification.`;
+              )} for booking #${shortBookingId} is pending verification.`;
 
               if (paymentStatus === "paid") {
                 title = "Payment Successful";
                 message = `Your payment of ${formatCurrency(
                   amount
-                )} for booking ${bookingId} has been received.`;
+                )} for booking #${shortBookingId} has been received.`;
               }
 
               if (paymentStatus === "rejected" || paymentStatus === "failed") {
                 title = "Payment Rejected";
-                message = `Your payment for booking ${bookingId} was rejected. Please resubmit.`;
+                message = `Your payment for booking #${shortBookingId} was rejected. Please resubmit.`;
               }
 
               return {
@@ -430,8 +442,19 @@ function Notification() {
       "laundrymateNotificationRead",
       JSON.stringify(savedReadStatus)
     );
+    window.dispatchEvent(new Event("laundrymateNotificationUpdated"));
 
     setLocalNotifications((current) =>
+      current.map((notification) =>
+        notification.id === id
+          ? {
+              ...notification,
+              unread: false,
+            }
+          : notification
+      )
+    );
+    setPaymentNotifications((current) =>
       current.map((notification) =>
         notification.id === id
           ? {
@@ -477,8 +500,15 @@ function Notification() {
       "laundrymateNotificationRead",
       JSON.stringify(savedReadStatus)
     );
+    window.dispatchEvent(new Event("laundrymateNotificationUpdated"));
 
     setLocalNotifications((current) =>
+      current.map((notification) => ({
+        ...notification,
+        unread: false,
+      }))
+    );
+    setPaymentNotifications((current) =>
       current.map((notification) => ({
         ...notification,
         unread: false,
@@ -820,7 +850,7 @@ function Notification() {
 
                       <span>
                         Booking #
-                        {notification.booking}
+                        {formatShortBookingId(notification.booking)}
                       </span>
 
                     </div>

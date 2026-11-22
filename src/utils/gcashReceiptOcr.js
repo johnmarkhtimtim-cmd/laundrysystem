@@ -37,45 +37,107 @@ function formatMaskedName(start, middle, end, rest = "") {
 
 /**
  * Normalize GCash privacy-masked names across formats:
- * RO●●●D G. | ROeeeD G. | J***n D. | M****** S
+ * RO●●●D G. | ROeeeD G. | RO***D GC. | J***n D. | M****** S
+ *
+ * GCash masks names as:
+ * - First name: 1–3 visible letters + bullet mask + 0–1 trailing letter
+ * - Last name initial(s): single letter + dot (e.g. "G."), where Tesseract often
+ *   misreads "G." or "G ." as "GC.", "G0.", "G,", "G:", etc.
  */
+function normalizeLastInitialSuffix(rest = "") {
+  const trimmed = String(rest || "").trim();
+  if (!trimmed) return "";
+
+  const tokens = trimmed
+    .split(/\s+/)
+    .map((token) => {
+      // Single letter with optional dot: "G" or "G." -> "G."
+      if (/^[A-Za-z]\.?$/.test(token)) {
+        return `${token[0].toUpperCase()}.`;
+      }
+      // Common OCR misread of "<Initial>." where the period or antialiasing
+      // turns into a second character + dot (e.g. "GC.", "GO.", "G0.", "Co.")
+      if (/^[A-Za-z][CcOo0.,;:'`]\.?$/.test(token)) {
+        return `${token[0].toUpperCase()}.`;
+      }
+      // Two uppercase letters followed by a dot on a masked GCash name (e.g. "GC.")
+      // GCash only shows a 1-letter surname initial with a period.
+      if (/^[A-Za-z]{2}\.$/.test(token)) {
+        return `${token[0].toUpperCase()}.`;
+      }
+      return token.toUpperCase();
+    })
+    .filter(Boolean);
+
+  return tokens.length ? ` ${tokens.join(" ")}` : "";
+}
+
 function normalizeMaskedGcashName(name) {
-  const value = String(name || "").trim();
+  const value = String(name || "")
+    .trim()
+    .replace(/\s+\.$/, ".");
   if (!value) return value;
 
-  // Try common visible-prefix lengths. Prefer 2 (most GCash receipts).
+  // Already contains asterisks from bullet normalization or OCR:
+  // e.g. "RO***D GC." or "RO***D G." or "RO****D G."
+  const directMasked = value.match(
+    /^([A-Za-z]{1,4})(\*{2,12})([A-Za-z]{0,2})(\s+.+)?$/
+  );
+  if (directMasked) {
+    const [, start, stars, end, rest = ""] = directMasked;
+    // Standard GCash Send Money mask uses 3–5 bullets; clamp noisy star counts
+    const starCount = Math.max(3, Math.min(stars.length, 6));
+    return (
+      start.toUpperCase() +
+      "*".repeat(starCount) +
+      end.toUpperCase() +
+      normalizeLastInitialSuffix(rest)
+    );
+  }
+
+  // Try common visible-prefix lengths when bullets were misread as e/o/a/c/0/etc.
   const prefixLengths = [2, 3, 1];
   for (const prefixLen of prefixLengths) {
     const pattern = new RegExp(
-      `^([A-Za-z]{${prefixLen}})([eoacEOAC0-9.*]{2,10})([A-Za-z]{1,3})(\\s+[A-Za-z]\\.?)?$`
+      `^([A-Za-z]{${prefixLen}})([eoacsuEOACSU0-9.*]{2,10})([A-Za-z]{1,2})(\\s+[A-Za-z0-9.,;:'\`]{1,4})?$`
     );
     const match = value.match(pattern);
     if (match) {
-      return formatMaskedName(match[1], match[2], match[3], match[4] || "");
+      return formatMaskedName(
+        match[1],
+        match[2],
+        match[3],
+        normalizeLastInitialSuffix(match[4] || "")
+      );
     }
   }
 
-  // Prefix + mask + last-name initial only: M****** S
+  // Prefix + mask + last-name initial only: M****** S.
   for (const prefixLen of prefixLengths) {
     const pattern = new RegExp(
-      `^([A-Za-z]{${prefixLen}})([eoacEOAC0-9.*]{2,12})(\\s+[A-Za-z]\\.?)?$`
+      `^([A-Za-z]{${prefixLen}})([eoacsuEOACSU0-9.*]{2,12})(\\s+[A-Za-z0-9.,;:'\`]{1,4})?$`
     );
     const match = value.match(pattern);
     if (match) {
       return (
         String(match[1]).toUpperCase() +
         "*".repeat(String(match[2]).length) +
-        String(match[3] || "").replace(/[a-z]/g, (ch) => ch.toUpperCase())
+        normalizeLastInitialSuffix(match[3] || "")
       );
     }
   }
 
   // In-string repair for noisy OCR lines
   return value.replace(
-    /\b([A-Za-z]{2})([eoacEOAC0-9]{2,8})([A-Za-z]{1,3})(\s+[A-Za-z]\.?)?\b/g,
+    /\b([A-Za-z]{2})([eoacsuEOACSU0-9*]{2,8})([A-Za-z]{1,2})(\s+[A-Za-z]{1,2}\.?)?\b/g,
     (full, start, middle, end, rest = "") => {
-      if (!/^[eoacEOAC0-9]+$/.test(middle)) return full;
-      return formatMaskedName(start, middle, end, rest);
+      if (!/^[eoacsuEOACSU0-9*]+$/.test(middle)) return full;
+      return formatMaskedName(
+        start,
+        middle,
+        end,
+        normalizeLastInitialSuffix(rest)
+      );
     }
   );
 }
@@ -85,7 +147,8 @@ function cleanupName(value) {
     .replace(/[●•·▪◦〇◎◉]/g, "*")
     .replace(/[^A-Za-z0-9 .*'-]/g, " ")
     .replace(/\s+/g, " ")
-    .trim();
+    .trim()
+    .replace(/^[.\-*'\s]+/, "");
 
   return normalizeMaskedGcashName(name).slice(0, 50);
 }

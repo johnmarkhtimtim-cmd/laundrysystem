@@ -190,6 +190,36 @@
   color: #9ca3af;
 }
 
+.reg-password-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.reg-password-wrap input {
+  padding-right: 44px;
+}
+
+.reg-password-toggle {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  padding: 4px;
+  color: #6b7280;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.reg-password-toggle:hover {
+  color: #2563eb;
+}
+
 /* DATA PRIVACY CONSENT */
 
 .privacy-consent {

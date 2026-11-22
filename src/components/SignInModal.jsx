@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { Eye, EyeOff } from "lucide-react";
 import {
   login,
   logout,
@@ -282,7 +283,7 @@ function SignInModal({ open, onClose }) {
                 onClick={() => setShowPassword((v) => !v)}
                 aria-label="Toggle password visibility"
               >
-                {showPassword ? "Hide" : "Show"}
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
             </div>
             {fieldErrors.password && (
