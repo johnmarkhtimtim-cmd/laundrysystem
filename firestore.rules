@@ -265,9 +265,10 @@ service cloud.firestore {
           && request.resource.data.user_id is string
           && request.resource.data.booking_id is string
           && customerOwnsBooking(request.resource.data.booking_id)
-          && exists(/databases/$(database)/documents/users/$(request.resource.data.user_id))
-          && get(/databases/$(database)/documents/users/$(request.resource.data.user_id)).data.role
-            == 'staff'
+          && (request.resource.data.user_id == request.auth.uid
+            || (exists(/databases/$(database)/documents/users/$(request.resource.data.user_id))
+              && get(/databases/$(database)/documents/users/$(request.resource.data.user_id)).data.role
+                == 'staff'))
           && request.resource.data.keys().hasOnly([
             'notification_id',
             'user_id',

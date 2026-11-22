@@ -523,3 +523,25 @@ export const notifyStaffPaymentSubmitted = async ({
     )
   );
 };
+
+/**
+ * Notify customer that their payment was submitted and is pending verification.
+ */
+export const notifyCustomerPaymentSubmitted = async ({
+  customerId,
+  bookingId,
+  amount = 0,
+  paymentMethod = "GCash",
+  isResubmit = false,
+} = {}) => {
+  if (!customerId || !bookingId) return null;
+
+  const shortId = formatShortBookingId(bookingId);
+  const formattedAmount = Number(amount || 0).toLocaleString("en-PH");
+  const title = isResubmit
+    ? "Payment Resubmitted"
+    : "Payment Submitted";
+  const message = `Your ${paymentMethod || "payment"} of ₱${formattedAmount} for booking #${shortId} has been submitted and is pending staff verification.`;
+
+  return createNotification(customerId, "payment", title, message, bookingId);
+};

@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { subscribeToServices } from "../../services/laundryService";
 import {
-  createBooking,
   getLocalDateKey,
   subscribeToDailyBookingCapacityStatus,
 } from "../../services/bookingService";
@@ -1093,8 +1092,12 @@ export default function BookNow() {
       // BOOKING DATA
       // -----------------------------------------------
 
-      const booking = {
+      const pendingBookingDraft = {
+        id: "__draft_booking__",
+        booking_id: "__draft_booking__",
+        isDraft: true,
         userId: user.uid,
+        customer_id: user.uid,
         customer_name:
           [user?.firstName, user?.lastName]
             .filter(Boolean)
@@ -1115,6 +1118,7 @@ export default function BookNow() {
         services,
 
         schedule,
+        pickup_date: schedule,
         time,
 
         pickupType: pickup,
@@ -1129,43 +1133,36 @@ export default function BookNow() {
         longitude,
         gpsAccuracy,
 
-        laundrySubtotal:
-          laundryTotal,
+        laundrySubtotal: laundryTotal,
 
         deliveryFee,
 
         estimatedTotal,
+        total_amount: estimatedTotal,
 
         status: "Pending",
+        payment_status: "Unpaid",
 
-        createdAt:
-          new Date().toISOString(),
+        createdAt: new Date().toISOString(),
       };
 
       // -----------------------------------------------
-      // SAVE BOOKING TO FIRESTORE
+      // CONTINUE TO PAYMENT ONLY (DO NOT WRITE TO FIRESTORE YET)
+      // Actual booking & payment creation happens on Confirm Payment.
       // -----------------------------------------------
 
-      await createBooking(
-        user.uid,
-        "",
-        booking
-      );
-      window.dispatchEvent(
-        new Event("laundrymateBookingUpdated")
-      );
+      try {
+        sessionStorage.setItem(
+          `laundrymate_pending_booking_draft_${user.uid}`,
+          JSON.stringify(pendingBookingDraft)
+        );
+      } catch {
+        // Ignore storage quota errors; router state still carries the draft.
+      }
 
-      setMessage(
-        "Booking created successfully."
-      );
-
-      // -----------------------------------------------
-      // PAYMENT PAGE
-      // -----------------------------------------------
-
-      navigate(
-        "/customer/payments"
-      );
+      navigate("/customer/payments", {
+        state: { pendingBookingDraft },
+      });
 
     } catch (error) {
       console.error(
@@ -2257,7 +2254,7 @@ export default function BookNow() {
 
                 <span>
                   {isSubmitting
-                    ? "Saving booking..."
+                    ? "Continuing to payment..."
                     : "Continue to Payment"}
                 </span>
 

@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Maximize2, Minimize2, X } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
-import { getCustomerBookings } from "../../services/bookingService";
+import { createBooking, getCustomerBookings } from "../../services/bookingService";
 import {
   createPayment,
   DEFAULT_PAYMENT_SETTINGS,
@@ -43,8 +43,44 @@ function normalizePayment(payment) {
   };
 }
 
+const DRAFT_BOOKING_ID = "__draft_booking__";
+
+function getDraftStorageKey(uid) {
+  return uid ? `laundrymate_pending_booking_draft_${uid}` : "";
+}
+
+function readStoredBookingDraft(uid) {
+  if (!uid) return null;
+  try {
+    const raw = sessionStorage.getItem(getDraftStorageKey(uid));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || !Array.isArray(parsed.services) || parsed.services.length === 0) {
+      return null;
+    }
+    return {
+      ...parsed,
+      id: DRAFT_BOOKING_ID,
+      booking_id: DRAFT_BOOKING_ID,
+      isDraft: true,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function clearStoredBookingDraft(uid) {
+  if (!uid) return;
+  try {
+    sessionStorage.removeItem(getDraftStorageKey(uid));
+  } catch {
+    // Ignore storage errors
+  }
+}
+
 function Payment() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
 
   // =========================================================
@@ -52,8 +88,24 @@ function Payment() {
   // =========================================================
 
   const [bookings, setBookings] = useState([]);
-  const [selectedBookingId, setSelectedBookingId] = useState("");
+  const [pendingBookingDraft, setPendingBookingDraft] = useState(() => {
+    const fromState = location.state?.pendingBookingDraft;
+    if (fromState && Array.isArray(fromState.services) && fromState.services.length > 0) {
+      return {
+        ...fromState,
+        id: DRAFT_BOOKING_ID,
+        booking_id: DRAFT_BOOKING_ID,
+        isDraft: true,
+      };
+    }
+    return null;
+  });
+  const [selectedBookingId, setSelectedBookingId] = useState(() =>
+    location.state?.pendingBookingDraft ? DRAFT_BOOKING_ID : ""
+  );
   const [booking, setBooking] = useState(null);
+  const isSubmittingRef = useRef(false);
+  const draftCreatedBookingIdRef = useRef(null);
   const [payments, setPayments] = useState([]);
   const [services, setServices] = useState([]);
 
@@ -72,6 +124,12 @@ function Payment() {
   const [receiptError, setReceiptError] = useState("");
   const [ocrStatus, setOcrStatus] = useState("");
   const [ocrProgress, setOcrProgress] = useState(0);
+  const [ocrStatusTone, setOcrStatusTone] = useState("neutral");
+  const manualEditsRef = useRef({
+    gcashCustomerName: false,
+    referenceNumber: false,
+  });
+  const ocrRunIdRef = useRef(0);
 
   // SHOP GCASH SETTINGS
   const [gcashName, setGcashName] =
@@ -102,6 +160,34 @@ function Payment() {
   const [successMessage, setSuccessMessage] =
     useState("");
 
+  useEffect(() => {
+    if (!user?.uid) {
+      setPendingBookingDraft(null);
+      return;
+    }
+    const fromState = location.state?.pendingBookingDraft;
+    if (fromState && Array.isArray(fromState.services) && fromState.services.length > 0) {
+      const normalizedDraft = {
+        ...fromState,
+        id: DRAFT_BOOKING_ID,
+        booking_id: DRAFT_BOOKING_ID,
+        isDraft: true,
+      };
+      setPendingBookingDraft(normalizedDraft);
+      setSelectedBookingId(DRAFT_BOOKING_ID);
+      return;
+    }
+    const stored = readStoredBookingDraft(user.uid);
+    if (stored) {
+      setPendingBookingDraft(stored);
+      setSelectedBookingId((current) => current || DRAFT_BOOKING_ID);
+    }
+  }, [user?.uid, location.state]);
+
+  const selectableBookings = useMemo(() => {
+    return pendingBookingDraft ? [pendingBookingDraft, ...bookings] : bookings;
+  }, [pendingBookingDraft, bookings]);
+
   const loadData = useCallback(async () => {
     if (!user?.uid) {
       setBookings([]);
@@ -125,7 +211,14 @@ function Payment() {
     setBookings(sortedBookings);
     setPayments(storedPayments.map(normalizePayment));
 
+    const hasDraft = Boolean(
+      location.state?.pendingBookingDraft || readStoredBookingDraft(user.uid)
+    );
+
     setSelectedBookingId((currentId) => {
+      if (currentId === DRAFT_BOOKING_ID && hasDraft) {
+        return DRAFT_BOOKING_ID;
+      }
       if (
         currentId &&
         sortedBookings.some(
@@ -134,9 +227,10 @@ function Payment() {
       ) {
         return currentId;
       }
+      if (hasDraft) return DRAFT_BOOKING_ID;
       return sortedBookings[0] ? String(getBookingId(sortedBookings[0])) : "";
     });
-  }, [user]);
+  }, [user, location.state]);
 
   // =========================================================
   // LOAD DATA
@@ -219,18 +313,30 @@ function Payment() {
       return;
     }
 
-    const matched = bookings.find(
+    const matched = selectableBookings.find(
       (item) => String(getBookingId(item)) === String(selectedBookingId)
     );
     setBooking(matched || null);
 
-    const relatedPayment = payments.find(
-      (payment) =>
-        String(getBookingId(payment)) === String(selectedBookingId) &&
-        ["pending", "rejected"].includes(
-          String(payment.paymentStatus || payment.status || "").toLowerCase()
-        )
-    );
+    const relatedPayment =
+      matched?.isDraft
+        ? null
+        : payments.find(
+            (payment) =>
+              String(getBookingId(payment)) === String(selectedBookingId) &&
+              ["pending", "rejected"].includes(
+                String(payment.paymentStatus || payment.status || "").toLowerCase()
+              )
+          );
+
+    ocrRunIdRef.current += 1;
+    manualEditsRef.current = {
+      gcashCustomerName: false,
+      referenceNumber: false,
+    };
+    setOcrStatus("");
+    setOcrStatusTone("neutral");
+    setOcrProgress(0);
 
     if (relatedPayment) {
       setEditingPayment(relatedPayment);
@@ -250,7 +356,7 @@ function Payment() {
       setReceiptPreview("");
       setReceiptError("");
     }
-  }, [selectedBookingId, bookings, payments]);
+  }, [selectedBookingId, selectableBookings, payments]);
 
   // =========================================================
   // LOAD LIVE SERVICE PRICING (ADMIN SERVICES/PRICING MODULE)
@@ -545,12 +651,10 @@ function Payment() {
   // GCASH CUSTOMER NAME
   // =========================================================
 
-  const handleGcashCustomerNameChange = (
-    event
-  ) => {
-    setGcashCustomerName(
-      event.target.value
-    );
+  const handleGcashCustomerNameChange = (event) => {
+    const nextValue = event.target.value;
+    manualEditsRef.current.gcashCustomerName = Boolean(nextValue.trim());
+    setGcashCustomerName(nextValue);
 
     if (error) {
       setError("");
@@ -561,12 +665,10 @@ function Payment() {
   // GCASH REFERENCE
   // =========================================================
 
-  const handleReferenceChange = (
-    event
-  ) => {
-    setReferenceNumber(
-      event.target.value
-    );
+  const handleReferenceChange = (event) => {
+    const nextValue = event.target.value;
+    manualEditsRef.current.referenceNumber = Boolean(nextValue.trim());
+    setReferenceNumber(nextValue);
 
     if (error) {
       setError("");
@@ -574,12 +676,14 @@ function Payment() {
   };
 
   const clearReceiptSelection = () => {
+    ocrRunIdRef.current += 1;
     setReceiptFile(null);
     setReceiptError("");
     setOcrStatus("");
+    setOcrStatusTone("neutral");
     setOcrProgress(0);
     setReceiptPreview((current) => {
-      if (current) URL.revokeObjectURL(current);
+      if (current && current.startsWith("blob:")) URL.revokeObjectURL(current);
       return "";
     });
   };
@@ -588,6 +692,7 @@ function Payment() {
     const file = event.target.files?.[0] || null;
     setReceiptError("");
     setOcrStatus("");
+    setOcrStatusTone("neutral");
     setOcrProgress(0);
 
     if (!file) {
@@ -603,8 +708,11 @@ function Payment() {
       return;
     }
 
+    const runId = ocrRunIdRef.current + 1;
+    ocrRunIdRef.current = runId;
+
     setReceiptPreview((current) => {
-      if (current) URL.revokeObjectURL(current);
+      if (current && current.startsWith("blob:")) URL.revokeObjectURL(current);
       return URL.createObjectURL(validation.file);
     });
     setReceiptFile(validation.file);
@@ -612,43 +720,82 @@ function Payment() {
 
     // Auto-fill name + reference from receipt via browser OCR (no Firebase needed)
     setOcrStatus("Reading receipt...");
+    setOcrStatusTone("neutral");
     try {
       const extracted = await extractGcashReceiptFields(
         validation.file,
         (pct) => {
+          if (ocrRunIdRef.current !== runId) return;
           setOcrProgress(pct);
           setOcrStatus(`Reading receipt... ${pct}%`);
         }
       );
 
-      let filled = 0;
-      if (extracted.gcashCustomerName) {
-        setGcashCustomerName(extracted.gcashCustomerName.slice(0, 50));
-        filled += 1;
+      if (ocrRunIdRef.current !== runId) return;
+
+      const detectedName = extracted.gcashCustomerName || "";
+      const detectedRef = extracted.referenceNumber || "";
+      const canAutofillName = Boolean(
+        detectedName &&
+          extracted.shouldAutofillName !== false &&
+          !extracted.hasAmbiguousName
+      );
+
+      if (canAutofillName && !manualEditsRef.current.gcashCustomerName) {
+        setGcashCustomerName(detectedName.slice(0, 50));
       }
-      if (extracted.referenceNumber) {
-        setReferenceNumber(extracted.referenceNumber.slice(0, 30));
-        filled += 1;
+      if (detectedRef && !manualEditsRef.current.referenceNumber) {
+        setReferenceNumber(detectedRef.slice(0, 30));
       }
 
-      if (filled === 2) {
-        setOcrStatus("Filled GCash name and reference number from receipt.");
-      } else if (filled === 1) {
+      const details = [];
+      if (extracted.transactionAmount) {
+        details.push(`Amount: ₱${extracted.transactionAmount}`);
+      }
+      if (extracted.transactionDateTime) {
+        details.push(extracted.transactionDateTime);
+      }
+      const detailSuffix = details.length ? ` (${details.join(" • ")})` : "";
+
+      const nameUncertain = Boolean(
+        !canAutofillName ||
+          extracted.hasMaskedName ||
+          extracted.hasAmbiguousName ||
+          extracted.needsVerification?.name
+      );
+
+      if (!detectedName && !detectedRef) {
+        setOcrStatusTone("warning");
         setOcrStatus(
-          "Partially filled from receipt. Please check and complete the other field."
+          `Could not confidently read GCash name or reference number${detailSuffix}. Please enter them manually.`
+        );
+      } else if (nameUncertain) {
+        setOcrStatusTone("warning");
+        setOcrStatus(
+          `Please verify your GCash name. Some characters may be hidden in the receipt.${detailSuffix}`
+        );
+      } else if (!detectedRef) {
+        setOcrStatusTone("warning");
+        setOcrStatus(
+          `Filled GCash name from receipt${detailSuffix}. Could not read reference number clearly—please enter it manually.`
         );
       } else {
+        setOcrStatusTone("success");
         setOcrStatus(
-          "Could not read name/reference clearly. Please type them manually."
+          `Filled GCash name and reference number from receipt${detailSuffix}.`
         );
       }
     } catch (ocrError) {
+      if (ocrRunIdRef.current !== runId) return;
       console.error("Receipt OCR failed:", ocrError);
+      setOcrStatusTone("warning");
       setOcrStatus(
         "OCR could not read this image. Please enter name and reference manually."
       );
     } finally {
-      setOcrProgress(0);
+      if (ocrRunIdRef.current === runId) {
+        setOcrProgress(0);
+      }
     }
   };
 
@@ -664,36 +811,41 @@ function Payment() {
       return;
     }
 
-    if (isSubmitting) return;
+    if (isSubmitting || isSubmittingRef.current) return;
 
-    const bookingId = getBookingId(booking);
+    const isDraftBooking = Boolean(booking.isDraft);
+    let bookingId = isDraftBooking
+      ? draftCreatedBookingIdRef.current || ""
+      : getBookingId(booking);
 
     // =====================================================
     // DUPLICATE PENDING PAYMENT
     // =====================================================
 
-    const paidPayment = payments.find(
-      (payment) =>
-        String(getBookingId(payment)) === String(bookingId) &&
-        String(payment.paymentStatus || payment.status || "").toLowerCase() ===
-          "paid"
-    );
+    if (!isDraftBooking && bookingId) {
+      const paidPayment = payments.find(
+        (payment) =>
+          String(getBookingId(payment)) === String(bookingId) &&
+          String(payment.paymentStatus || payment.status || "").toLowerCase() ===
+            "paid"
+      );
 
-    if (paidPayment) {
-      setError("This booking is already marked as paid.");
-      return;
-    }
+      if (paidPayment) {
+        setError("This booking is already marked as paid.");
+        return;
+      }
 
-    const duplicatePayment = payments.find(
-      (payment) =>
-        String(getBookingId(payment)) === String(bookingId) &&
-        String(payment.paymentStatus || payment.status || "").toLowerCase() ===
-          "pending"
-    );
+      const duplicatePayment = payments.find(
+        (payment) =>
+          String(getBookingId(payment)) === String(bookingId) &&
+          String(payment.paymentStatus || payment.status || "").toLowerCase() ===
+            "pending"
+      );
 
-    if (duplicatePayment && editingPayment?.id !== duplicatePayment.id) {
-      setError("This booking already has a pending payment.");
-      return;
+      if (duplicatePayment && editingPayment?.id !== duplicatePayment.id) {
+        setError("This booking already has a pending payment.");
+        return;
+      }
     }
 
     // =====================================================
@@ -748,6 +900,7 @@ function Payment() {
     // START SUBMIT
     // =====================================================
 
+    isSubmittingRef.current = true;
     setIsSubmitting(true);
     setError("");
 
@@ -756,13 +909,35 @@ function Payment() {
         throw new Error("You must be signed in to submit a payment.");
       }
 
+      // Validate and compress GCash receipt BEFORE creating any Firestore records
       let receiptMeta = {};
       if (paymentMethod === "GCash" && receiptFile) {
         receiptMeta = await uploadPaymentReceipt({
           file: receiptFile,
           userId: user.uid,
-          bookingId,
+          bookingId: bookingId || DRAFT_BOOKING_ID,
         });
+      }
+
+      // Create the booking in Firestore ONLY when Confirm Payment is clicked
+      if (isDraftBooking && !bookingId) {
+        const {
+          id: _draftId,
+          booking_id: _draftBookingId,
+          isDraft: _isDraft,
+          ...draftPayload
+        } = booking;
+        bookingId = await createBooking(user.uid, "", {
+          ...draftPayload,
+          total_amount: calculatedTotal,
+          estimatedTotal: calculatedTotal,
+          laundrySubtotal,
+          deliveryFee: pickupFee,
+          payment_method: paymentMethod,
+          payment_status: "Pending",
+          status: "Pending",
+        });
+        draftCreatedBookingIdRef.current = bookingId;
       }
 
       const paymentDetails = {
@@ -802,6 +977,12 @@ function Payment() {
             "Pending",
             paymentDetails
           );
+      }
+
+      if (isDraftBooking) {
+        clearStoredBookingDraft(user.uid);
+        setPendingBookingDraft(null);
+        draftCreatedBookingIdRef.current = null;
       }
 
       const paymentData = {
@@ -878,6 +1059,7 @@ function Payment() {
         );
       }
     } finally {
+      isSubmittingRef.current = false;
       setIsSubmitting(false);
     }
   };
@@ -936,7 +1118,7 @@ function Payment() {
   const isSelectedBookingPaid =
     selectedPaymentStatus.toLowerCase() === "paid";
 
-  if (!bookings.length || !booking) {
+  if (!selectableBookings.length || !booking) {
     return (
       <div className="payments-page">
 
@@ -1013,12 +1195,13 @@ function Payment() {
             value={selectedBookingId}
             onChange={(event) => setSelectedBookingId(event.target.value)}
           >
-            {bookings.map((item) => {
+            {selectableBookings.map((item) => {
               const id = getBookingId(item);
               return (
                 <option key={id} value={id}>
-                  #{formatShortBookingId(id)} · {item.status || "Pending"} ·{" "}
-                  {item.payment_status || "Unpaid"}
+                  {item.isDraft
+                    ? "New Booking (Draft) · Confirm Payment to Submit"
+                    : `#${formatShortBookingId(id)} · ${item.status || "Pending"} · ${item.payment_status || "Unpaid"}`}
                 </option>
               );
             })}
@@ -1617,11 +1800,9 @@ function Payment() {
                   <div
                     className={
                       "receipt-ocr-status" +
-                      (ocrStatus.startsWith("Could") ||
-                      ocrStatus.startsWith("OCR")
+                      (ocrStatusTone === "warning"
                         ? " is-warning"
-                        : ocrStatus.startsWith("Filled") ||
-                            ocrStatus.startsWith("Partially")
+                        : ocrStatusTone === "success"
                           ? " is-success"
                           : "")
                     }

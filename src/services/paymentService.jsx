@@ -9,10 +9,12 @@ import {
   where,
   orderBy,
   onSnapshot,
+  runTransaction,
   serverTimestamp,
 } from "firebase/firestore";
 import { db } from "./firebase";
 import {
+  notifyCustomerPaymentSubmitted,
   notifyPaymentConfirmed,
   notifyPaymentRejected,
   notifyStaffPaymentSubmitted,
@@ -94,7 +96,8 @@ const syncBookingPaymentFields = async (
 };
 
 /**
- * Create a payment record and sync method/status onto the booking.
+ * Create a payment record atomically (preventing duplicates per booking)
+ * and sync method/status onto the linked booking.
  */
 export const createPayment = async (
   bookingId,
@@ -105,7 +108,29 @@ export const createPayment = async (
   details = {}
 ) => {
   try {
-    const paymentRef = doc(collection(db, "payments"));
+    if (!bookingId) {
+      throw new Error("Missing booking ID for payment submission.");
+    }
+    if (!customerId) {
+      throw new Error("You must be signed in to submit a payment.");
+    }
+
+    // Guard against legacy random-ID payments already pending/paid for this booking
+    const existingLegacy = await getPaymentByBookingId(bookingId);
+    if (existingLegacy) {
+      const existingStatus = String(
+        existingLegacy.payment_status || existingLegacy.status || ""
+      ).toLowerCase();
+      if (existingStatus === "paid") {
+        throw new Error("This booking is already marked as paid.");
+      }
+      if (existingStatus === "pending") {
+        throw new Error("This booking already has a pending payment.");
+      }
+    }
+
+    // Deterministic payment ID per booking guarantees atomic duplicate prevention
+    const paymentRef = doc(db, "payments", `pay_${bookingId}`);
     const paymentMethod = normalizeMethod(method);
     const numericAmount = Number(amount) || 0;
 
@@ -134,7 +159,23 @@ export const createPayment = async (
       updated_at: serverTimestamp(),
     };
 
-    await setDoc(paymentRef, payment);
+    await runTransaction(db, async (transaction) => {
+      const existingSnap = await transaction.get(paymentRef);
+      if (existingSnap.exists()) {
+        const currentStatus = String(
+          existingSnap.data()?.payment_status || ""
+        ).toLowerCase();
+        if (currentStatus === "paid") {
+          throw new Error("This booking is already marked as paid.");
+        }
+        if (currentStatus === "pending") {
+          throw new Error("This booking already has a pending payment.");
+        }
+      }
+
+      transaction.set(paymentRef, payment);
+    });
+
     await syncBookingPaymentFields(bookingId, {
       payment_status: status,
       payment_method: paymentMethod,
@@ -143,11 +184,23 @@ export const createPayment = async (
     if (String(status).toLowerCase() === "pending") {
       await alertStaffOfSubmittedPayment({
         bookingId,
-        amount,
+        amount: numericAmount,
         paymentMethod,
         customerName: details.customer_name,
         isResubmit: false,
       });
+
+      try {
+        await notifyCustomerPaymentSubmitted({
+          customerId,
+          bookingId,
+          amount: numericAmount,
+          paymentMethod,
+          isResubmit: false,
+        });
+      } catch (notifyErr) {
+        console.error("Error notifying customer of payment submission:", notifyErr);
+      }
     }
 
     return paymentRef.id;
@@ -201,6 +254,21 @@ export const updateCustomerPayment = async (paymentId, paymentData) => {
         "Customer",
       isResubmit: true,
     });
+
+    const customerId = existing.customer_id || paymentData.customer_id;
+    if (customerId && bookingId) {
+      try {
+        await notifyCustomerPaymentSubmitted({
+          customerId,
+          bookingId,
+          amount: paymentData.amount ?? existing.amount ?? existing.total_amount,
+          paymentMethod,
+          isResubmit: true,
+        });
+      } catch (notifyErr) {
+        console.error("Error notifying customer of payment resubmission:", notifyErr);
+      }
+    }
   } catch (error) {
     console.error("Error updating customer payment:", error);
     throw error;
