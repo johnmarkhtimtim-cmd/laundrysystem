@@ -57,7 +57,8 @@ function Landing() {
       window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60000);
     } catch (downloadError) {
       console.error("Chunked APK download failed, falling back:", downloadError);
-      window.location.href = "/downloads/laundrymate.apk";
+      window.location.href =
+        "https://raw.githubusercontent.com/johnmarkhtimtim-cmd/laundrysystem/main/public/downloads/laundrymate.apk";
     } finally {
       setDownloadingApk(false);
     }

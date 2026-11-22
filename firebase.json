@@ -11,6 +11,13 @@
       "**/*.apk",
       "**/*.exe"
     ],
+    "redirects": [
+      {
+        "source": "/downloads/laundrymate.apk",
+        "destination": "https://raw.githubusercontent.com/johnmarkhtimtim-cmd/laundrysystem/main/public/downloads/laundrymate.apk",
+        "type": 302
+      }
+    ],
     "rewrites": [
       {
         "source": "**",
