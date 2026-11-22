@@ -11,6 +11,11 @@ import {
   sendRegistrationOtp,
   verifyRegistrationOtp,
 } from "../services/otpService";
+import {
+  isValidPhMobile,
+  normalizePhMobile,
+  sanitizePhMobileInput,
+} from "../utils/phPhone";
 
 import "../styles/Registration.css";
 
@@ -113,10 +118,11 @@ const Registration = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+    const nextValue = name === "phone" ? sanitizePhMobileInput(value) : value;
 
     setFormData((prev) => ({
       ...prev,
-      [name]: value,
+      [name]: nextValue,
     }));
     clearFieldError(name);
     setError("");
@@ -145,12 +151,19 @@ const Registration = () => {
     }
     if (!phone.trim()) {
       errors.phone = "Phone number cannot be blank.";
+    } else if (!isValidPhMobile(phone)) {
+      errors.phone =
+        "Enter a valid PH mobile number (11 digits starting with 09, e.g., 09171234567).";
     }
 
     setFieldErrors(errors);
 
     if (Object.keys(errors).length > 0) {
-      setError("Please fill in all required fields.");
+      setError(
+        errors.phone && Object.keys(errors).length === 1
+          ? errors.phone
+          : "Please fill in all required fields correctly."
+      );
       return false;
     }
 
@@ -384,7 +397,7 @@ const Registration = () => {
         firstName: firstName.trim(),
         lastName: lastName.trim(),
         email: email.trim(),
-        phone: phone.trim(),
+        phone: normalizePhMobile(phone),
         role: "customer",
         emailVerified: true,
         privacyConsent: true,
@@ -530,9 +543,12 @@ const Registration = () => {
                       type="tel"
                       id="phone"
                       name="phone"
+                      inputMode="numeric"
+                      pattern="09[0-9]{9}"
+                      maxLength={11}
                       value={formData.phone}
                       onChange={handleChange}
-                      placeholder="Enter your phone number"
+                      placeholder="09XXXXXXXXX"
                       disabled={loading || otpSending}
                       autoComplete="tel"
                       required
@@ -541,6 +557,9 @@ const Registration = () => {
                     {fieldErrors.phone && (
                       <span className="field-error">{fieldErrors.phone}</span>
                     )}
+                    <p className="otp-help-text">
+                      PH mobile format: 11 digits starting with 09 (e.g., 09171234567).
+                    </p>
                   </div>
                 </div>
 
@@ -570,14 +589,18 @@ const Registration = () => {
                   {otpInfo && <div className="otp-info-message">{otpInfo}</div>}
 
                   <ol className="otp-steps">
-                    <li>Open Gmail for that address (check Spam/Promotions too).</li>
                     <li>
-                      If you see <strong>Activate Form</strong> from FormSubmit,
-                      click it once.
+                      Open the Gmail inbox for{" "}
+                      <strong>{formData.email.trim()}</strong> (check Spam or
+                      Promotions too).
                     </li>
                     <li>
-                      Come back here and tap <strong>Resend OTP</strong> to get
-                      the 6-digit code.
+                      Find the LaundryMate verification email containing your{" "}
+                      <strong>6-digit OTP</strong>.
+                    </li>
+                    <li>
+                      Enter the 6-digit code below within 10 minutes, or tap{" "}
+                      <strong>Resend OTP</strong> if you need a new code.
                     </li>
                   </ol>
 

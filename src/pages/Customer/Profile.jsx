@@ -15,6 +15,11 @@ import {
 import { useAuth } from "../../context/AuthContext";
 import { updateUserProfile } from "../../services/userService";
 import { changePassword } from "../../services/authService";
+import {
+  isValidPhMobile,
+  normalizePhMobile,
+  sanitizePhMobileInput,
+} from "../../utils/phPhone";
 import "../../styles/Profile.css";
 
 const buildProfile = (user) => {
@@ -52,14 +57,20 @@ function Profile() {
   const handleChange = (e) => {
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value,
+      [e.target.name]:
+        e.target.name === "phone"
+          ? sanitizePhMobileInput(e.target.value)
+          : e.target.value,
     });
   };
 
   const handlePasswordChange = (e) => {
     setPasswordData({
       ...passwordData,
-      [e.target.name]: e.target.value,
+      [e.target.name]:
+        e.target.name === "phone"
+          ? sanitizePhMobileInput(e.target.value)
+          : e.target.value,
     });
   };
 
@@ -75,12 +86,18 @@ function Profile() {
 
   const handleSave = async (e) => {
     e.preventDefault();
+    if (formData.phone.trim() && !isValidPhMobile(formData.phone)) {
+      alert(
+        "Please enter a valid PH mobile number (11 digits starting with 09, e.g., 09171234567)."
+      );
+      return;
+    }
 
     try {
       const changes = {
         firstName: formData.firstName.trim(),
         lastName: formData.lastName.trim(),
-        phone: formData.phone.trim(),
+        phone: formData.phone.trim() ? normalizePhMobile(formData.phone) : "",
         address: formData.address.trim(),
         barangay: formData.barangay.trim(),
         city: formData.city.trim(),
@@ -101,6 +118,12 @@ function Profile() {
 
   const handleChangePassword = async (e) => {
     e.preventDefault();
+    if (formData.phone.trim() && !isValidPhMobile(formData.phone)) {
+      alert(
+        "Please enter a valid PH mobile number (11 digits starting with 09, e.g., 09171234567)."
+      );
+      return;
+    }
 
     const { currentPassword, newPassword, confirmPassword } = passwordData;
 
@@ -289,6 +312,9 @@ function Profile() {
                 <input
                   type="text"
                   name="phone"
+                  inputMode="numeric"
+                  maxLength={11}
+                  placeholder="09XXXXXXXXX"
                   value={formData.phone}
                   onChange={handleChange}
                   disabled={!isEditing}

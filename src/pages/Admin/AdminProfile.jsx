@@ -4,6 +4,11 @@ import AdminPageHeader from "../../components/admin/AdminPageHeader";
 import { useAuth } from "../../context/AuthContext";
 import { changePassword } from "../../services/authService";
 import { updateUserProfile } from "../../services/userService";
+import {
+  isValidPhMobile,
+  normalizePhMobile,
+  sanitizePhMobileInput,
+} from "../../utils/phPhone";
 
 export default function AdminProfile() {
   const { user, updateUser } = useAuth();
@@ -35,6 +40,12 @@ export default function AdminProfile() {
 
   const handleSave = async () => {
     if (!user?.uid) return;
+    if (phone.trim() && !isValidPhMobile(phone)) {
+      setError(
+        "Please enter a valid PH mobile number (11 digits starting with 09, e.g., 09171234567)."
+      );
+      return;
+    }
     setSaving(true);
     setError("");
     setMessage("");
@@ -48,14 +59,14 @@ export default function AdminProfile() {
         firstName,
         lastName,
         name: fullName.trim() || "Administrator",
-        phone: phone.trim(),
+        phone: phone.trim() ? normalizePhMobile(phone) : "",
       });
 
       updateUser?.({
         firstName,
         lastName,
         name: fullName.trim() || "Administrator",
-        phone: phone.trim(),
+        phone: phone.trim() ? normalizePhMobile(phone) : "",
         displayName: fullName.trim() || "Administrator",
       });
 
@@ -118,8 +129,12 @@ export default function AdminProfile() {
             <label>
               Phone
               <input
+                type="tel"
+                inputMode="numeric"
+                maxLength={11}
+                placeholder="09XXXXXXXXX"
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
+                onChange={(e) => setPhone(sanitizePhMobileInput(e.target.value))}
               />
             </label>
             <label>

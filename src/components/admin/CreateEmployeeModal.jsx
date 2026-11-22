@@ -1,6 +1,11 @@
 import { useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { createEmployeeAccount } from "../../services/userService";
+import {
+  isValidPhMobile,
+  normalizePhMobile,
+  sanitizePhMobileInput,
+} from "../../utils/phPhone";
 
 const EMPTY_FORM = {
   firstName: "",
@@ -10,20 +15,6 @@ const EMPTY_FORM = {
   password: "",
   confirmPassword: "",
 };
-
-/** Normalize PH mobile to 09XXXXXXXXX when possible. */
-const normalizePhMobile = (value) => {
-  const digits = String(value || "").replace(/\D/g, "");
-  if (digits.startsWith("63") && digits.length === 12) {
-    return `0${digits.slice(2)}`;
-  }
-  if (digits.startsWith("9") && digits.length === 10) {
-    return `0${digits}`;
-  }
-  return digits;
-};
-
-const isValidPhMobile = (value) => /^09\d{9}$/.test(normalizePhMobile(value));
 
 const PASSWORD_RULES = [
   {
@@ -86,9 +77,7 @@ export default function CreateEmployeeModal({
   const handleChange = (event) => {
     const { name, value } = event.target;
     if (name === "phone") {
-      // Digits only; keep enough room for 09… or 63…
-      const digits = value.replace(/\D/g, "").slice(0, 12);
-      setForm((prev) => ({ ...prev, phone: digits }));
+      setForm((prev) => ({ ...prev, phone: sanitizePhMobileInput(value) }));
     } else {
       setForm((prev) => ({ ...prev, [name]: value }));
     }

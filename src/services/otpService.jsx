@@ -12,9 +12,19 @@ const OTP_COLLECTION = "emailOtps";
 const OTP_TTL_MS = 10 * 60 * 1000; // 10 minutes
 const MAX_ATTEMPTS = 5;
 
-const emailjsServiceId = import.meta.env.VITE_EMAILJS_SERVICE_ID?.trim();
-const emailjsTemplateId = import.meta.env.VITE_EMAILJS_TEMPLATE_ID?.trim();
-const emailjsPublicKey = import.meta.env.VITE_EMAILJS_PUBLIC_KEY?.trim();
+const DEFAULT_EMAILJS_SERVICE_ID = "service_4bzes1h";
+const DEFAULT_EMAILJS_TEMPLATE_ID = "template_earnwnw";
+const DEFAULT_EMAILJS_PUBLIC_KEY = "pGaTsmtTPUdBBRm1a";
+const DEFAULT_EMAILJS_PRIVATE_KEY = "CloBkvyC0sDMniGusK2CC";
+
+const emailjsServiceId =
+  import.meta.env.VITE_EMAILJS_SERVICE_ID?.trim() || DEFAULT_EMAILJS_SERVICE_ID;
+const emailjsTemplateId =
+  import.meta.env.VITE_EMAILJS_TEMPLATE_ID?.trim() || DEFAULT_EMAILJS_TEMPLATE_ID;
+const emailjsPublicKey =
+  import.meta.env.VITE_EMAILJS_PUBLIC_KEY?.trim() || DEFAULT_EMAILJS_PUBLIC_KEY;
+const emailjsPrivateKey =
+  import.meta.env.VITE_EMAILJS_PRIVATE_KEY?.trim() || DEFAULT_EMAILJS_PRIVATE_KEY;
 
 function normalizeEmail(email) {
   return String(email || "").trim().toLowerCase();
@@ -48,22 +58,84 @@ function isEmailjsConfigured() {
 }
 
 async function sendOtpWithEmailjs({ email, otp, firstName }) {
-  await emailjs.send(
-    emailjsServiceId,
-    emailjsTemplateId,
-    {
-      to_email: email,
-      email,
-      otp_code: otp,
-      passcode: otp,
-      otp,
-      user_name: firstName || "LaundryMate user",
-      to_name: firstName || "LaundryMate user",
-      app_name: "LaundryMate",
-      message: `Your LaundryMate verification code is ${otp}. It expires in 10 minutes.`,
-    },
-    { publicKey: emailjsPublicKey }
-  );
+  const recipientName = String(firstName || "").trim() || "LaundryMate User";
+  const otpMessage = `Hi ${recipientName},\n\nYour LaundryMate OTP verification code is: ${otp}\n\nThis 6-digit code expires in 10 minutes. If you did not request this code, please ignore this email.`;
+  const formattedTime = new Date().toLocaleString("en-PH", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+
+  const templateParams = {
+    // Recipient email aliases (for "To Email" / "Reply To" in EmailJS template)
+    to_email: email,
+    email,
+    user_email: email,
+    recipient: email,
+    to: email,
+    gmail: email,
+    reply_to: email,
+
+    // OTP code aliases (covers custom OTP templates)
+    otp_code: otp,
+    passcode: otp,
+    otp,
+    code: otp,
+    verification_code: otp,
+
+    // Name & sender aliases (covers EmailJS "Contact Us" and custom templates)
+    name: "LaundryMate",
+    from_name: "LaundryMate",
+    user_name: recipientName,
+    to_name: recipientName,
+    app_name: "LaundryMate",
+
+    // Subject / title / time / message (ensures default "Contact Us" template shows the OTP clearly)
+    title: `LaundryMate OTP Code: ${otp}`,
+    subject: `LaundryMate OTP Verification Code: ${otp}`,
+    time: formattedTime,
+    expiry_time: "10 minutes",
+    message: otpMessage,
+  };
+
+  try {
+    const payload = {
+      lib_version: "5.0.3",
+      user_id: emailjsPublicKey,
+      service_id: emailjsServiceId,
+      template_id: emailjsTemplateId,
+      template_params: templateParams,
+    };
+
+    if (emailjsPrivateKey) {
+      payload.accessToken = emailjsPrivateKey;
+    }
+
+    const response = await fetch("https://api.emailjs.com/api/v1.0/email/send", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const errText = await response.text().catch(() => "");
+      throw new Error(errText || `EmailJS HTTP ${response.status}`);
+    }
+  } catch (primaryErr) {
+    try {
+      await emailjs.send(emailjsServiceId, emailjsTemplateId, templateParams, {
+        publicKey: emailjsPublicKey,
+      });
+    } catch (sdkErr) {
+      const rawDetail = String(
+        sdkErr?.text || sdkErr?.message || primaryErr?.message || ""
+      ).trim();
+      throw new Error(
+        rawDetail || "Unable to send OTP email via EmailJS. Please try again."
+      );
+    }
+  }
 
   return { provider: "emailjs", needsActivation: false };
 }
@@ -150,7 +222,19 @@ async function sendOtpWithFormSubmit({ email, otp, firstName }) {
 
 async function sendOtpEmail({ email, otp, firstName }) {
   if (isEmailjsConfigured()) {
-    return sendOtpWithEmailjs({ email, otp, firstName });
+    try {
+      return await sendOtpWithEmailjs({ email, otp, firstName });
+    } catch (emailjsErr) {
+      console.warn(
+        "EmailJS OTP send failed, falling back to FormSubmit:",
+        emailjsErr
+      );
+      try {
+        return await sendOtpWithFormSubmit({ email, otp, firstName });
+      } catch {
+        throw emailjsErr;
+      }
+    }
   }
   return sendOtpWithFormSubmit({ email, otp, firstName });
 }
