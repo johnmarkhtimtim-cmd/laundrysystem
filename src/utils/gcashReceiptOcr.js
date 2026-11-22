@@ -181,7 +181,6 @@ export function cleanGcashName(rawValue, options = {}) {
 
   const isUncertain =
     !finalName ||
-    hasMaskedCharacters ||
     hasAmbiguousCharacters ||
     hasSuspiciousSubstitution;
 

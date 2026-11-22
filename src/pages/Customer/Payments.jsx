@@ -759,7 +759,7 @@ function Payment() {
 
       const nameUncertain = Boolean(
         !canAutofillName ||
-          extracted.hasMaskedName ||
+          extracted.hasAmbiguousName ||
           extracted.hasAmbiguousName ||
           extracted.needsVerification?.name
       );
