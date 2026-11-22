@@ -649,11 +649,49 @@ function RiderTransactions() {
 
     if (
       typeof window !== "undefined" &&
+      typeof window.LaundryMateAndroid?.requestCurrentLocation === "function"
+    ) {
+      window.LaundryMateAndroid.requestCurrentLocation();
+    } else if (
+      typeof window !== "undefined" &&
       typeof window.LaundryMateAndroid?.hasLocationPermission === "function" &&
       !window.LaundryMateAndroid.hasLocationPermission()
     ) {
       window.LaundryMateAndroid.requestLocationPermission?.();
     }
+
+    const onNativeLocation = (event) => {
+      const detail = event?.detail;
+      if (
+        detail &&
+        Number.isFinite(Number(detail.latitude)) &&
+        Number.isFinite(Number(detail.longitude))
+      ) {
+        setRiderLocation({
+          latitude: Number(detail.latitude),
+          longitude: Number(detail.longitude),
+        });
+        setRiderLocationError("");
+      }
+    };
+
+    window.addEventListener("laundrymateNativeLocation", onNativeLocation);
+
+    navigator.geolocation?.getCurrentPosition(
+      ({ coords }) => {
+        setRiderLocation({
+          latitude: coords.latitude,
+          longitude: coords.longitude,
+        });
+        setRiderLocationError("");
+      },
+      () => {},
+      {
+        enableHighAccuracy: false,
+        maximumAge: 300000,
+        timeout: 5000,
+      }
+    );
 
     const watchId = navigator.geolocation.watchPosition(
       ({ coords }) => {
@@ -670,19 +708,21 @@ function RiderTransactions() {
           3: "Location request timed out. Trying again...",
         };
 
-        setRiderLocationError(
+        setRiderLocationError((current) =>
+          current ||
           messages[error.code] ||
-            "Unable to access your live location."
+          "Unable to access your live location."
         );
       },
       {
         enableHighAccuracy: true,
-        maximumAge: 5000,
+        maximumAge: 10000,
         timeout: 15000,
       }
     );
 
     return () => {
+      window.removeEventListener("laundrymateNativeLocation", onNativeLocation);
       navigator.geolocation.clearWatch(watchId);
     };
   }, [selectedBooking?.status, showStatusModal]);

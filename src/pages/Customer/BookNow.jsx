@@ -364,56 +364,296 @@ export default function BookNow() {
     lat,
     lng
   ) => {
+    const PH_REGIONS = new Set([
+      "ilocos region",
+      "cagayan valley",
+      "central luzon",
+      "calabarzon",
+      "mimaropa",
+      "bicol region",
+      "western visayas",
+      "central visayas",
+      "eastern visayas",
+      "zamboanga peninsula",
+      "northern mindanao",
+      "davao region",
+      "soccsksargen",
+      "caraga",
+      "cordillera administrative region",
+      "national capital region",
+      "metro manila",
+      "bangsamoro autonomous region in muslim mindanao",
+    ]);
+
+    const cleanPart = (val) =>
+      val ? String(val).replace(/\s+/g, " ").trim() : "";
+
+    const isRegionName = (val) => {
+      const cleaned = cleanPart(val).toLowerCase();
+      if (!cleaned) return false;
+      if (
+        cleaned === "national capital region" ||
+        cleaned === "metro manila"
+      ) {
+        return false;
+      }
+      return (
+        PH_REGIONS.has(cleaned) ||
+        /^region\s+[ivx0-9]+/i.test(cleaned)
+      );
+    };
+
     try {
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`,
-        {
-          headers: {
-            Accept: "application/json",
-          },
-        }
+      const [nomRes, bdcRes] = await Promise.allSettled([
+        fetch(
+          `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1&accept-language=en`,
+          {
+            headers: {
+              Accept: "application/json",
+            },
+          }
+        ).then((r) => (r.ok ? r.json() : null)),
+        fetch(
+          `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=en`,
+          {
+            headers: {
+              Accept: "application/json",
+            },
+          }
+        ).then((r) => (r.ok ? r.json() : null)),
+      ]);
+
+      const nomData =
+        nomRes.status === "fulfilled" ? nomRes.value : null;
+      const bdcData =
+        bdcRes.status === "fulfilled" ? bdcRes.value : null;
+
+      const location = nomData?.address || {};
+      const displayParts = String(nomData?.display_name || "")
+        .split(",")
+        .map((part) => cleanPart(part))
+        .filter(
+          (part) =>
+            part &&
+            !/^philippines$/i.test(part) &&
+            !/^\d{4}$/.test(part)
+        );
+
+      const adminList = Array.isArray(
+        bdcData?.localityInfo?.administrative
+      )
+        ? bdcData.localityInfo.administrative
+        : [];
+
+      const bdcProvince = cleanPart(
+        adminList.find(
+          (item) =>
+            (item.adminLevel === 5 ||
+              /province/i.test(item.description || "")) &&
+            !isRegionName(item.name)
+        )?.name ||
+          (!isRegionName(bdcData?.principalSubdivision)
+            ? bdcData?.principalSubdivision
+            : "")
       );
 
-      if (!response.ok) {
-        throw new Error(
-          "Unable to retrieve location."
+      // 1. PROVINCE
+      const provinceCandidates = [
+        location.province,
+        location.state_district,
+        !isRegionName(location.state) ? location.state : "",
+        bdcProvince,
+        !isRegionName(location.county) ? location.county : "",
+        location.state,
+        bdcData?.principalSubdivision,
+        location.region,
+      ]
+        .map(cleanPart)
+        .filter(Boolean);
+
+      const provinceValue = provinceCandidates[0] || "";
+
+      // 2. CITY / MUNICIPALITY
+      const bdcCity = cleanPart(
+        (!isRegionName(bdcData?.city) &&
+        cleanPart(bdcData?.city).toLowerCase() !==
+          provinceValue.toLowerCase()
+          ? bdcData?.city
+          : "") ||
+          adminList.find(
+            (item) =>
+              (item.adminLevel === 6 ||
+                item.adminLevel === 7 ||
+                /municipality|city/i.test(
+                  item.description || ""
+                )) &&
+              cleanPart(item.name).toLowerCase() !==
+                provinceValue.toLowerCase() &&
+              !isRegionName(item.name)
+          )?.name
+      );
+
+      const cityCandidates = [
+        location.city,
+        location.town,
+        location.municipality,
+        location.city_district,
+        bdcCity,
+        location.county &&
+        cleanPart(location.county).toLowerCase() !==
+          provinceValue.toLowerCase() &&
+        !isRegionName(location.county)
+          ? location.county
+          : "",
+        bdcData?.locality &&
+        cleanPart(bdcData?.locality).toLowerCase() !==
+          provinceValue.toLowerCase()
+          ? bdcData?.locality
+          : "",
+        location.village,
+        location.suburb,
+        location.hamlet,
+      ]
+        .map(cleanPart)
+        .filter(Boolean);
+
+      let cityValue = cityCandidates[0] || "";
+
+      if (!cityValue && displayParts.length > 0) {
+        const provIdx = displayParts.findIndex(
+          (p) =>
+            p.toLowerCase() === provinceValue.toLowerCase()
         );
+        if (provIdx > 0) {
+          cityValue = displayParts[provIdx - 1];
+        } else {
+          cityValue =
+            displayParts.find(
+              (p) =>
+                !isRegionName(p) &&
+                p.toLowerCase() !== provinceValue.toLowerCase()
+            ) || "";
+        }
       }
 
-      const data =
-        await response.json();
+      // 3. BARANGAY
+      const bdcBarangay = cleanPart(
+        adminList.find(
+          (item) =>
+            (item.adminLevel >= 8 ||
+              /barangay|village|suburb|locality/i.test(
+                item.description || ""
+              )) &&
+            cleanPart(item.name).toLowerCase() !==
+              cityValue.toLowerCase() &&
+            cleanPart(item.name).toLowerCase() !==
+              provinceValue.toLowerCase()
+        )?.name ||
+          (bdcData?.locality &&
+          cleanPart(bdcData?.locality).toLowerCase() !==
+            cityValue.toLowerCase() &&
+          cleanPart(bdcData?.locality).toLowerCase() !==
+            provinceValue.toLowerCase()
+            ? bdcData.locality
+            : "")
+      );
 
-      const location =
-        data.address || {};
+      const barangayCandidates = [
+        location.suburb,
+        location.village,
+        location.quarter,
+        location.neighbourhood,
+        location.hamlet,
+        location.residential,
+        location.district,
+        bdcBarangay,
+      ]
+        .map(cleanPart)
+        .filter(Boolean);
 
-      const road =
-        location.road ||
-        location.pedestrian ||
-        location.neighbourhood ||
+      let barangayValue =
+        barangayCandidates.find(
+          (b) => b.toLowerCase() !== cityValue.toLowerCase()
+        ) ||
+        barangayCandidates[0] ||
         "";
 
-      const barangayValue =
-        location.village ||
-        location.suburb ||
-        location.quarter ||
-        location.hamlet ||
+      if (!barangayValue && displayParts.length > 1) {
+        const cityIdx = displayParts.findIndex(
+          (p) => p.toLowerCase() === cityValue.toLowerCase()
+        );
+        if (cityIdx > 0) {
+          barangayValue = displayParts[cityIdx - 1];
+        }
+      }
+      if (!barangayValue) {
+        barangayValue = cityValue || provinceValue;
+      }
+
+      // 4. STREET / ADDRESS
+      const streetLine = [
+        cleanPart(location.house_number),
+        cleanPart(
+          location.road ||
+            location.street ||
+            location.pedestrian ||
+            location.footway ||
+            location.path ||
+            location.highway
+        ),
+      ]
+        .filter(Boolean)
+        .join(" ");
+
+      const placeName = cleanPart(
+        nomData?.name ||
+          location.amenity ||
+          location.building ||
+          location.shop ||
+          location.office ||
+          location.tourism ||
+          location.leisure ||
+          location.historic
+      );
+
+      let road =
+        streetLine ||
+        (placeName &&
+        placeName.toLowerCase() !== barangayValue.toLowerCase() &&
+        placeName.toLowerCase() !== cityValue.toLowerCase()
+          ? placeName
+          : "") ||
+        cleanPart(location.neighbourhood) ||
         "";
 
-      const cityValue =
-        location.city ||
-        location.town ||
-        location.municipality ||
-        "";
+      if (!road && displayParts.length > 0) {
+        const firstPart = displayParts[0];
+        if (
+          firstPart &&
+          firstPart.toLowerCase() !== provinceValue.toLowerCase() &&
+          !isRegionName(firstPart)
+        ) {
+          road = firstPart;
+        }
+      }
+      if (!road) {
+        road =
+          [barangayValue, cityValue].filter(Boolean).join(", ") ||
+          `Lat ${Number(lat).toFixed(5)}, Lng ${Number(lng).toFixed(5)}`;
+      }
 
-      const provinceValue =
-        location.province ||
-        location.state ||
-        "";
+      // 5. LANDMARK (optional helper)
+      const landmarkCandidate =
+        placeName ||
+        (streetLine && road !== streetLine ? streetLine : "");
 
       setAddress(road);
       setBarangay(barangayValue);
-      setCity(cityValue);
-      setProvince(provinceValue);
+      setCity(cityValue || barangayValue);
+      setProvince(provinceValue || cityValue);
+      if (landmarkCandidate) {
+        setLandmark((prev) => prev || landmarkCandidate);
+      }
     } catch (error) {
       console.error(
         "Reverse geocoding error:",
@@ -445,8 +685,8 @@ export default function BookNow() {
       window.LaundryMateAndroid.openAppSettings();
       return;
     }
-    if (typeof window !== "undefined" && window.LaundryMateAndroid?.requestLocationPermission) {
-      window.LaundryMateAndroid.requestLocationPermission();
+    if (typeof window !== "undefined" && window.LaundryMateAndroid?.requestCurrentLocation) {
+      window.LaundryMateAndroid.requestCurrentLocation();
       return;
     }
     useCurrentLocation();
@@ -460,22 +700,52 @@ export default function BookNow() {
     openPermissionSettings();
   };
 
+  const applyDetectedCoordinates = async (lat, lng, accuracy = null) => {
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+
+    setLatitude(lat);
+    setLongitude(lng);
+    if (accuracy !== null && Number.isFinite(accuracy)) {
+      setGpsAccuracy(accuracy);
+    }
+    setShowMap(true);
+    setIsLocating(false);
+    setLocationPermissionIssue(false);
+    setError("");
+
+    await reverseGeocode(lat, lng);
+  };
+
   const requestGeolocationCoordinates = () => {
+    let resolved = false;
+    let bestAccuracy = Infinity;
+
+    const safetyTimer = window.setTimeout(() => {
+      if (!resolved) {
+        setIsLocating(false);
+        setShowMap(true);
+        setLocationPermissionIssue(true);
+        setError(
+          "Could not get a GPS fix in time. Please ensure Location/GPS is turned on, or tap the map below to set your pickup location."
+        );
+      }
+    }, 10000);
+
     const handleSuccess = async (position) => {
       const lat = position.coords.latitude;
       const lng = position.coords.longitude;
+      const acc = position.coords.accuracy ?? 100;
 
-      setLatitude(lat);
-      setLongitude(lng);
-      setGpsAccuracy(position.coords.accuracy);
-      setIsLocating(false);
-      setLocationPermissionIssue(false);
-      setError("");
-
-      await reverseGeocode(lat, lng);
+      if (!resolved || acc < bestAccuracy) {
+        resolved = true;
+        bestAccuracy = acc;
+        window.clearTimeout(safetyTimer);
+        await applyDetectedCoordinates(lat, lng, acc);
+      }
     };
 
     const handleFailure = (geoError) => {
+      if (resolved) return;
       console.error(geoError);
 
       const isAndroidBridge =
@@ -488,45 +758,49 @@ export default function BookNow() {
       const messages = {
         1: isAndroidBridge
           ? "Location permission was denied. Tap 'Open Settings to Activate Permission' below to enable Location access, or select your location on the map."
-          : "Location permission was denied. Allow location access in your browser settings, or select your location on the map.",
+          : "Location permission was denied. Allow location access in your browser/app settings, or select your location on the map.",
         2: isAndroidBridge
           ? "Your location is currently unavailable. Please turn on device Location (GPS) in Settings, or select your location on the map."
-          : "Your location is currently unavailable. Please select your location on the map.",
+          : "Your location is currently unavailable. Please turn on device Location (GPS) or select your location on the map.",
         3: "Getting your location timed out. Please try again or select your location on the map.",
       };
 
+      window.clearTimeout(safetyTimer);
       setError(
         messages[geoError?.code] ||
           "Unable to get your current location. Please select your location on the map."
       );
-
+      setShowMap(true);
       setIsLocating(false);
     };
 
-    // High accuracy (GPS) often times out on laptops/desktops, so fall back
-    // to a network-based position before giving up.
+    // 1. Fast network / Wi-Fi / cell / fused location (resolves in < 1s on mobile)
     navigator.geolocation.getCurrentPosition(
       handleSuccess,
-      (highAccuracyError) => {
-        if (highAccuracyError?.code === 1) {
-          handleFailure(highAccuracyError);
-          return;
+      (fastError) => {
+        if (fastError?.code === 1 && !resolved) {
+          handleFailure(fastError);
         }
+      },
+      {
+        enableHighAccuracy: false,
+        timeout: 6000,
+        maximumAge: 300000,
+      }
+    );
 
-        navigator.geolocation.getCurrentPosition(
-          handleSuccess,
-          handleFailure,
-          {
-            enableHighAccuracy: false,
-            timeout: 15000,
-            maximumAge: 60000,
-          }
-        );
+    // 2. Parallel high-accuracy GPS fix to refine coordinates
+    navigator.geolocation.getCurrentPosition(
+      handleSuccess,
+      (gpsError) => {
+        if (!resolved) {
+          handleFailure(gpsError);
+        }
       },
       {
         enableHighAccuracy: true,
-        timeout: 8000,
-        maximumAge: 0,
+        timeout: 9000,
+        maximumAge: 15000,
       }
     );
   };
@@ -535,45 +809,76 @@ export default function BookNow() {
     setError("");
     setLocationPermissionIssue(false);
 
-    if (!navigator.geolocation) {
+    const hasAndroidNativeLocation =
+      typeof window !== "undefined" &&
+      typeof window.LaundryMateAndroid?.requestCurrentLocation === "function";
+
+    if (!navigator.geolocation && !hasAndroidNativeLocation) {
       setError(
         "Geolocation is not supported by your browser."
       );
       return;
     }
 
-    if (!window.isSecureContext) {
-      setError(
-        "Location access requires a secure (HTTPS) connection. Please select your location on the map instead."
-      );
-      setShowMap(true);
-      return;
-    }
-
     setIsLocating(true);
     setShowMap(true);
 
-    if (
-      typeof window !== "undefined" &&
-      typeof window.LaundryMateAndroid?.hasLocationPermission === "function" &&
-      !window.LaundryMateAndroid.hasLocationPermission()
-    ) {
-      window.LaundryMateAndroid.requestLocationPermission();
-      return;
+    // If running inside the Android APK, immediately request native Android LocationManager coordinates
+    if (hasAndroidNativeLocation) {
+      window.LaundryMateAndroid.requestCurrentLocation();
     }
 
-    requestGeolocationCoordinates();
+    // Also run Web Geolocation in parallel if available
+    if (navigator.geolocation && window.isSecureContext) {
+      requestGeolocationCoordinates();
+    }
   };
 
   useEffect(() => {
+    const onNativeLocation = (event) => {
+      const detail = event?.detail;
+      if (
+        detail &&
+        Number.isFinite(Number(detail.latitude)) &&
+        Number.isFinite(Number(detail.longitude))
+      ) {
+        applyDetectedCoordinates(
+          Number(detail.latitude),
+          Number(detail.longitude),
+          Number(detail.accuracy)
+        );
+      }
+    };
+
+    const onNativeLocationError = (event) => {
+      const code = event?.detail?.code;
+      setIsLocating(false);
+      setShowMap(true);
+      setLocationPermissionIssue(true);
+      if (code === 1) {
+        setError(
+          "Location permission was denied. Tap 'Open Settings to Activate Permission' below to enable Location access, or select your location on the map."
+        );
+      } else {
+        setError(
+          "Device Location (GPS) is turned off or unavailable. Tap 'Turn On Device Location' below, or select your location on the map."
+        );
+      }
+    };
+
     const onAndroidPermissionResult = (event) => {
       if (event?.detail?.granted) {
         setLocationPermissionIssue(false);
         setError("");
         setIsLocating(true);
         setShowMap(true);
-        requestGeolocationCoordinates();
-      } else {
+        if (typeof window.LaundryMateAndroid?.requestCurrentLocation === "function") {
+          window.LaundryMateAndroid.requestCurrentLocation();
+        }
+        if (navigator.geolocation && window.isSecureContext) {
+          requestGeolocationCoordinates();
+        }
+      } else if (isLocating) {
         setIsLocating(false);
         setLocationPermissionIssue(true);
         setError(
@@ -594,10 +899,20 @@ export default function BookNow() {
         setError("");
         setIsLocating(true);
         setShowMap(true);
-        requestGeolocationCoordinates();
+        if (typeof window.LaundryMateAndroid?.requestCurrentLocation === "function") {
+          window.LaundryMateAndroid.requestCurrentLocation();
+        }
+        if (navigator.geolocation && window.isSecureContext) {
+          requestGeolocationCoordinates();
+        }
       }
     };
 
+    window.addEventListener("laundrymateNativeLocation", onNativeLocation);
+    window.addEventListener(
+      "laundrymateNativeLocationError",
+      onNativeLocationError
+    );
     window.addEventListener(
       "laundrymateLocationPermissionResult",
       onAndroidPermissionResult
@@ -606,6 +921,11 @@ export default function BookNow() {
     document.addEventListener("visibilitychange", onVisibilityOrFocus);
 
     return () => {
+      window.removeEventListener("laundrymateNativeLocation", onNativeLocation);
+      window.removeEventListener(
+        "laundrymateNativeLocationError",
+        onNativeLocationError
+      );
       window.removeEventListener(
         "laundrymateLocationPermissionResult",
         onAndroidPermissionResult
@@ -613,7 +933,7 @@ export default function BookNow() {
       window.removeEventListener("focus", onVisibilityOrFocus);
       document.removeEventListener("visibilitychange", onVisibilityOrFocus);
     };
-  }, [locationPermissionIssue]);
+  }, [locationPermissionIssue, isLocating]);
 
   // ====================================================
   
