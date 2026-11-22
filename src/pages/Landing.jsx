@@ -22,9 +22,13 @@ function Landing() {
 
     setDownloadingApk(true);
     try {
-      const manifestRes = await fetch("/downloads/apk-manifest.json", {
-        cache: "no-store",
-      });
+      const cacheBust = Date.now();
+      const manifestRes = await fetch(
+        `/downloads/apk-manifest.json?t=${cacheBust}`,
+        {
+          cache: "no-store",
+        }
+      );
       if (!manifestRes.ok) {
         throw new Error("APK manifest unavailable");
       }
@@ -34,9 +38,14 @@ function Landing() {
         throw new Error("No APK chunks found");
       }
 
+      const versionTag = encodeURIComponent(
+        manifest.updatedAt || manifest.version || cacheBust
+      );
       const buffers = await Promise.all(
         chunkList.map(async (chunkName) => {
-          const res = await fetch(`/downloads/${chunkName}`);
+          const res = await fetch(`/downloads/${chunkName}?v=${versionTag}`, {
+            cache: "no-store",
+          });
           if (!res.ok) {
             throw new Error(`Failed to fetch ${chunkName}`);
           }
@@ -50,15 +59,14 @@ function Landing() {
       const objectUrl = URL.createObjectURL(blob);
       const anchor = document.createElement("a");
       anchor.href = objectUrl;
-      anchor.download = manifest.fileName || "LaundryMate.apk";
+      anchor.download = manifest.fileName || "LaundryMate-v2.0.apk";
       document.body.appendChild(anchor);
       anchor.click();
       document.body.removeChild(anchor);
       window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60000);
     } catch (downloadError) {
       console.error("Chunked APK download failed, falling back:", downloadError);
-      window.location.href =
-        "https://raw.githubusercontent.com/johnmarkhtimtim-cmd/laundrysystem/main/public/downloads/laundrymate.apk";
+      window.location.href = `https://raw.githubusercontent.com/johnmarkhtimtim-cmd/laundrysystem/main/public/downloads/laundrymate.apk?v=${Date.now()}`;
     } finally {
       setDownloadingApk(false);
     }
@@ -221,10 +229,10 @@ function Landing() {
             <a
               className="btn-primary"
               href="/downloads/laundrymate.apk"
-              download="LaundryMate.apk"
+              download="LaundryMate-v2.0.apk"
               onClick={handleDownloadApk}
             >
-              {downloadingApk ? "Preparing APK..." : "Download Android App"}
+              {downloadingApk ? "Preparing APK v2.0..." : "Download Android App (v2.0)"}
             </a>
             <button type="button" className="btn-ghost" onClick={openSignIn}>
               Sign in
@@ -317,10 +325,10 @@ function Landing() {
           <div className="landing-footer-links">
             <a
               href="/downloads/laundrymate.apk"
-              download="LaundryMate.apk"
+              download="LaundryMate-v2.0.apk"
               onClick={handleDownloadApk}
             >
-              {downloadingApk ? "Preparing APK..." : "Download APK"}
+              {downloadingApk ? "Preparing APK v2.0..." : "Download APK (v2.0)"}
             </a>
             <button type="button" className="landing-footer-signin" onClick={openSignIn}>
               Sign in

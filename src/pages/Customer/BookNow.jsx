@@ -681,6 +681,10 @@ export default function BookNow() {
   // ====================================================
 
   const openPermissionSettings = () => {
+    if (typeof window !== "undefined" && window.LaundryMateAndroid?.requestAllPermissions) {
+      window.LaundryMateAndroid.requestAllPermissions();
+      return;
+    }
     if (typeof window !== "undefined" && window.LaundryMateAndroid?.openAppSettings) {
       window.LaundryMateAndroid.openAppSettings();
       return;

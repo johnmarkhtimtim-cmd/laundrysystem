@@ -78,6 +78,41 @@
   color: #ffffff;
 }
 
+.theme-perm-btn {
+  margin-right: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 30px;
+  padding: 0 11px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.theme-perm-btn.needs-action {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #93c5fd;
+}
+
+.theme-perm-btn.needs-action:hover {
+  background: #dbeafe;
+}
+
+.theme-perm-btn.is-granted {
+  background: #ecfdf5;
+  color: #047857;
+  border: 1px solid #a7f3d0;
+}
+
+.theme-perm-btn.is-granted:hover {
+  background: #d1fae5;
+}
+
 @media (max-width: 700px) {
   .theme-toggle-bar {
     padding: 0 16px;

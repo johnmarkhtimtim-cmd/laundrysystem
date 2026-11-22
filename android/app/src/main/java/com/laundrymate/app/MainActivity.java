@@ -28,8 +28,10 @@ import java.util.Locale;
 public class MainActivity extends BridgeActivity {
 
     private static final int LOCATION_PERMISSION_REQUEST_CODE = 1001;
+    private static final int ALL_PERMISSIONS_REQUEST_CODE = 1002;
     private boolean bridgeInterfaceAdded = false;
     private boolean pendingNativeLocationRequest = false;
+    private boolean openSettingsIfStillDenied = false;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private LocationListener activeLocationListener = null;
 
@@ -48,6 +50,13 @@ public class MainActivity extends BridgeActivity {
     }
 
     @Override
+    public void onResume() {
+        super.onResume();
+        configureWebViewBridge();
+        mainHandler.postDelayed(this::dispatchPermissionsStatusToWeb, 250);
+    }
+
+    @Override
     public void onDestroy() {
         stopActiveLocationUpdates();
         super.onDestroy();
@@ -63,6 +72,8 @@ public class MainActivity extends BridgeActivity {
         settings.setGeolocationEnabled(true);
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
+        settings.setAllowFileAccess(true);
+        settings.setAllowContentAccess(true);
 
         if (!bridgeInterfaceAdded) {
             webView.addJavascriptInterface(new AndroidPermissionBridge(), "LaundryMateAndroid");
@@ -80,29 +91,123 @@ public class MainActivity extends BridgeActivity {
         return fine || coarse;
     }
 
-    private void requestInitialPermissionsIfNeeded() {
-        if (isFinishing() || isDestroyed()) {
-            return;
+    private boolean isFilesGranted() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            return (
+                ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_IMAGES) ==
+                PackageManager.PERMISSION_GRANTED
+            );
         }
+        return (
+            ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) ==
+            PackageManager.PERMISSION_GRANTED
+        );
+    }
+
+    private boolean isCameraGranted() {
+        return (
+            ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) ==
+            PackageManager.PERMISSION_GRANTED
+        );
+    }
+
+    private boolean isNotificationsGranted() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            return (
+                ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) ==
+                PackageManager.PERMISSION_GRANTED
+            );
+        }
+        return true;
+    }
+
+    private List<String> collectMissingPermissions() {
         List<String> needed = new ArrayList<>();
         if (!isLocationGranted()) {
             needed.add(Manifest.permission.ACCESS_FINE_LOCATION);
             needed.add(Manifest.permission.ACCESS_COARSE_LOCATION);
         }
+        if (!isCameraGranted()) {
+            needed.add(Manifest.permission.CAMERA);
+        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (
+                ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_IMAGES) !=
+                PackageManager.PERMISSION_GRANTED
+            ) {
+                needed.add(Manifest.permission.READ_MEDIA_IMAGES);
+            }
+            if (
+                ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_VIDEO) !=
+                PackageManager.PERMISSION_GRANTED
+            ) {
+                needed.add(Manifest.permission.READ_MEDIA_VIDEO);
+            }
             if (
                 ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) !=
                 PackageManager.PERMISSION_GRANTED
             ) {
                 needed.add(Manifest.permission.POST_NOTIFICATIONS);
             }
+        } else {
+            if (
+                ContextCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.READ_EXTERNAL_STORAGE
+                ) !=
+                PackageManager.PERMISSION_GRANTED
+            ) {
+                needed.add(Manifest.permission.READ_EXTERNAL_STORAGE);
+            }
+            if (
+                Build.VERSION.SDK_INT <= Build.VERSION_CODES.Q &&
+                ContextCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.WRITE_EXTERNAL_STORAGE
+                ) !=
+                PackageManager.PERMISSION_GRANTED
+            ) {
+                needed.add(Manifest.permission.WRITE_EXTERNAL_STORAGE);
+            }
         }
+        return needed;
+    }
+
+    private String buildPermissionsStatusJson() {
+        return String.format(
+            Locale.US,
+            "{\"location\":%s,\"files\":%s,\"camera\":%s,\"notifications\":%s,\"allGranted\":%s}",
+            isLocationGranted() ? "true" : "false",
+            isFilesGranted() ? "true" : "false",
+            isCameraGranted() ? "true" : "false",
+            isNotificationsGranted() ? "true" : "false",
+            (isLocationGranted() && isFilesGranted() && isCameraGranted() && isNotificationsGranted())
+                ? "true"
+                : "false"
+        );
+    }
+
+    private void dispatchPermissionsStatusToWeb() {
+        evalJs(
+            "window.dispatchEvent(new CustomEvent('laundrymatePermissionsStatus', { detail: " +
+            buildPermissionsStatusJson() +
+            " }));"
+        );
+    }
+
+    private void requestInitialPermissionsIfNeeded() {
+        if (isFinishing() || isDestroyed()) {
+            return;
+        }
+        List<String> needed = collectMissingPermissions();
         if (!needed.isEmpty()) {
             ActivityCompat.requestPermissions(
                 this,
                 needed.toArray(new String[0]),
-                LOCATION_PERMISSION_REQUEST_CODE
+                ALL_PERMISSIONS_REQUEST_CODE
             );
+        } else {
+            dispatchPermissionsStatusToWeb();
         }
     }
 
@@ -262,7 +367,11 @@ public class MainActivity extends BridgeActivity {
         @NonNull int[] grantResults
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == LOCATION_PERMISSION_REQUEST_CODE) {
+        dispatchPermissionsStatusToWeb();
+        if (
+            requestCode == LOCATION_PERMISSION_REQUEST_CODE ||
+            requestCode == ALL_PERMISSIONS_REQUEST_CODE
+        ) {
             final boolean granted = isLocationGranted();
             evalJs(
                 "window.dispatchEvent(new CustomEvent('laundrymateLocationPermissionResult', { detail: { granted: " +
@@ -277,6 +386,18 @@ public class MainActivity extends BridgeActivity {
                     dispatchLocationErrorToWeb(1, "Location permission was denied.");
                 }
             }
+            if (openSettingsIfStillDenied) {
+                openSettingsIfStillDenied = false;
+                if (!collectMissingPermissions().isEmpty()) {
+                    try {
+                        Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+                        Uri uri = Uri.fromParts("package", getPackageName(), null);
+                        intent.setData(uri);
+                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                        startActivity(intent);
+                    } catch (Exception ignored) {}
+                }
+            }
         }
     }
 
@@ -285,6 +406,33 @@ public class MainActivity extends BridgeActivity {
         @JavascriptInterface
         public boolean hasLocationPermission() {
             return isLocationGranted();
+        }
+
+        @JavascriptInterface
+        public boolean hasAllPermissions() {
+            return collectMissingPermissions().isEmpty();
+        }
+
+        @JavascriptInterface
+        public String getPermissionsStatus() {
+            return buildPermissionsStatusJson();
+        }
+
+        @JavascriptInterface
+        public void requestAllPermissions() {
+            runOnUiThread(() -> {
+                List<String> needed = collectMissingPermissions();
+                if (needed.isEmpty()) {
+                    dispatchPermissionsStatusToWeb();
+                    return;
+                }
+                openSettingsIfStillDenied = true;
+                ActivityCompat.requestPermissions(
+                    MainActivity.this,
+                    needed.toArray(new String[0]),
+                    ALL_PERMISSIONS_REQUEST_CODE
+                );
+            });
         }
 
         @JavascriptInterface

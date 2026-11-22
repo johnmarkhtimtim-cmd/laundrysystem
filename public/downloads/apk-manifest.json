@@ -1,11 +1,13 @@
 {
-  "fileName": "LaundryMate.apk",
-  "size": 5353205,
+  "fileName": "LaundryMate-v2.0.apk",
+  "version": "2.0",
+  "versionCode": 2,
+  "size": 4958287,
   "chunks": [
-    "apk-part-0.bin",
-    "apk-part-1.bin",
-    "apk-part-2.bin",
-    "apk-part-3.bin"
+    "apk-v2-part-0.bin",
+    "apk-v2-part-1.bin",
+    "apk-v2-part-2.bin",
+    "apk-v2-part-3.bin"
   ],
-  "updatedAt": "2026-11-22T04:43:46.364Z"
+  "updatedAt": "2026-11-22T04:57:50.449Z"
 }
