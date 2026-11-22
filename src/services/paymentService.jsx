@@ -116,7 +116,11 @@ export const createPayment = async (
     }
 
     // Guard against legacy random-ID payments already pending/paid for this booking
-    const existingLegacy = await getPaymentByBookingId(bookingId);
+    // (query scoped by customer_id so Firestore security rules always allow it)
+    const customerPayments = await getCustomerPayments(customerId);
+    const existingLegacy = customerPayments.find(
+      (item) => String(item.booking_id || item.bookingId || "") === String(bookingId)
+    );
     if (existingLegacy) {
       const existingStatus = String(
         existingLegacy.payment_status || existingLegacy.status || ""

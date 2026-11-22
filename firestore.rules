@@ -148,7 +148,7 @@ service cloud.firestore {
 
     match /payments/{paymentId} {
       allow read: if admin() || staff()
-        || (signedIn() && resource.data.customer_id == request.auth.uid)
+        || (signedIn() && (resource == null || resource.data.customer_id == request.auth.uid))
         || (rider()
           && resource.data.booking_id is string
           && exists(/databases/$(database)/documents/bookings/$(resource.data.booking_id))
