@@ -1196,7 +1196,7 @@ function Payment() {
       }
 
       const isCashPayment = paymentMethod === "Cash";
-      const nextPaymentStatus = isCashPayment ? "Paid" : "Pending";
+      const nextPaymentStatus = isCashPayment ? "Unpaid" : "Pending";
 
       const paymentDetails = {
         customer_name:

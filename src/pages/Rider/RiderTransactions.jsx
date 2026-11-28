@@ -18,6 +18,7 @@ import {
   updateRiderBookingStatus,
 } from "../../services/bookingService";
 import { subscribeToServices } from "../../services/laundryService";
+import { updatePaymentStatus } from "../../services/paymentService";
 import {
   formatShortBookingId,
   getBookingDisplayStatus,
@@ -117,6 +118,26 @@ const WEIGHT_MAX_KG = 50;
 
 function getPayment(booking) {
   return booking?.payment || null;
+}
+
+// Cash bookings stay "Unpaid" until the rider (or staff) physically
+// collects the money — this finds the collectible payment record.
+function getCashPayment(booking) {
+  const payment = getPayment(booking);
+  if (!payment?.id) return null;
+
+  const method = String(
+    payment.payment_method ||
+      payment.paymentMethod ||
+      booking?.payment_method ||
+      booking?.paymentMethod ||
+      ""
+  ).toLowerCase();
+  const status = String(
+    payment.payment_status || payment.paymentStatus || ""
+  ).toLowerCase();
+
+  return method === "cash" && status === "unpaid" ? payment : null;
 }
 
 /* =========================================================
@@ -483,6 +504,8 @@ function RiderTransactions() {
 
   const [services, setServices] = useState([]);
   const [deliverConfirm, setDeliverConfirm] = useState(null);
+  const [cashConfirm, setCashConfirm] = useState(null);
+  const [collectingCash, setCollectingCash] = useState(false);
 
   /* =======================================================
      LOAD SERVICE PRICING (ADMIN SERVICES / PRICING MODULE)
@@ -989,6 +1012,42 @@ function RiderTransactions() {
   };
 
   /* =======================================================
+     COLLECT CASH PAYMENT
+
+     Marks an "Unpaid" cash payment as Paid once the rider has
+     physically received the money from the customer.
+  ======================================================= */
+
+  const confirmCollectCash = async () => {
+    if (!cashConfirm?.payment?.id) return;
+
+    setCollectingCash(true);
+
+    try {
+      await updatePaymentStatus(cashConfirm.payment.id, "Paid");
+
+      setCashConfirm(null);
+      setNotification(
+        `Cash payment of ${formatCurrency(
+          Number(
+            cashConfirm.payment.amount ??
+              cashConfirm.payment.total_amount ??
+              0
+          )
+        )} marked as collected.`
+      );
+
+      window.dispatchEvent(new Event("laundrymatePaymentUpdated"));
+      window.dispatchEvent(new Event("laundrymateBookingUpdated"));
+    } catch (error) {
+      console.error("Unable to mark cash payment collected:", error);
+      setNotification("Unable to mark the cash payment as collected.");
+    } finally {
+      setCollectingCash(false);
+    }
+  };
+
+  /* =======================================================
      FILTER
   ======================================================= */
 
@@ -1167,6 +1226,9 @@ function RiderTransactions() {
                 const weight =
                   getWeight(booking);
 
+                const cashPayment =
+                  getCashPayment(booking);
+
                 return (
                   <tr key={booking.id}>
                     <td>
@@ -1289,6 +1351,19 @@ function RiderTransactions() {
                             ? "Start Delivery"
                             : "View Details"}
                       </button>
+
+                      {cashPayment && (
+                        <button
+                          type="button"
+                          className="collect-cash-btn"
+                          disabled={updating || collectingCash}
+                          onClick={() =>
+                            setCashConfirm({ booking, payment: cashPayment })
+                          }
+                        >
+                          {collectingCash ? "Collecting..." : "Collect Cash"}
+                        </button>
+                      )}
                     </td>
                   </tr>
                 );
@@ -2424,6 +2499,44 @@ function RiderTransactions() {
         meta={deliverConfirm?.meta}
         onCancel={closeDeliverConfirm}
         onConfirm={confirmDelivered}
+      />
+
+      <ConfirmActionModal
+        open={Boolean(cashConfirm)}
+        loading={collectingCash}
+        variant="success"
+        title="Cash payment collected?"
+        message="Confirm you received the cash from the customer. This marks the payment as Paid."
+        confirmLabel="Yes, Collected"
+        loadingLabel="Updating..."
+        meta={
+          cashConfirm
+            ? [
+                {
+                  label: "Booking",
+                  value: `#${formatShortBookingId(cashConfirm.booking)}`,
+                },
+                {
+                  label: "Customer",
+                  value: getCustomerName(cashConfirm.booking),
+                },
+                {
+                  label: "Amount",
+                  value: formatCurrency(
+                    Number(
+                      cashConfirm.payment.amount ??
+                        cashConfirm.payment.total_amount ??
+                        0
+                    )
+                  ),
+                },
+              ]
+            : []
+        }
+        onCancel={() => {
+          if (!collectingCash) setCashConfirm(null);
+        }}
+        onConfirm={confirmCollectCash}
       />
     </div>
   );

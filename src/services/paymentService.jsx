@@ -176,6 +176,13 @@ export const createPayment = async (
         if (currentStatus === "pending") {
           throw new Error("This booking already has a pending payment.");
         }
+        if (
+          currentStatus === "unpaid" &&
+          String(status).toLowerCase() === "unpaid"
+        ) {
+          // Cash booking resubmitted unchanged — already recorded, nothing to update.
+          return;
+        }
 
         // Resubmitting after a Rejected payment must use update() with only
         // the keys permitted by Firestore security rules.

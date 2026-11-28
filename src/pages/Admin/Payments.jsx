@@ -167,6 +167,7 @@ export default function Payments() {
                   <option value="All">All Status</option>
                   <option value="Paid">Paid</option>
                   <option value="Pending">Pending</option>
+                  <option value="Unpaid">Unpaid (Cash)</option>
                   <option value="Rejected">Rejected</option>
                 </select>
               </div>

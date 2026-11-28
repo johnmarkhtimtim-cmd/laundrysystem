@@ -122,6 +122,23 @@ export const isBookingPaymentMarkedPaid = (booking) => {
 };
 
 /**
+ * Cash bookings are settled in person at pickup/delivery, so staff must see
+ * them in the booking workflow even while the payment is still "Unpaid".
+ */
+export const isBookingCashPayment = (booking) => {
+  if (!booking) return false;
+
+  const method =
+    booking.payment?.payment_method ??
+    booking.payment?.paymentMethod ??
+    booking.payment_method ??
+    booking.paymentMethod ??
+    "";
+
+  return String(method).trim().toLowerCase() === "cash";
+};
+
+/**
  * Read daily used count from a shared counter.
  * Customers cannot query all bookings, so capacity uses this doc instead.
  */
@@ -637,7 +654,11 @@ export const subscribeToStaffBookings = (
     onBookings(
       [...bookings.values()]
         .map((booking) => attachPaymentToBooking(booking, paymentByBooking))
-        .filter((booking) => isBookingPaymentMarkedPaid(booking))
+        .filter(
+          (booking) =>
+            isBookingPaymentMarkedPaid(booking) ||
+            isBookingCashPayment(booking)
+        )
         .sort(
           (a, b) =>
             getTimestampMilliseconds(b.booking_date || b.created_at) -

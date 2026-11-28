@@ -163,7 +163,16 @@ service cloud.firestore {
               && request.resource.data.weight > 0
               && request.resource.data.total_amount is number
               && request.resource.data.laundry_subtotal is number
-              && request.resource.data.delivery_fee is number)));
+              && request.resource.data.delivery_fee is number)
+        || (rider()
+          && resource.data.rider_id == request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'payment_status',
+            'payment_method',
+            'updated_at'
+          ])
+          && request.resource.data.payment_method in ['GCash', 'Cash']
+          && request.resource.data.payment_status in ['Pending', 'Paid', 'Rejected', 'Unpaid'])));
       allow delete: if admin();
     }
 
@@ -180,7 +189,7 @@ service cloud.firestore {
           && customerOwnsBooking(request.resource.data.booking_id)
           && (request.resource.data.payment_status == 'Pending'
             || (request.resource.data.payment_method == 'Cash'
-              && request.resource.data.payment_status == 'Paid'))
+              && request.resource.data.payment_status == 'Unpaid'))
           && request.resource.data.amount is number
           && request.resource.data.amount > 0
           && (
@@ -231,9 +240,21 @@ service cloud.firestore {
           && request.resource.data.weight is number
           && request.resource.data.laundry_subtotal is number
           && request.resource.data.delivery_fee is number)
+        || (rider()
+          && resource.data.booking_id is string
+          && exists(/databases/$(database)/documents/bookings/$(resource.data.booking_id))
+          && get(/databases/$(database)/documents/bookings/$(resource.data.booking_id)).data.rider_id == request.auth.uid
+          && resource.data.payment_method == 'Cash'
+          && resource.data.payment_status == 'Unpaid'
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'payment_status',
+            'payment_date',
+            'updated_at'
+          ])
+          && request.resource.data.payment_status == 'Paid')
         || (customer()
           && resource.data.customer_id == request.auth.uid
-          && resource.data.payment_status in ['Pending', 'Rejected']
+          && resource.data.payment_status in ['Pending', 'Rejected', 'Unpaid']
           && request.resource.data.payment_status == 'Pending'
           && request.resource.data.customer_id == resource.data.customer_id
           && request.resource.data.booking_id == resource.data.booking_id

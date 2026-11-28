@@ -527,6 +527,32 @@
   transform: none;
 }
 
+.collect-cash-btn {
+  display: block;
+  margin-top: 6px;
+  border: 1px solid #16a34a;
+  background: #ffffff;
+  color: #16a34a;
+  padding: 5px 10px;
+  min-height: 30px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  transition: 0.2s ease;
+}
+
+.collect-cash-btn:hover {
+  background: #16a34a;
+  color: #ffffff;
+}
+
+.collect-cash-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .archive-booking-btn {
   border: 1px solid #dbe3ee;
   background: #ffffff;
