@@ -325,6 +325,18 @@ function extractTransactionAmount(lines) {
           confidence: typeof list[i] === "object" ? list[i].confidence : null,
         };
       }
+      if (list[i + 1]) {
+        const nextText =
+          typeof list[i + 1] === "string" ? list[i + 1] : list[i + 1].text;
+        const fromNext = parseAmountFromText(nextText);
+        if (fromNext) {
+          return {
+            value: fromNext,
+            confidence:
+              typeof list[i + 1] === "object" ? list[i + 1].confidence : null,
+          };
+        }
+      }
     }
   }
 

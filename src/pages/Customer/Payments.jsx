@@ -128,6 +128,8 @@ function Payment() {
   const [ocrStatus, setOcrStatus] = useState("");
   const [ocrProgress, setOcrProgress] = useState(0);
   const [ocrStatusTone, setOcrStatusTone] = useState("neutral");
+  const [ocrDetectedAmount, setOcrDetectedAmount] = useState(null);
+  const [isOcrRunning, setIsOcrRunning] = useState(false);
   const manualEditsRef = useRef({
     gcashCustomerName: false,
     referenceNumber: false,
@@ -217,6 +219,8 @@ function Payment() {
       setOcrStatus("");
       setOcrStatusTone("neutral");
       setOcrProgress(0);
+      setOcrDetectedAmount(null);
+      setIsOcrRunning(false);
 
       if (relatedPayment) {
         setEditingPayment(relatedPayment);
@@ -522,6 +526,39 @@ function Payment() {
     pickupFee,
   ]);
 
+  const expectedAmountToSend = useMemo(
+    () => Number(Number(calculatedTotal || 0).toFixed(2)),
+    [calculatedTotal]
+  );
+
+  const parsedOcrAmount = useMemo(() => {
+    if (
+      ocrDetectedAmount === null ||
+      ocrDetectedAmount === undefined ||
+      ocrDetectedAmount === ""
+    ) {
+      return null;
+    }
+    const num = Number(ocrDetectedAmount);
+    return Number.isFinite(num) ? Number(num.toFixed(2)) : null;
+  }, [ocrDetectedAmount]);
+
+  const isReceiptAmountMismatched = useMemo(() => {
+    if (paymentMethod !== "GCash" || !receiptFile || isOcrRunning) {
+      return false;
+    }
+    if (parsedOcrAmount === null) {
+      return true;
+    }
+    return Math.abs(parsedOcrAmount - expectedAmountToSend) > 0.009;
+  }, [
+    paymentMethod,
+    receiptFile,
+    isOcrRunning,
+    parsedOcrAmount,
+    expectedAmountToSend,
+  ]);
+
   // =========================================================
   // FORMAT CURRENCY
   // =========================================================
@@ -700,6 +737,8 @@ function Payment() {
     setOcrStatus("");
     setOcrStatusTone("neutral");
     setOcrProgress(0);
+    setOcrDetectedAmount(null);
+    setIsOcrRunning(false);
     setReceiptPreview((current) => {
       if (current && current.startsWith("blob:")) URL.revokeObjectURL(current);
       return "";
@@ -712,6 +751,8 @@ function Payment() {
     setOcrStatus("");
     setOcrStatusTone("neutral");
     setOcrProgress(0);
+    setOcrDetectedAmount(null);
+    setIsOcrRunning(false);
 
     if (!file) {
       clearReceiptSelection();
@@ -754,6 +795,7 @@ function Payment() {
     if (error) setError("");
 
     // Auto-fill name + reference from receipt via browser OCR (no Firebase needed)
+    setIsOcrRunning(true);
     setOcrStatus("Reading receipt...");
     setOcrStatusTone("neutral");
     try {
@@ -770,6 +812,14 @@ function Payment() {
 
       const detectedName = extracted.gcashCustomerName || "";
       const detectedRef = extracted.referenceNumber || "";
+      const rawAmountStr = extracted.transactionAmount || "";
+      const scannedNumeric =
+        rawAmountStr !== "" && Number.isFinite(Number(rawAmountStr))
+          ? Number(Number(rawAmountStr).toFixed(2))
+          : null;
+
+      setOcrDetectedAmount(scannedNumeric);
+
       const canAutofillName = Boolean(
         detectedName &&
           extracted.shouldAutofillName !== false &&
@@ -795,11 +845,44 @@ function Payment() {
       const nameUncertain = Boolean(
         !canAutofillName ||
           extracted.hasAmbiguousName ||
-          extracted.hasAmbiguousName ||
           extracted.needsVerification?.name
       );
 
-      if (!detectedName && !detectedRef) {
+      const requiredAmount = Number(Number(calculatedTotal || 0).toFixed(2));
+      const amountMissing = scannedNumeric === null;
+      const amountDoesNotMatch =
+        scannedNumeric !== null &&
+        Math.abs(scannedNumeric - requiredAmount) > 0.009;
+
+      if (amountDoesNotMatch) {
+        setOcrStatusTone("warning");
+        setOcrStatus(
+          `Receipt amount (₱${scannedNumeric.toFixed(
+            2
+          )}) does not match the Amount to Send (${formatCurrency(
+            requiredAmount
+          )}).`
+        );
+        setReceiptError(
+          `Payment cannot be confirmed: Your receipt shows ${formatCurrency(
+            scannedNumeric
+          )}, but the exact Amount to Send is ${formatCurrency(
+            requiredAmount
+          )}. Please upload a receipt for ${formatCurrency(requiredAmount)}.`
+        );
+      } else if (amountMissing) {
+        setOcrStatusTone("warning");
+        setOcrStatus(
+          `Could not verify the amount on this receipt. Amount to Send is ${formatCurrency(
+            requiredAmount
+          )}.`
+        );
+        setReceiptError(
+          `Payment cannot be confirmed: Could not detect the amount on your receipt. Please upload a clear GCash receipt showing ${formatCurrency(
+            requiredAmount
+          )}.`
+        );
+      } else if (!detectedName && !detectedRef) {
         setOcrStatusTone("warning");
         setOcrStatus(
           `Could not confidently read GCash name or reference number${detailSuffix}. Please enter them manually.`
@@ -823,13 +906,20 @@ function Payment() {
     } catch (ocrError) {
       if (ocrRunIdRef.current !== runId) return;
       console.error("Receipt OCR failed:", ocrError);
+      setOcrDetectedAmount(null);
       setOcrStatusTone("warning");
       setOcrStatus(
-        "OCR could not read this image. Please enter name and reference manually."
+        "OCR could not read this image. Please upload a clear GCash receipt showing the exact Amount to Send."
+      );
+      setReceiptError(
+        `Unable to verify receipt amount. Please upload a clear GCash receipt showing ${formatCurrency(
+          calculatedTotal
+        )}.`
       );
     } finally {
       if (ocrRunIdRef.current === runId) {
         setOcrProgress(0);
+        setIsOcrRunning(false);
       }
     }
   };
@@ -927,6 +1017,35 @@ function Payment() {
           "Please upload your GCash payment receipt (JPG, PNG, or WEBP, max 2 MB)."
         );
         return;
+      }
+
+      if (isOcrRunning) {
+        setError(
+          "Please wait for the receipt scan to finish before confirming payment."
+        );
+        return;
+      }
+
+      if (receiptFile) {
+        if (parsedOcrAmount === null) {
+          setError(
+            `Payment cannot be confirmed: Could not detect the amount on your receipt. Please upload a clear GCash receipt showing the exact Amount to Send (${formatCurrency(
+              expectedAmountToSend
+            )}).`
+          );
+          return;
+        }
+
+        if (Math.abs(parsedOcrAmount - expectedAmountToSend) > 0.009) {
+          setError(
+            `Payment cannot be confirmed: Your receipt amount (${formatCurrency(
+              parsedOcrAmount
+            )}) does not match the Amount to Send (${formatCurrency(
+              expectedAmountToSend
+            )}).`
+          );
+          return;
+        }
       }
 
     }
@@ -2031,7 +2150,13 @@ function Payment() {
             onClick={
               handleConfirmPayment
             }
-            disabled={isSubmitting || isSelectedBookingPaid || !booking}
+            disabled={
+              isSubmitting ||
+              isOcrRunning ||
+              isSelectedBookingPaid ||
+              !booking ||
+              isReceiptAmountMismatched
+            }
           >
 
             {isSubmitting ? (
