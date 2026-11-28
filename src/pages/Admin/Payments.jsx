@@ -3,6 +3,7 @@ import { CheckCircle2, CreditCard, Wallet } from "lucide-react";
 import AdminPageHeader from "../../components/admin/AdminPageHeader";
 import Summary from "../../components/admin/Summary";
 import ConfirmActionModal from "../../components/ConfirmActionModal";
+import PaymentReceiptModal from "../../components/PaymentReceiptModal";
 import {
   subscribeToAllPayments,
   updatePaymentStatus,
@@ -35,6 +36,7 @@ export default function Payments() {
   const [actionLoading, setActionLoading] = useState(null);
   const [error, setError] = useState("");
   const [confirmAction, setConfirmAction] = useState(null);
+  const [selectedReceiptPayment, setSelectedReceiptPayment] = useState(null);
 
   useEffect(() => {
     const unsubscribe = subscribeToAllPayments(
@@ -236,13 +238,15 @@ export default function Payments() {
                                   Ref: {payment.reference_number || "—"}
                                 </small>
                                 {payment.receipt_url ? (
-                                  <a
-                                    href={payment.receipt_url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
+                                  <button
+                                    type="button"
+                                    className="view-receipt-btn"
+                                    onClick={() =>
+                                      setSelectedReceiptPayment(payment)
+                                    }
                                   >
                                     View receipt
-                                  </a>
+                                  </button>
                                 ) : (
                                   <small>No receipt uploaded</small>
                                 )}
@@ -317,6 +321,14 @@ export default function Payments() {
           </div>
         )}
       </section>
+
+      <PaymentReceiptModal
+        payment={selectedReceiptPayment}
+        onClose={() => setSelectedReceiptPayment(null)}
+        onMarkPaid={(p) => requestStatusChange(p, "Paid")}
+        onReject={(p) => requestStatusChange(p, "Rejected")}
+        actionLoading={Boolean(actionLoading)}
+      />
 
       <ConfirmActionModal
         open={Boolean(confirmAction)}

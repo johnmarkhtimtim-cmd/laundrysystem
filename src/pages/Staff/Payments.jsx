@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import ConfirmActionModal from "../../components/ConfirmActionModal";
+import PaymentReceiptModal from "../../components/PaymentReceiptModal";
 import {
   subscribeToAllPayments,
   updatePaymentStatus,
@@ -14,6 +15,7 @@ function StaffPayments() {
   const [actionLoading, setActionLoading] = useState(null);
   const [error, setError] = useState("");
   const [confirmAction, setConfirmAction] = useState(null);
+  const [selectedReceiptPayment, setSelectedReceiptPayment] = useState(null);
 
   useEffect(() => {
     const unsubscribe = subscribeToAllPayments(
@@ -229,13 +231,15 @@ function StaffPayments() {
                                   Ref: {payment.reference_number || "—"}
                                 </small>
                                 {payment.receipt_url ? (
-                                  <a
-                                    href={payment.receipt_url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
+                                  <button
+                                    type="button"
+                                    className="view-receipt-btn"
+                                    onClick={() =>
+                                      setSelectedReceiptPayment(payment)
+                                    }
                                   >
                                     View receipt
-                                  </a>
+                                  </button>
                                 ) : (
                                   <small>No receipt uploaded</small>
                                 )}
@@ -307,6 +311,14 @@ function StaffPayments() {
           </div>
         </>
       )}
+
+      <PaymentReceiptModal
+        payment={selectedReceiptPayment}
+        onClose={() => setSelectedReceiptPayment(null)}
+        onMarkPaid={(p) => requestUpdatePaymentStatus(p, "Paid")}
+        onReject={(p) => requestUpdatePaymentStatus(p, "Rejected")}
+        actionLoading={Boolean(actionLoading)}
+      />
 
       <ConfirmActionModal
         open={Boolean(confirmAction)}
