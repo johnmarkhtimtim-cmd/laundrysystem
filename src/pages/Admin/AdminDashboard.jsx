@@ -489,10 +489,8 @@ export default function AdminDashboard() {
       .filter((p) => p.payment_status === "Rejected")
       .reduce((sum, p) => sum + paymentAmount(p), 0);
     const allVolume = payments.reduce((sum, p) => sum + paymentAmount(p), 0);
+    // Only collected (Paid) payments count toward today's volume.
     const todayRevenue = payments
-      .filter((p) => isSameDay(p.payment_date || p.updated_at || p.created_at))
-      .reduce((sum, p) => sum + paymentAmount(p), 0);
-    const todayPaid = payments
       .filter(
         (p) =>
           p.payment_status === "Paid" &&
@@ -506,7 +504,6 @@ export default function AdminDashboard() {
       rejectedRevenue,
       allVolume,
       todayRevenue,
-      todayPaid,
     };
   }, [payments]);
 
