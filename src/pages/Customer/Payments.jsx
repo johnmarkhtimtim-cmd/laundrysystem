@@ -1063,6 +1063,42 @@ function Payment() {
         throw new Error("You must be signed in to submit a payment.");
       }
 
+      // =====================================================
+      // DUPLICATE GCASH REFERENCE NUMBER
+      // =====================================================
+
+      if (paymentMethod === "GCash") {
+        const cleanReference = referenceNumber.trim().toLowerCase();
+        const freshPayments = await getCustomerPayments(user.uid);
+        const reusedReference = freshPayments.find((payment) => {
+          const paymentKey = String(
+            payment.id || payment.payment_id || payment.paymentId || ""
+          );
+          if (
+            editingPayment?.id &&
+            (paymentKey === String(editingPayment.id) ||
+              String(payment.payment_id || payment.paymentId || "") ===
+                String(editingPayment.id))
+          ) {
+            return false;
+          }
+          const existingRef = String(
+            payment.reference_number ||
+              payment.referenceNumber ||
+              ""
+          )
+            .trim()
+            .toLowerCase();
+          return Boolean(existingRef) && existingRef === cleanReference;
+        });
+
+        if (reusedReference) {
+          throw new Error(
+            "This GCash reference number has already been used for another payment. Please upload the receipt for your own payment."
+          );
+        }
+      }
+
       // Validate and compress GCash receipt BEFORE creating any Firestore records
       let receiptMeta = {};
       if (paymentMethod === "GCash" && receiptFile) {
