@@ -91,6 +91,7 @@ export default function PaymentReceiptModal({
   const paymentStatus = payment.payment_status || "Pending";
   const isPaid = paymentStatus === "Paid";
   const isRejected = paymentStatus === "Rejected";
+  const isUnpaid = String(paymentStatus).toLowerCase() === "unpaid";
 
   return (
     <div
@@ -164,7 +165,13 @@ export default function PaymentReceiptModal({
                 <strong>
                   <span
                     className={`status-badge ${
-                      isPaid ? "paid" : isRejected ? "rejected" : "pending"
+                      isPaid
+                        ? "paid"
+                        : isRejected
+                          ? "rejected"
+                          : isUnpaid
+                            ? "unpaid"
+                            : "pending"
                     }`}
                   >
                     {paymentStatus}

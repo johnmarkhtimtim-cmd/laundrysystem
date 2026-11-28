@@ -616,12 +616,12 @@
 }
 
 .payment-badge.unpaid {
-  background: #f1f5f9;
-  color: #475569;
+  background: #eff6ff;
+  color: #1d4ed8;
 }
 
 .payment-badge.unpaid span {
-  background: #94a3b8;
+  background: currentColor;
 }
 
 .payment-badge.paid {
