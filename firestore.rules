@@ -178,7 +178,9 @@ service cloud.firestore {
         || (customer()
           && request.resource.data.customer_id == request.auth.uid
           && customerOwnsBooking(request.resource.data.booking_id)
-          && request.resource.data.payment_status == 'Pending'
+          && (request.resource.data.payment_status == 'Pending'
+            || (request.resource.data.payment_method == 'Cash'
+              && request.resource.data.payment_status == 'Paid'))
           && request.resource.data.amount is number
           && request.resource.data.amount > 0
           && (

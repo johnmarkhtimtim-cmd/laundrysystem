@@ -1195,6 +1195,9 @@ function Payment() {
         clearStoredBookingDraft(user.uid);
       }
 
+      const isCashPayment = paymentMethod === "Cash";
+      const nextPaymentStatus = isCashPayment ? "Paid" : "Pending";
+
       const paymentDetails = {
         customer_name:
           user?.displayName ||
@@ -1229,7 +1232,7 @@ function Payment() {
             user.uid,
             calculatedTotal,
             paymentMethod,
-            "Pending",
+            nextPaymentStatus,
             paymentDetails
           );
       }
@@ -1258,8 +1261,8 @@ function Payment() {
         totalAmount: calculatedTotal,
         amount: calculatedTotal,
         paymentMethod,
-        paymentStatus: "Pending",
-        status: "Pending",
+        paymentStatus: nextPaymentStatus,
+        status: nextPaymentStatus,
         referenceNumber: paymentDetails.reference_number,
         createdAt:
           editingPayment?.createdAt ||
@@ -1280,19 +1283,27 @@ function Payment() {
       setSubmittedPayment(paymentData);
       setEditingPayment(null);
       setSuccessMessage(
-        "Payment submitted successfully! It is pending staff verification."
+        isCashPayment
+          ? `Booking confirmed! Please pay ${formatCurrency(
+              calculatedTotal
+            )} in cash upon pickup.`
+          : "Payment submitted successfully! It is pending staff verification."
       );
       clearReceiptSelection();
 
       window.dispatchEvent(new Event("laundrymatePaymentUpdated"));
       window.dispatchEvent(new Event("laundrymateBookingUpdated"));
 
-      // Return to customer dashboard after successful submit/update
-      navigate("/customer", {
+      // Cash bookings settle on pickup — send the customer to Transactions.
+      // GCash stays pending staff verification on the dashboard.
+      navigate(isCashPayment ? "/customer/transactions" : "/customer", {
         replace: true,
         state: {
-          paymentNotice:
-            "Payment submitted successfully! It is pending staff verification.",
+          paymentNotice: isCashPayment
+            ? `Booking confirmed! Pay ${formatCurrency(
+                calculatedTotal
+              )} in cash upon pickup.`
+            : "Payment submitted successfully! It is pending staff verification.",
         },
       });
     } catch (error) {
@@ -2276,6 +2287,8 @@ function Payment() {
               </>
             ) : isSelectedBookingPaid ? (
               "Already Paid"
+            ) : paymentMethod === "Cash" ? (
+              "Confirm Booking"
             ) : editingPayment ? (
               String(editingPayment.paymentStatus || "").toLowerCase() ===
               "rejected"
