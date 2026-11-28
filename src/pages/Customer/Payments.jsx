@@ -130,11 +130,13 @@ function Payment() {
   const [ocrStatusTone, setOcrStatusTone] = useState("neutral");
   const [ocrDetectedAmount, setOcrDetectedAmount] = useState(null);
   const [isOcrRunning, setIsOcrRunning] = useState(false);
+  const [isDuplicateReference, setIsDuplicateReference] = useState(false);
   const manualEditsRef = useRef({
     gcashCustomerName: false,
     referenceNumber: false,
   });
   const ocrRunIdRef = useRef(0);
+  const referenceCheckTimerRef = useRef(null);
 
   // SHOP GCASH SETTINGS
   const [gcashName, setGcashName] =
@@ -212,6 +214,10 @@ function Payment() {
             );
 
       ocrRunIdRef.current += 1;
+      if (referenceCheckTimerRef.current) {
+        clearTimeout(referenceCheckTimerRef.current);
+        referenceCheckTimerRef.current = null;
+      }
       manualEditsRef.current = {
         gcashCustomerName: false,
         referenceNumber: false,
@@ -221,6 +227,7 @@ function Payment() {
       setOcrProgress(0);
       setOcrDetectedAmount(null);
       setIsOcrRunning(false);
+      setIsDuplicateReference(false);
 
       if (relatedPayment) {
         setEditingPayment(relatedPayment);
@@ -242,6 +249,69 @@ function Payment() {
     },
     []
   );
+
+  const isReferenceAlreadyUsed = async (reference, excludePaymentId) => {
+    if (!user?.uid) return false;
+
+    const clean = String(reference || "").trim().toLowerCase();
+    if (!clean) return false;
+
+    try {
+      const freshPayments = await getCustomerPayments(user.uid);
+      return freshPayments.some((payment) => {
+        const paymentKeys = [
+          payment.id,
+          payment.payment_id,
+          payment.paymentId,
+        ]
+          .filter(Boolean)
+          .map(String);
+
+        if (
+          excludePaymentId &&
+          paymentKeys.includes(String(excludePaymentId))
+        ) {
+          return false;
+        }
+
+        const existingRef = String(
+          payment.reference_number || payment.referenceNumber || ""
+        )
+          .trim()
+          .toLowerCase();
+
+        return Boolean(existingRef) && existingRef === clean;
+      });
+    } catch (checkError) {
+      console.error("Duplicate reference check failed:", checkError);
+      return false;
+    }
+  };
+
+  // Debounced live duplicate-reference check: runs when OCR autofills the
+  // reference or the customer edits it manually, so a reused receipt is
+  // flagged before Confirm Payment is clicked.
+  const scheduleReferenceCheck = (value, methodOverride) => {
+    if (referenceCheckTimerRef.current) {
+      clearTimeout(referenceCheckTimerRef.current);
+      referenceCheckTimerRef.current = null;
+    }
+
+    const effectiveMethod = methodOverride || paymentMethod;
+    const clean = String(value || "").trim();
+    if (effectiveMethod !== "GCash" || !user?.uid || clean.length < 6) {
+      setIsDuplicateReference(false);
+      return;
+    }
+
+    referenceCheckTimerRef.current = setTimeout(async () => {
+      const duplicate = await isReferenceAlreadyUsed(
+        clean,
+        editingPayment?.id
+      );
+      setIsDuplicateReference(duplicate);
+    }, 400);
+  };
 
   const loadData = useCallback(async () => {
     if (!user?.uid) {
@@ -699,6 +769,7 @@ function Payment() {
     method
   ) => {
     setPaymentMethod(method);
+    scheduleReferenceCheck(referenceNumber, method);
     setError("");
   };
 
@@ -724,6 +795,7 @@ function Payment() {
     const nextValue = event.target.value;
     manualEditsRef.current.referenceNumber = Boolean(nextValue.trim());
     setReferenceNumber(nextValue);
+    scheduleReferenceCheck(nextValue);
 
     if (error) {
       setError("");
@@ -832,6 +904,11 @@ function Payment() {
       if (detectedRef && !manualEditsRef.current.referenceNumber) {
         setReferenceNumber(detectedRef.slice(0, 30));
       }
+      scheduleReferenceCheck(
+        detectedRef && !manualEditsRef.current.referenceNumber
+          ? detectedRef.slice(0, 30)
+          : referenceNumber
+      );
 
       const details = [];
       if (extracted.transactionAmount) {
@@ -1012,6 +1089,13 @@ function Payment() {
         return;
       }
 
+      if (isDuplicateReference) {
+        setError(
+          "Duplicate reference number — this GCash reference was already used for another payment. Please upload the receipt for your own payment."
+        );
+        return;
+      }
+
       if (!receiptFile && !editingPayment?.receiptUrl) {
         setError(
           "Please upload your GCash payment receipt (JPG, PNG, or WEBP, max 2 MB)."
@@ -1068,33 +1152,14 @@ function Payment() {
       // =====================================================
 
       if (paymentMethod === "GCash") {
-        const cleanReference = referenceNumber.trim().toLowerCase();
-        const freshPayments = await getCustomerPayments(user.uid);
-        const reusedReference = freshPayments.find((payment) => {
-          const paymentKey = String(
-            payment.id || payment.payment_id || payment.paymentId || ""
-          );
-          if (
-            editingPayment?.id &&
-            (paymentKey === String(editingPayment.id) ||
-              String(payment.payment_id || payment.paymentId || "") ===
-                String(editingPayment.id))
-          ) {
-            return false;
-          }
-          const existingRef = String(
-            payment.reference_number ||
-              payment.referenceNumber ||
-              ""
-          )
-            .trim()
-            .toLowerCase();
-          return Boolean(existingRef) && existingRef === cleanReference;
-        });
+        const reusedReference = await isReferenceAlreadyUsed(
+          referenceNumber,
+          editingPayment?.id
+        );
 
         if (reusedReference) {
           throw new Error(
-            "This GCash reference number has already been used for another payment. Please upload the receipt for your own payment."
+            "Duplicate reference number — this GCash reference was already used for another payment. Please upload the receipt for your own payment."
           );
         }
       }
@@ -1267,6 +1332,7 @@ function Payment() {
     setGcashCustomerName("");
 
     setReferenceNumber("");
+    scheduleReferenceCheck("");
 
     setError("");
   };
@@ -2102,6 +2168,13 @@ function Payment() {
                   maxLength={30}
                 />
 
+                {isDuplicateReference && (
+                  <p className="receipt-error" role="alert">
+                    Duplicate reference number — this GCash reference was
+                    already used for another payment.
+                  </p>
+                )}
+
                 <small>
                   Auto-filled from your receipt when possible. Check and edit if needed.
                 </small>
@@ -2190,6 +2263,7 @@ function Payment() {
               isSubmitting ||
               isOcrRunning ||
               isSelectedBookingPaid ||
+              isDuplicateReference ||
               !booking ||
               isReceiptAmountMismatched
             }
