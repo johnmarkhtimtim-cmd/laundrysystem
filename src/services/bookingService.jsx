@@ -102,6 +102,26 @@ const attachPaymentToBooking = (booking, paymentByBooking) => {
 };
 
 /**
+ * A booking only enters the Staff Transaction workflow once its payment has
+ * been marked "Paid" in Staff Payments.
+ */
+export const isBookingPaymentMarkedPaid = (booking) => {
+  if (!booking) return false;
+
+  const linkedPaymentStatus =
+    booking.payment?.payment_status ?? booking.payment?.paymentStatus;
+
+  if (linkedPaymentStatus !== undefined && linkedPaymentStatus !== null && linkedPaymentStatus !== "") {
+    return String(linkedPaymentStatus).trim().toLowerCase() === "paid";
+  }
+
+  const bookingPaymentStatus =
+    booking.payment_status ?? booking.paymentStatus ?? "";
+
+  return String(bookingPaymentStatus).trim().toLowerCase() === "paid";
+};
+
+/**
  * Read daily used count from a shared counter.
  * Customers cannot query all bookings, so capacity uses this doc instead.
  */
@@ -594,13 +614,15 @@ export const getStaffBookings = async (staffId, status = null) => {
 export const subscribeToStaffBookings = (
   staffId,
   onBookings,
-  onError,
-  includePayments = true
+  onError
 ) => {
   const bookingSets = new Map();
   let payments = [];
+  let paymentsLoaded = false;
 
   const emitBookings = () => {
+    if (!paymentsLoaded) return;
+
     const paymentByBooking = new Map(
       payments
         .filter((payment) => payment.booking_id)
@@ -615,6 +637,7 @@ export const subscribeToStaffBookings = (
     onBookings(
       [...bookings.values()]
         .map((booking) => attachPaymentToBooking(booking, paymentByBooking))
+        .filter((booking) => isBookingPaymentMarkedPaid(booking))
         .sort(
           (a, b) =>
             getTimestampMilliseconds(b.booking_date || b.created_at) -
@@ -625,7 +648,7 @@ export const subscribeToStaffBookings = (
 
   const handleError = (error) => {
     console.error("Error subscribing to staff bookings:", error);
-    onError(error);
+    onError?.(error);
   };
 
   const pendingUnsubscribe = onSnapshot(
@@ -646,16 +669,15 @@ export const subscribeToStaffBookings = (
     handleError
   );
 
-  const paymentsUnsubscribe = includePayments
-    ? onSnapshot(
-        collection(db, "payments"),
-        (snapshot) => {
-          payments = snapshot.docs.map(mapPaymentDoc);
-          emitBookings();
-        },
-        handleError
-      )
-    : () => {};
+  const paymentsUnsubscribe = onSnapshot(
+    collection(db, "payments"),
+    (snapshot) => {
+      payments = snapshot.docs.map(mapPaymentDoc);
+      paymentsLoaded = true;
+      emitBookings();
+    },
+    handleError
+  );
 
   return () => {
     pendingUnsubscribe();
