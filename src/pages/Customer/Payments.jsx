@@ -1223,6 +1223,7 @@ function Payment() {
         await updateCustomerPayment(editingPayment.id, {
             amount: calculatedTotal,
             payment_method: paymentMethod,
+            payment_status: nextPaymentStatus,
             ...paymentDetails,
           });
         paymentId = editingPayment.id;
@@ -2301,13 +2302,23 @@ function Payment() {
           </button>
 
           <p className="payment-note">
-            Your payment will be marked as
-            <strong>
-              {" "}
-              Pending
-            </strong>{" "}
-            until it is verified by the
-            laundry staff.
+            {paymentMethod === "Cash" ? (
+              <>
+                Your booking is confirmed now. Please prepare{" "}
+                <strong>{formatCurrency(calculatedTotal)}</strong> in cash
+                for pickup or delivery.
+              </>
+            ) : (
+              <>
+                Your payment will be marked as
+                <strong>
+                  {" "}
+                  Pending
+                </strong>{" "}
+                until it is verified by the
+                laundry staff.
+              </>
+            )}
           </p>
 
         </div>

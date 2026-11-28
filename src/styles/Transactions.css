@@ -331,6 +331,10 @@
   background: #fff7ed;
   color: #c2410c;
 }
+.transaction-status.unpaid {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
 .transaction-status.paid {
   background: #f0fdf4;
   color: #15803d;

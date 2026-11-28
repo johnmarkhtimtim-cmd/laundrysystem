@@ -263,7 +263,9 @@ export default function Payments() {
                                   ? "paid"
                                   : isRejected
                                     ? "rejected"
-                                    : "pending"
+                                    : payment.payment_status === "Unpaid"
+                                      ? "unpaid"
+                                      : "pending"
                               }`}
                             >
                               {payment.payment_status || "Pending"}

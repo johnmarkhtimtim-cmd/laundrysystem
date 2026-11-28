@@ -172,7 +172,7 @@ service cloud.firestore {
             'updated_at'
           ])
           && request.resource.data.payment_method in ['GCash', 'Cash']
-          && request.resource.data.payment_status in ['Pending', 'Paid', 'Rejected', 'Unpaid'])));
+          && request.resource.data.payment_status == 'Paid')));
       allow delete: if admin();
     }
 
@@ -255,7 +255,9 @@ service cloud.firestore {
         || (customer()
           && resource.data.customer_id == request.auth.uid
           && resource.data.payment_status in ['Pending', 'Rejected', 'Unpaid']
-          && request.resource.data.payment_status == 'Pending'
+          && (request.resource.data.payment_status == 'Pending'
+            || (request.resource.data.payment_method == 'Cash'
+              && request.resource.data.payment_status == 'Unpaid'))
           && request.resource.data.customer_id == resource.data.customer_id
           && request.resource.data.booking_id == resource.data.booking_id
           && customerOwnsBooking(resource.data.booking_id)

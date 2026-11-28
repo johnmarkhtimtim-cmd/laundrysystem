@@ -250,11 +250,15 @@ export const updateCustomerPayment = async (paymentId, paymentData) => {
     const paymentSnap = await getDoc(paymentRef);
     const existing = paymentSnap.exists() ? paymentSnap.data() : {};
     const paymentMethod = normalizeMethod(paymentData.payment_method);
+    const nextStatus =
+      paymentMethod === "Cash" && paymentData.payment_status === "Unpaid"
+        ? "Unpaid"
+        : "Pending";
 
     await updateDoc(paymentRef, {
       amount: paymentData.amount,
       payment_method: paymentMethod,
-      payment_status: "Pending",
+      payment_status: nextStatus,
       gcash_customer_name: paymentData.gcash_customer_name || "",
       reference_number: paymentData.reference_number || "",
       receipt_url: paymentData.receipt_url || existing.receipt_url || "",
@@ -270,34 +274,36 @@ export const updateCustomerPayment = async (paymentId, paymentData) => {
     const bookingId = existing.booking_id || paymentData.booking_id;
     if (bookingId) {
       await syncBookingPaymentFields(bookingId, {
-        payment_status: "Pending",
+        payment_status: nextStatus,
         payment_method: paymentMethod,
       });
     }
 
-    await alertStaffOfSubmittedPayment({
-      bookingId,
-      amount: paymentData.amount ?? existing.amount ?? existing.total_amount,
-      paymentMethod,
-      customerName:
-        paymentData.customer_name ||
-        existing.customer_name ||
-        "Customer",
-      isResubmit: true,
-    });
+    if (nextStatus === "Pending") {
+      await alertStaffOfSubmittedPayment({
+        bookingId,
+        amount: paymentData.amount ?? existing.amount ?? existing.total_amount,
+        paymentMethod,
+        customerName:
+          paymentData.customer_name ||
+          existing.customer_name ||
+          "Customer",
+        isResubmit: true,
+      });
 
-    const customerId = existing.customer_id || paymentData.customer_id;
-    if (customerId && bookingId) {
-      try {
-        await notifyCustomerPaymentSubmitted({
-          customerId,
-          bookingId,
-          amount: paymentData.amount ?? existing.amount ?? existing.total_amount,
-          paymentMethod,
-          isResubmit: true,
-        });
-      } catch (notifyErr) {
-        console.error("Error notifying customer of payment resubmission:", notifyErr);
+      const customerId = existing.customer_id || paymentData.customer_id;
+      if (customerId && bookingId) {
+        try {
+          await notifyCustomerPaymentSubmitted({
+            customerId,
+            bookingId,
+            amount: paymentData.amount ?? existing.amount ?? existing.total_amount,
+            paymentMethod,
+            isResubmit: true,
+          });
+        } catch (notifyErr) {
+          console.error("Error notifying customer of payment resubmission:", notifyErr);
+        }
       }
     }
   } catch (error) {

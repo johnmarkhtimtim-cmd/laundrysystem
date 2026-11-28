@@ -213,6 +213,15 @@ export function getInitialPayment(booking) {
 
   const payment = getPayment(booking);
 
+  // Uncollected payments (cash "Unpaid", unverified "Pending", "Rejected")
+  // must not count as money already received.
+  const paymentStatus = String(
+    payment?.payment_status || payment?.paymentStatus || ""
+  ).toLowerCase();
+  if (["unpaid", "pending", "rejected"].includes(paymentStatus)) {
+    return 0;
+  }
+
   const amount = Number(
     payment?.initial_payment ??
       payment?.initialPayment ??

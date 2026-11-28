@@ -133,6 +133,7 @@ function StaffPayments() {
   const statusClass = (status) => {
     if (status === "Paid") return "paid";
     if (status === "Rejected") return "rejected";
+    if (status === "Unpaid") return "unpaid";
     return "pending";
   };
 

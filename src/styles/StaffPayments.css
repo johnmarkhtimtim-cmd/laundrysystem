@@ -349,6 +349,12 @@
   border: 1px solid #fed7aa;
 }
 
+.staff-payments-page .status-badge.unpaid {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+}
+
 .staff-payments-page .status-badge.rejected {
   background: #fef2f2;
   color: #dc2626;
