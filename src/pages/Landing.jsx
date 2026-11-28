@@ -18,65 +18,6 @@ function Landing() {
     showSignIn ||
     searchParams.get("signin") === "1" ||
     (sessionExpired && !user);
-  const [downloadingApk, setDownloadingApk] = useState(false);
-
-  const handleDownloadApk = async (event) => {
-    event.preventDefault();
-    if (downloadingApk) return;
-
-    setDownloadingApk(true);
-    try {
-      const cacheBust = Date.now();
-      const manifestRes = await fetch(
-        `/downloads/apk-manifest.json?t=${cacheBust}`,
-        {
-          cache: "no-store",
-        }
-      );
-      if (!manifestRes.ok) {
-        throw new Error("APK manifest unavailable");
-      }
-      const manifest = await manifestRes.json();
-      const chunkList = Array.isArray(manifest.chunks) ? manifest.chunks : [];
-      if (!chunkList.length) {
-        throw new Error("No APK chunks found");
-      }
-
-      const versionTag = encodeURIComponent(
-        manifest.updatedAt || manifest.version || cacheBust
-      );
-      const buffers = await Promise.all(
-        chunkList.map(async (chunkName) => {
-          const res = await fetch(`/downloads/${chunkName}?v=${versionTag}`, {
-            cache: "no-store",
-          });
-          if (!res.ok) {
-            throw new Error(`Failed to fetch ${chunkName}`);
-          }
-          return res.arrayBuffer();
-        })
-      );
-
-      const blob = new Blob(buffers, {
-        type: "application/vnd.android.package-archive",
-      });
-      const objectUrl = URL.createObjectURL(blob);
-      const anchor = document.createElement("a");
-      anchor.href = objectUrl;
-      anchor.download = manifest.fileName || "LaundryMate-v2.0.apk";
-      document.body.appendChild(anchor);
-      anchor.click();
-      document.body.removeChild(anchor);
-      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60000);
-    } catch (downloadError) {
-      console.error("Chunked APK download failed, falling back:", downloadError);
-      window.location.href = `https://raw.githubusercontent.com/johnmarkhtimtim-cmd/laundrysystem/main/public/downloads/laundrymate.apk?v=${Date.now()}`;
-    } finally {
-      setDownloadingApk(false);
-    }
-  };
-
-
 
   useEffect(() => {
     const redirectUser = async () => {
@@ -218,14 +159,6 @@ function Landing() {
             door — without the weekday laundry grind.
           </p>
           <div className="landing-hero-actions">
-            <a
-              className="btn-primary"
-              href="/downloads/laundrymate.apk"
-              download="LaundryMate-v2.0.apk"
-              onClick={handleDownloadApk}
-            >
-              {downloadingApk ? "Preparing APK v2.0..." : "Download Android App (v2.0)"}
-            </a>
             <button type="button" className="btn-ghost" onClick={openSignIn}>
               Sign in
             </button>
@@ -315,13 +248,6 @@ function Landing() {
           <strong>LaundryMate</strong>
           <p>Clean clothes. Easy booking. Better service.</p>
           <div className="landing-footer-links">
-            <a
-              href="/downloads/laundrymate.apk"
-              download="LaundryMate-v2.0.apk"
-              onClick={handleDownloadApk}
-            >
-              {downloadingApk ? "Preparing APK v2.0..." : "Download APK (v2.0)"}
-            </a>
             <button type="button" className="landing-footer-signin" onClick={openSignIn}>
               Sign in
             </button>
