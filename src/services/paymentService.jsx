@@ -261,13 +261,27 @@ export const updateCustomerPayment = async (paymentId, paymentData) => {
       payment_status: nextStatus,
       gcash_customer_name: paymentData.gcash_customer_name || "",
       reference_number: paymentData.reference_number || "",
-      receipt_url: paymentData.receipt_url || existing.receipt_url || "",
-      receipt_path: paymentData.receipt_path || existing.receipt_path || "",
-      receipt_name: paymentData.receipt_name || existing.receipt_name || "",
+      // Cash payments carry no GCash receipt — clear any previous upload.
+      receipt_url:
+        paymentMethod === "Cash"
+          ? ""
+          : paymentData.receipt_url || existing.receipt_url || "",
+      receipt_path:
+        paymentMethod === "Cash"
+          ? ""
+          : paymentData.receipt_path || existing.receipt_path || "",
+      receipt_name:
+        paymentMethod === "Cash"
+          ? ""
+          : paymentData.receipt_name || existing.receipt_name || "",
       receipt_content_type:
-        paymentData.receipt_content_type || existing.receipt_content_type || "",
+        paymentMethod === "Cash"
+          ? ""
+          : paymentData.receipt_content_type || existing.receipt_content_type || "",
       receipt_size:
-        paymentData.receipt_size ?? existing.receipt_size ?? null,
+        paymentMethod === "Cash"
+          ? null
+          : (paymentData.receipt_size ?? existing.receipt_size ?? null),
       updated_at: serverTimestamp(),
     });
 
@@ -512,6 +526,76 @@ export const updatePaymentStatus = async (paymentId, newStatus) => {
     }
   } catch (error) {
     console.error("Error updating payment status:", error);
+    throw error;
+  }
+};
+
+/**
+ * Mark an "Unpaid" cash payment as Paid after the money is physically
+ * collected by staff or the assigned rider. Runs in a transaction so two
+ * collectors cannot record the same collection twice; Firestore rules
+ * enforce who may perform the Unpaid -> Paid transition.
+ */
+export const markCashPaymentCollected = async (paymentId) => {
+  try {
+    if (!paymentId) {
+      throw new Error("Missing payment ID.");
+    }
+
+    const paymentRef = doc(db, "payments", paymentId);
+    let bookingId = null;
+    let customerId = null;
+    let amount = 0;
+
+    await runTransaction(db, async (transaction) => {
+      const snap = await transaction.get(paymentRef);
+      if (!snap.exists()) {
+        throw new Error("Payment not found.");
+      }
+
+      const data = snap.data() || {};
+      const method = String(data.payment_method || "").toLowerCase();
+      const status = String(data.payment_status || "").toLowerCase();
+
+      if (method !== "cash") {
+        throw new Error("Only cash payments can be collected this way.");
+      }
+      if (status === "paid") {
+        throw new Error("This payment is already marked as paid.");
+      }
+      if (status !== "unpaid") {
+        throw new Error("This cash payment is not awaiting collection.");
+      }
+
+      bookingId = data.booking_id || null;
+      customerId = data.customer_id || null;
+      amount = Number(data.amount ?? data.total_amount ?? 0) || 0;
+
+      transaction.update(paymentRef, {
+        payment_status: "Paid",
+        payment_date: serverTimestamp(),
+        updated_at: serverTimestamp(),
+      });
+    });
+
+    if (bookingId) {
+      await syncBookingPaymentFields(bookingId, {
+        payment_status: "Paid",
+        payment_method: "Cash",
+      });
+    }
+
+    if (customerId && bookingId) {
+      try {
+        await notifyPaymentConfirmed(customerId, bookingId, amount);
+      } catch (notifyErr) {
+        console.error("Error notifying customer of cash collection:", notifyErr);
+      }
+    }
+
+    return paymentId;
+  } catch (error) {
+    console.error("Error collecting cash payment:", error);
     throw error;
   }
 };

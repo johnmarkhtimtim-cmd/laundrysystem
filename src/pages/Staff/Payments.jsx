@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import ConfirmActionModal from "../../components/ConfirmActionModal";
 import PaymentReceiptModal from "../../components/PaymentReceiptModal";
 import {
+  markCashPaymentCollected,
   subscribeToAllPayments,
   updatePaymentStatus,
 } from "../../services/paymentService";
@@ -47,6 +48,8 @@ function StaffPayments() {
     setConfirmAction({
       paymentId: payment.id,
       nextStatus,
+      paymentMethod: payment.payment_method,
+      paymentStatus: payment.payment_status,
       variant: nextStatus === "Paid" ? "success" : "danger",
       title:
         nextStatus === "Paid" ? "Mark payment as paid?" : "Reject this payment?",
@@ -79,9 +82,18 @@ function StaffPayments() {
     if (!confirmAction) return;
 
     const { paymentId, nextStatus } = confirmAction;
+    const isCashCollect =
+      confirmAction.paymentMethod === "Cash" &&
+      String(confirmAction.paymentStatus || "").toLowerCase() ===
+        "unpaid" &&
+      nextStatus === "Paid";
     setActionLoading(paymentId);
     try {
-      await updatePaymentStatus(paymentId, nextStatus);
+      if (isCashCollect) {
+        await markCashPaymentCollected(paymentId);
+      } else {
+        await updatePaymentStatus(paymentId, nextStatus);
+      }
       setConfirmAction(null);
     } catch (updateError) {
       console.error("Error updating payment status:", updateError);

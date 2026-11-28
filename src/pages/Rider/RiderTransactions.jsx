@@ -18,7 +18,7 @@ import {
   updateRiderBookingStatus,
 } from "../../services/bookingService";
 import { subscribeToServices } from "../../services/laundryService";
-import { updatePaymentStatus } from "../../services/paymentService";
+import { markCashPaymentCollected } from "../../services/paymentService";
 import {
   formatShortBookingId,
   getBookingDisplayStatus,
@@ -1033,7 +1033,7 @@ function RiderTransactions() {
     setCollectingCash(true);
 
     try {
-      await updatePaymentStatus(cashConfirm.payment.id, "Paid");
+      await markCashPaymentCollected(cashConfirm.payment.id);
 
       setCashConfirm(null);
       setNotification(
@@ -1362,16 +1362,26 @@ function RiderTransactions() {
                       </button>
 
                       {cashPayment && (
-                        <button
-                          type="button"
-                          className="collect-cash-btn"
-                          disabled={updating || collectingCash}
-                          onClick={() =>
-                            setCashConfirm({ booking, payment: cashPayment })
-                          }
-                        >
-                          {collectingCash ? "Collecting..." : "Collect Cash"}
-                        </button>
+                        <div className="cash-collect-cell">
+                          <small className="cash-to-collect">
+                            Cash to Collect:{" "}
+                            {formatCurrency(
+                              cashPayment.amount ??
+                                cashPayment.total_amount ??
+                                getAmountToBePaid(booking)
+                            )}
+                          </small>
+                          <button
+                            type="button"
+                            className="collect-cash-btn"
+                            disabled={updating || collectingCash}
+                            onClick={() =>
+                              setCashConfirm({ booking, payment: cashPayment })
+                            }
+                          >
+                            {collectingCash ? "Collecting..." : "Cash Collected"}
+                          </button>
+                        </div>
                       )}
                     </td>
                   </tr>
