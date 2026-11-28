@@ -9,8 +9,7 @@ import {
   where,
   orderBy,
   onSnapshot,
-  serverTimestamp,
-  writeBatch
+  serverTimestamp
 } from "firebase/firestore";
 import { db } from "./firebase";
 import { getBookingStatusNotificationDetails } from "./notificationService";
@@ -1066,8 +1065,9 @@ export const updateRiderBookingDetails = async (
         paymentDocs = [directPayment];
       }
     }
-    const batch = writeBatch(db);
-    batch.update(bookingRef, {
+    // Commit the booking update on its own first — payment sync is
+    // best-effort and must never roll back the rider's weight/amount save.
+    await updateDoc(bookingRef, {
       weight: details.weight,
       laundryWeight: details.laundryWeight,
       kg: details.kg,
@@ -1085,20 +1085,25 @@ export const updateRiderBookingDetails = async (
       updated_at: serverTimestamp(),
     });
 
-    paymentDocs.forEach((paymentDoc) => {
-      batch.update(paymentDoc.ref, {
-        total_amount: details.total_amount,
-        weight: details.weight,
-        service_rate: details.serviceRate,
-        laundry_subtotal: details.laundry_subtotal,
-        delivery_fee: details.delivery_fee,
-        initial_payment: details.initialPayment,
-        amount_to_be_paid: details.amountToBePaid,
-        updated_at: serverTimestamp(),
-      });
-    });
-
-    await batch.commit();
+    for (const paymentDoc of paymentDocs) {
+      try {
+        await updateDoc(paymentDoc.ref, {
+          total_amount: details.total_amount,
+          weight: details.weight,
+          service_rate: details.serviceRate,
+          laundry_subtotal: details.laundry_subtotal,
+          delivery_fee: details.delivery_fee,
+          initial_payment: details.initialPayment,
+          amount_to_be_paid: details.amountToBePaid,
+          updated_at: serverTimestamp(),
+        });
+      } catch (paymentError) {
+        console.error(
+          `Unable to sync payment ${paymentDoc.id} for booking ${bookingId}:`,
+          paymentError
+        );
+      }
+    }
   } catch (error) {
     console.error("Error updating rider booking details:", error);
     throw error;
