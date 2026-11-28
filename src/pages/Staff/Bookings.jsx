@@ -34,6 +34,7 @@ import {
   formatDate,
   formatShortBookingId,
   getAmountToBePaid,
+  getBookingDisplayStatus,
   getBookingId,
   getContactNumber,
   getCustomerName,
@@ -42,11 +43,16 @@ import {
   getInitials,
   getPayment,
   getPickupLocation,
+  getPickupOption,
   getServiceArray,
   getServices,
   getStatusClass,
   getTotalAmount,
   getWeight,
+  isPickupOnlyBooking,
+  isReadyForCustomerPickupStage,
+  READY_FOR_CUSTOMER_PICKUP_STATUS,
+  READY_FOR_PICKUP_ONLY_LABEL,
 } from "./bookingHelpers";
 
 /* =========================================================
@@ -85,8 +91,10 @@ const STATUS_FILTER_OPTIONS = [
   "Accepted",
   "Ready for Pickup",
   "In Laundry",
+  READY_FOR_PICKUP_ONLY_LABEL,
   "To Deliver",
   "Delivered",
+  "Completed",
   "Declined",
 ];
 
@@ -94,15 +102,16 @@ function isBookingArchived(booking) {
   return Boolean(booking?.archived) || booking?.status === "Archived";
 }
 
-function normalizeFilterStatus(status) {
+function normalizeFilterStatus(booking) {
+  const status = booking?.status;
   if (["Picked Up", "Washing", "Drying", "Folding"].includes(status)) {
     return "In Laundry";
   }
-  if (status === "Ready for Customer Pickup") {
-    return "To Deliver";
+  if (isReadyForCustomerPickupStage(booking)) {
+    return READY_FOR_PICKUP_ONLY_LABEL;
   }
-  if (status === "Completed") {
-    return "Delivered";
+  if (isPickupOnlyBooking(booking) && status === "Delivered") {
+    return "Completed";
   }
   return status || "Pending";
 }
@@ -320,13 +329,14 @@ function Bookings() {
     return () => clearTimeout(timer);
   }, [notification]);
 
+  const selectedPickupOnly = isPickupOnlyBooking(selectedBooking);
+
   useEffect(() => {
-    if (
-      !showStatusModal ||
-      !["Ready for Pickup", "To Deliver"].includes(
-        selectedBooking?.status
-      )
-    ) {
+    const needsLiveMap =
+      selectedBooking?.status === "Ready for Pickup" ||
+      (selectedBooking?.status === "To Deliver" && !selectedPickupOnly);
+
+    if (!showStatusModal || !needsLiveMap) {
       return undefined;
     }
 
@@ -412,7 +422,7 @@ function Bookings() {
       window.removeEventListener("laundrymateNativeLocation", onNativeLocation);
       navigator.geolocation.clearWatch(watchId);
     };
-  }, [selectedBooking?.status, showStatusModal]);
+  }, [selectedBooking?.status, selectedPickupOnly, showStatusModal]);
 
   /* =======================================================
      OPEN STATUS MODAL
@@ -478,7 +488,13 @@ function Bookings() {
         updatedAt: new Date().toISOString(),
       };
 
-      if (newStatus !== "Ready for Pickup" && newStatus !== "To Deliver") {
+      if (
+        newStatus !== "Ready for Pickup" &&
+        !(
+          newStatus === "To Deliver" &&
+          !isPickupOnlyBooking(selectedBooking)
+        )
+      ) {
         setRiderLocation(null);
         setRiderLocationError("");
       }
@@ -494,8 +510,13 @@ function Bookings() {
         new Event("laundrymateBookingUpdated")
       );
 
+      const statusToastLabel =
+        newStatus === READY_FOR_CUSTOMER_PICKUP_STATUS
+          ? READY_FOR_PICKUP_ONLY_LABEL
+          : newStatus;
+
       setNotification(
-        `Booking status updated to "${newStatus}" and customer notified.`
+        `Booking status updated to "${statusToastLabel}" and customer notified.`
       );
 
       return updatedBooking;
@@ -597,37 +618,46 @@ function Bookings() {
   };
 
   /* =======================================================
-     DELIVER
+     DELIVER / READY FOR PICK UP (PICKUP ONLY)
      
-     IN LAUNDRY → TO DELIVER
+     IN LAUNDRY → TO DELIVER (Pickup & Delivery)
+     IN LAUNDRY → READY FOR CUSTOMER PICKUP (Pickup Only)
   ======================================================= */
 
   const handleDeliver = () => {
     if (!selectedBooking) return;
 
+    const nextStatus = isPickupOnlyBooking(selectedBooking)
+      ? READY_FOR_CUSTOMER_PICKUP_STATUS
+      : "To Deliver";
+
     updateBookingStatus(
       selectedBooking.id,
-      "To Deliver"
+      nextStatus
     );
   };
 
   /* =======================================================
-     DELIVERED
+     DELIVERED / COMPLETED
      
-     TO DELIVER → DELIVERED
+     TO DELIVER → DELIVERED (Pickup & Delivery)
+     READY FOR CUSTOMER PICKUP → COMPLETED (Pickup Only)
   ======================================================= */
 
   const handleDelivered = () => {
     if (!selectedBooking) return;
 
+    const pickupOnly = isPickupOnlyBooking(selectedBooking);
+
     setConfirmAction({
       bookingId: selectedBooking.id,
-      nextStatus: "Delivered",
+      nextStatus: pickupOnly ? "Completed" : "Delivered",
       variant: "success",
-      title: "Mark as delivered?",
-      message:
-        "Are you sure this laundry order has been delivered to the customer?",
-      confirmLabel: "Yes, Delivered",
+      title: pickupOnly ? "Mark as picked up?" : "Mark as delivered?",
+      message: pickupOnly
+        ? "Are you sure the customer has picked up this laundry order?"
+        : "Are you sure this laundry order has been delivered to the customer?",
+      confirmLabel: pickupOnly ? "Yes, Picked up" : "Yes, Delivered",
       loadingLabel: "Updating...",
       closeAfter: true,
       meta: [
@@ -638,6 +668,10 @@ function Bookings() {
         {
           label: "Customer",
           value: getCustomerName(selectedBooking),
+        },
+        {
+          label: "Pickup Option",
+          value: getPickupOption(selectedBooking),
         },
         {
           label: "Service",
@@ -867,7 +901,7 @@ function Bookings() {
           return false;
         }
 
-        const normalizedStatus = normalizeFilterStatus(booking.status);
+        const normalizedStatus = normalizeFilterStatus(booking);
         if (
           statusFilter !== "All" &&
           normalizedStatus !== statusFilter
@@ -886,10 +920,12 @@ function Bookings() {
           booking.bookingId,
           getCustomerName(booking),
           getServices(booking),
+          getPickupOption(booking),
           getPickupLocation(booking),
           getContactNumber(booking),
           getWeight(booking),
           booking.status,
+          getBookingDisplayStatus(booking),
         ]
           .filter(
             (value) =>
@@ -1201,11 +1237,10 @@ function Bookings() {
                     <td>
                       <span
                         className={`status ${getStatusClass(
-                          booking.status
+                          getBookingDisplayStatus(booking)
                         )}`}
                       >
-                        {booking.status ||
-                          "Pending"}
+                        {getBookingDisplayStatus(booking)}
                       </span>
                     </td>
 
@@ -1320,8 +1355,9 @@ function Bookings() {
               <div className="status-modal-header">
                 <div>
                   <h2>
-                    {selectedBooking.status ||
-                      "Booking Status"}
+                    {getBookingDisplayStatus(
+                      selectedBooking
+                    )}
                   </h2>
 
                   <p>
@@ -1777,7 +1813,11 @@ function Bookings() {
                     />
 
                     <PaymentRow
-                      label="Delivery Fee"
+                      label={
+                        isPickupOnlyBooking(selectedBooking)
+                          ? "Pickup Fee"
+                          : "Delivery Fee"
+                      }
                       value={formatCurrency(
                         getDeliveryFee(
                           selectedBooking
@@ -1888,17 +1928,30 @@ function Bookings() {
               {/* =================================================
                   IN LAUNDRY
                   
-                  CLICK DELIVER → TO DELIVER
+                  PICKUP & DELIVERY: CLICK DELIVER → TO DELIVER
+                  PICKUP ONLY: CLICK READY FOR PICK UP → READY FOR CUSTOMER PICKUP
               ================================================= */}
 
-              {selectedBooking.status ===
-                "In Laundry" && (
+              {[
+                "In Laundry",
+                "Picked Up",
+                "Washing",
+                "Drying",
+                "Folding",
+              ].includes(selectedBooking.status) && (
                 <div className="in-laundry-screen">
 
                   <div className="laundry-info-list">
                     <InfoLine
                       label="Customer Name"
                       value={getCustomerName(
+                        selectedBooking
+                      )}
+                    />
+
+                    <InfoLine
+                      label="Pickup Option"
+                      value={getPickupOption(
                         selectedBooking
                       )}
                     />
@@ -1964,7 +2017,9 @@ function Bookings() {
                     >
                       {updating
                         ? "Updating..."
-                        : "Deliver"}
+                        : isPickupOnlyBooking(selectedBooking)
+                          ? READY_FOR_PICKUP_ONLY_LABEL
+                          : "Deliver"}
                     </button>
                   </div>
 
@@ -1982,13 +2037,121 @@ function Bookings() {
               )}
 
               {/* =================================================
-                  TO DELIVER
+                  READY FOR PICK UP (PICKUP ONLY FLOW)
+              ================================================= */}
+
+              {isReadyForCustomerPickupStage(
+                selectedBooking
+              ) && (
+                <div className="to-deliver-screen">
+                  <div className="delivery-info-list">
+                    <InfoLine
+                      label="Customer Name"
+                      value={getCustomerName(
+                        selectedBooking
+                      )}
+                    />
+
+                    <InfoLine
+                      label="Pickup Option"
+                      value={getPickupOption(
+                        selectedBooking
+                      )}
+                    />
+
+                    <InfoLine
+                      label="Service Type"
+                      value={getServices(
+                        selectedBooking
+                      )}
+                    />
+
+                    <InfoLine
+                      label="Weight"
+                      value={
+                        getWeight(
+                          selectedBooking
+                        )
+                          ? `${getWeight(
+                              selectedBooking
+                            )} kg`
+                          : "Not set"
+                      }
+                    />
+
+                    <InfoLine
+                      label="Total Amount"
+                      value={formatCurrency(
+                        getTotalAmount(
+                          selectedBooking
+                        )
+                      )}
+                    />
+
+                    <InfoLine
+                      label="Amount to be Paid"
+                      value={formatCurrency(
+                        getAmountToBePaid(
+                          selectedBooking
+                        )
+                      )}
+                    />
+
+                    <InfoLine
+                      label="Contact Number"
+                      value={getContactNumber(
+                        selectedBooking
+                      )}
+                    />
+
+                    <InfoLine
+                      label="Status"
+                      value={READY_FOR_PICKUP_ONLY_LABEL}
+                      status
+                    />
+                  </div>
+
+                  <div className="pickup-only-ready-notice" role="status">
+                    <strong>📦 Ready for Customer Pick Up</strong>
+                    <p>
+                      This is a Pickup Only order. The customer has been notified
+                      that their laundry is ready for pick up at the shop.
+                    </p>
+                  </div>
+
+                  <div className="image-style-action">
+                    <button
+                      type="button"
+                      className="delivered-btn full-btn"
+                      onClick={handleDelivered}
+                      disabled={updating}
+                    >
+                      {updating ? "Updating..." : "Picked up"}
+                    </button>
+                  </div>
+
+                  <button
+                    type="button"
+                    className="secondary-btn full-btn"
+                    onClick={closeStatusModal}
+                    disabled={updating}
+                  >
+                    Close
+                  </button>
+                </div>
+              )}
+
+              {/* =================================================
+                  TO DELIVER (PICKUP & DELIVERY FLOW ONLY)
                   
                   THIS IS THE SCREEN FROM YOUR IMAGE
               ================================================= */}
 
               {selectedBooking.status ===
-                "To Deliver" && (
+                "To Deliver" &&
+                !isPickupOnlyBooking(
+                  selectedBooking
+                ) && (
                 <div className="to-deliver-screen">
 
                   {/* CUSTOMER INFORMATION */}
@@ -2245,11 +2408,12 @@ function Bookings() {
               )}
 
               {/* =================================================
-                  DELIVERED
+                  DELIVERED / COMPLETED
               ================================================= */}
 
-              {selectedBooking.status ===
-                "Delivered" && (
+              {["Delivered", "Completed"].includes(
+                selectedBooking.status
+              ) && (
                 <>
                   <div className="completed-message">
 
@@ -2262,10 +2426,10 @@ function Bookings() {
                     </h3>
 
                     <p>
-                      The laundry order has
-                      been successfully
-                      delivered to the
-                      customer.
+                      {isPickupOnlyBooking(selectedBooking) ||
+                      selectedBooking.status === "Completed"
+                        ? "The laundry order has been picked up by the customer."
+                        : "The laundry order has been successfully delivered to the customer."}
                     </p>
 
                     <div className="completed-payment">

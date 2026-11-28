@@ -4,11 +4,18 @@ import { useAuth } from "../../context/AuthContext";
 import { subscribeToCustomerBookings } from "../../services/bookingService";
 import { subscribeToServices } from "../../services/laundryService";
 import { formatShortBookingId, getBookingId } from "../../utils/bookingId";
+import {
+  getBookingDisplayStatus,
+  isPickupOnlyBooking,
+  PICKUP_ONLY_FINAL_CUSTOMER_LABEL,
+} from "../../utils/bookingFlow";
 import "../../styles/CustomerDashboard.css";
 
 const COMPLETED_STATUSES = new Set([
   "completed",
   "delivered",
+  "pick up",
+  "picked up",
   "declined",
   "cancelled",
   "canceled",
@@ -41,7 +48,13 @@ function getBookingServiceName(booking) {
 function getStatusClass(status) {
   const normalized = String(status || "Pending").toLowerCase();
 
-  if (normalized.includes("ready") || normalized === "completed") {
+  if (
+    normalized.includes("ready") ||
+    normalized === "completed" ||
+    normalized === "delivered" ||
+    normalized === "pick up" ||
+    normalized === "picked up"
+  ) {
     return "ready-for-pickup";
   }
 
@@ -314,7 +327,11 @@ function CustomerDashboard() {
           ) : (
             <div className="orders-list">
               {recentBookings.map((booking, index) => {
-                const status = booking.status || "Pending";
+                const rawDisplayStatus = getBookingDisplayStatus(booking);
+                const status =
+                  isPickupOnlyBooking(booking) && rawDisplayStatus === "Completed"
+                    ? PICKUP_ONLY_FINAL_CUSTOMER_LABEL
+                    : rawDisplayStatus;
                 const fullBookingId = getBookingId(booking);
                 const shortBookingId = formatShortBookingId(booking);
                 const pickupRider = String(

@@ -6,19 +6,62 @@ import {
   formatShortBookingId,
   getBookingId as resolveBookingId,
 } from "../../utils/bookingId";
+import {
+  getPickupOption,
+  isPickupOnlyBooking,
+  isReadyForCustomerPickupStage,
+  PICKUP_ONLY_FINAL_CUSTOMER_LABEL,
+  READY_FOR_PICKUP_ONLY_LABEL,
+} from "../../utils/bookingFlow";
 import "../../styles/MyBookings.css";
 
-function normalizeBookingStatus(status) {
+const DELIVERY_STATUS_WORKFLOW = [
+  "Pending",
+  "Accepted",
+  "Ready for Pickup",
+  "Picked Up",
+  "In Laundry",
+  "To Deliver",
+  "Delivered",
+];
+
+const PICKUP_ONLY_STATUS_WORKFLOW = [
+  "Pending",
+  "Accepted",
+  "Ready for Pickup",
+  "Picked Up",
+  "In Laundry",
+  READY_FOR_PICKUP_ONLY_LABEL,
+  PICKUP_ONLY_FINAL_CUSTOMER_LABEL,
+];
+
+function getWorkflowForBooking(booking) {
+  return isPickupOnlyBooking(booking)
+    ? PICKUP_ONLY_STATUS_WORKFLOW
+    : DELIVERY_STATUS_WORKFLOW;
+}
+
+function normalizeBookingStatus(booking) {
+  const status = typeof booking === "string" ? booking : booking?.status;
+  const pickupOnly = typeof booking === "object" && isPickupOnlyBooking(booking);
+
   if (["Washing", "Drying", "Folding"].includes(status)) {
     return "In Laundry";
   }
 
-  if (status === "Ready for Customer Pickup") {
-    return "To Deliver";
+  if (
+    status === "Ready for Customer Pickup" ||
+    (typeof booking === "object" && isReadyForCustomerPickupStage(booking))
+  ) {
+    return pickupOnly ? READY_FOR_PICKUP_ONLY_LABEL : "To Deliver";
   }
 
-  if (status === "Completed") {
-    return "Delivered";
+  if (
+    status === "Completed" ||
+    (pickupOnly &&
+      ["Delivered", "Pick up", PICKUP_ONLY_FINAL_CUSTOMER_LABEL].includes(status))
+  ) {
+    return pickupOnly ? PICKUP_ONLY_FINAL_CUSTOMER_LABEL : "Delivered";
   }
 
   return status || "Pending";
@@ -60,20 +103,6 @@ function MyBooking() {
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedBooking, setSelectedBooking] = useState(null);
-
-  // =====================================
-  // STATUS WORKFLOW
-  // =====================================
-
-  const statusWorkflow = [
-    "Pending",
-    "Accepted",
-    "Ready for Pickup",
-    "Picked Up",
-    "In Laundry",
-    "To Deliver",
-    "Delivered",
-  ];
 
   // =====================================
   // SERVICE INFORMATION
@@ -193,10 +222,9 @@ function MyBooking() {
   // STATUS INDEX
   // =====================================
 
-  const getStatusIndex = (status) => {
-    const index = statusWorkflow.indexOf(
-      normalizeBookingStatus(status)
-    );
+  const getStatusIndex = (booking) => {
+    const workflow = getWorkflowForBooking(booking);
+    const index = workflow.indexOf(normalizeBookingStatus(booking));
 
     return index >= 0 ? index : 0;
   };
@@ -212,8 +240,11 @@ function MyBooking() {
       "Ready for Pickup": "🛍️",
       "Picked Up": "📦",
       "In Laundry": "🧺",
+      [READY_FOR_PICKUP_ONLY_LABEL]: "📦",
       "To Deliver": "🚚",
       Delivered: "✅",
+      Completed: "✅",
+      [PICKUP_ONLY_FINAL_CUSTOMER_LABEL]: "✅",
     };
 
     return icons[status] || "○";
@@ -402,23 +433,26 @@ function MyBooking() {
         "Ready for Pickup",
         "Picked Up",
         "In Laundry",
+        READY_FOR_PICKUP_ONLY_LABEL,
         "To Deliver",
-      ].includes(normalizeBookingStatus(booking.status))
+      ].includes(normalizeBookingStatus(booking))
   ).length;
 
-  const completedBookings = bookings.filter(
-    (booking) =>
-      normalizeBookingStatus(booking.status) === "Delivered"
+  const completedBookings = bookings.filter((booking) =>
+    ["Delivered", "Completed", PICKUP_ONLY_FINAL_CUSTOMER_LABEL].includes(
+      normalizeBookingStatus(booking)
+    )
   ).length;
 
   // =====================================
   // PROGRESS
   // =====================================
 
-  const getProgress = (status) => {
-    const index = getStatusIndex(status);
+  const getProgress = (booking) => {
+    const workflow = getWorkflowForBooking(booking);
+    const index = getStatusIndex(booking);
 
-    return ((index + 1) / statusWorkflow.length) * 100;
+    return ((index + 1) / workflow.length) * 100;
   };
 
   // =====================================
@@ -634,17 +668,18 @@ function MyBooking() {
 
             {bookings.map((booking) => {
 
-              const status = normalizeBookingStatus(booking.status);
+              const bookingWorkflow = getWorkflowForBooking(booking);
+              const status = normalizeBookingStatus(booking);
 
               const statusIndex =
-                getStatusIndex(status);
+                getStatusIndex(booking);
 
               const isExpanded =
                 selectedBooking?.id ===
                 booking.id;
 
               const progress =
-                getProgress(status);
+                getProgress(booking);
 
               const serviceName =
                 booking.service_id ||
@@ -664,14 +699,19 @@ function MyBooking() {
                 linkedPayment
               );
               const amountDue = getBookingAmountDue(booking, linkedPayment);
+              const isFinalCompleted = [
+                "Delivered",
+                "Completed",
+                PICKUP_ONLY_FINAL_CUSTOMER_LABEL,
+              ].includes(status);
               const hasWeighedTotal =
                 Number(booking.weight) > 0 ||
                 Number(booking.laundryWeight) > 0 ||
-                status === "Delivered";
+                isFinalCompleted;
               // After weight/delivery: show total minus initial payment.
               const displayAmount = hasWeighedTotal ? amountDue : totalAmount;
               const amountLabel =
-                status === "Delivered"
+                isFinalCompleted
                   ? "Final Amount"
                   : hasWeighedTotal
                     ? "Amount Due"
@@ -729,7 +769,7 @@ function MyBooking() {
                               .replace(
                                 /[^a-z0-9]+/g,
                                 "-"
-                              )}`}
+                              )}${isFinalCompleted ? " status-completed" : ""}`}
                           >
                             <span className="status-circle"></span>
 
@@ -958,9 +998,9 @@ function MyBooking() {
                           Step{" "}
                           {Math.min(
                             statusIndex + 1,
-                            statusWorkflow.length
+                            bookingWorkflow.length
                           )}{" "}
-                          of {statusWorkflow.length}
+                          of {bookingWorkflow.length}
                         </span>
 
                       </div>
@@ -970,7 +1010,7 @@ function MyBooking() {
 
                       <div className="status-timeline">
 
-                        {statusWorkflow.map(
+                        {bookingWorkflow.map(
                           (
                             workflowStatus,
                             index
@@ -980,7 +1020,7 @@ function MyBooking() {
                               index <
                                 statusIndex ||
                               statusIndex ===
-                                statusWorkflow.length - 1;
+                                bookingWorkflow.length - 1;
 
                             const isActive =
                               index ===
@@ -990,9 +1030,7 @@ function MyBooking() {
                             return (
 
                               <div
-                                key={
-                                  workflowStatus
-                                }
+                                key={`${workflowStatus}-${index}`}
                                 className={`timeline-item ${
                                   isCompleted
                                     ? "completed"
@@ -1041,8 +1079,7 @@ function MyBooking() {
                           COMPLETED MESSAGE
                       ===================================== */}
 
-                      {status ===
-                        "Delivered" && (
+                      {isFinalCompleted && (
 
                         <div className="completion-message">
 
@@ -1053,11 +1090,15 @@ function MyBooking() {
                           <div>
 
                             <strong>
-                              Laundry Delivered!
+                              {isPickupOnlyBooking(booking)
+                                ? "Booking Completed!"
+                                : "Laundry Delivered!"}
                             </strong>
 
                             <p>
-                              Your laundry order has been delivered.
+                              {isPickupOnlyBooking(booking)
+                                ? "Your laundry order has been picked up."
+                                : "Your laundry order has been delivered."}
                               {initialPayment > 0
                                 ? ` Final amount due was ₱${formatCurrency(
                                     amountDue
@@ -1112,9 +1153,7 @@ function MyBooking() {
                           </span>
 
                           <strong>
-                            {booking.pickupType ||
-                              booking.pickup_type ||
-                              "Pickup & Delivery"}
+                            {getPickupOption(booking)}
                           </strong>
 
                         </div>

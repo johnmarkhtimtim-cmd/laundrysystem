@@ -438,8 +438,8 @@ export const getBookingStatusNotificationDetails = (
     },
     "Ready for Customer Pickup": {
       type: "pickup",
-      title: "✅ Ready for Pickup",
-      message: `Your laundry from booking #${shortId} is ready for you to collect.`,
+      title: "✅ Ready for pick up",
+      message: `Your laundry from booking #${shortId} is ready for pick up.`,
     },
     Delivered: {
       type: "status",

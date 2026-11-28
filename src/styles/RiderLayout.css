@@ -44,12 +44,19 @@
   width: 42px;
   height: 42px;
   border-radius: 12px;
-  background: #0f766e;
-  color: #fff;
+  background: #ffffff;
+  border: 1px solid #dceae6;
+  overflow: hidden;
   display: grid;
   place-items: center;
-  font-size: 21px;
   flex-shrink: 0;
+}
+
+.rider-brand-mark .brand-logo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
 }
 
 .rider-brand small,
@@ -63,6 +70,45 @@
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 1px;
+}
+
+.rider-header-notice {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  border: 1px solid #dceae6;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #16302b;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.rider-header-notice:hover {
+  background: #f0fdfa;
+  border-color: #99f6e4;
+  color: #0f766e;
+}
+
+.rider-header-notice i {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 999px;
+  border: 2px solid #ffffff;
+  background: #dc2626;
+  color: #ffffff;
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 800;
+  display: grid;
+  place-items: center;
+  line-height: 1;
 }
 
 .rider-avatar,

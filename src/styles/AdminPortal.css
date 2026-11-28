@@ -12,7 +12,8 @@
 .portal-shell { min-height: 100vh; background: var(--portal-bg); color: var(--portal-ink); font-family: Inter, Poppins, Arial, sans-serif; }
 .portal-sidebar { position: fixed; inset: 0 auto 0 0; z-index: 30; width: var(--lm-sidebar-width, 260px); display: flex; flex-direction: column; padding: 0 var(--lm-sidebar-pad-x, 12px) var(--lm-sidebar-pad-bottom, 24px); background: #fff; border-right: 1px solid var(--portal-line); overflow-x: hidden; }
 .portal-brand { display: flex; align-items: center; gap: 10px; height: var(--lm-sidebar-brand-height, 68px); margin: 0 4px 12px; padding: 0 4px; border-bottom: 1px solid #f0f2f5; flex-shrink: 0; }
-.portal-brand > span { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 10px; background: var(--portal-blue); color: #fff; flex-shrink: 0; }
+.portal-brand > span { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 10px; background: #fff; border: 1px solid var(--portal-line); overflow: hidden; flex-shrink: 0; }
+.portal-brand > span .brand-logo-img { width: 100%; height: 100%; object-fit: contain; display: block; }
 .portal-brand strong, .portal-brand small { display: block; }
 .portal-brand strong { font-size: 1.125rem; letter-spacing: -0.35px; line-height: 1; }
 .portal-brand small { margin-top: 4px; color: var(--portal-muted); font-size: 11px; }
@@ -31,7 +32,7 @@
 .portal-workspace { margin-left: var(--lm-sidebar-width, 260px); min-width: 0; max-width: 100%; }
 .portal-topbar { position: sticky; top: 0; z-index: 20; height: 72px; display: flex; align-items: center; padding: 0 32px; background: rgba(255,255,255,.92); border-bottom: 1px solid var(--portal-line); backdrop-filter: blur(10px); }
 .portal-push { flex: 1; }
-.portal-notice { position: relative; display: grid; place-items: center; width: 39px; height: 39px; border: 1px solid var(--portal-line); border-radius: 10px; color: #475569; flex-shrink: 0; }
+.portal-notice { position: relative; display: grid; place-items: center; width: 39px; height: 39px; border: 1px solid var(--portal-line); border-radius: 10px; background: #fff; color: #475569; flex-shrink: 0; cursor: pointer; }
 .portal-notice i { position: absolute; top: -5px; right: -5px; display: grid; place-items: center; min-width: 18px; height: 18px; padding: 0 4px; border: 2px solid #fff; border-radius: 999px; background: #dc2626; color: #fff; font: 700 9px Arial; font-style: normal; line-height: 1; }
 .portal-profile { position: relative; margin-left: 16px; flex-shrink: 0; }
 .portal-profile-identity { display: flex; align-items: center; gap: 9px; color: var(--portal-ink); }

@@ -296,7 +296,7 @@ function Report() {
         ["Washing", "Drying", "Folding"].includes(booking.status)
           ? "In Laundry"
           : booking.status === "Ready for Customer Pickup"
-          ? "To Deliver"
+          ? "Ready for pick up"
           : booking.status || "Pending",
 
       paymentStatus: getPaymentStatus(booking),
@@ -718,6 +718,10 @@ function Report() {
 
             <option value="In Laundry">
               In Laundry
+            </option>
+
+            <option value="Ready for pick up">
+              Ready for pick up
             </option>
 
             <option value="To Deliver">

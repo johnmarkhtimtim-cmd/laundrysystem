@@ -8,7 +8,6 @@ import {
   LogOut,
   Menu,
   Settings,
-  ShieldCheck,
   Sparkles,
   Users,
   UserRoundCog,
@@ -19,7 +18,9 @@ import {
 import { logout } from "../services/authService";
 import { useAuth } from "../context/AuthContext";
 import LogoutConfirmModal from "../components/LogoutConfirmModal";
+import NotificationModal from "../components/NotificationModal";
 import ThemeToggleBar from "../components/ThemeToggleBar";
+import brandLogo from "../assets/laundrymate-logo.jpg";
 import { subscribeToAllBookings } from "../services/bookingService";
 import { subscribeToAllNotifications } from "../services/notificationService";
 import { subscribeToAllPayments } from "../services/paymentService";
@@ -55,6 +56,7 @@ export default function AdminPortalLayout() {
   const navigate = useNavigate();
   const [drawer, setDrawer] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [showNotificationModal, setShowNotificationModal] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const name =
@@ -132,7 +134,11 @@ export default function AdminPortalLayout() {
       <aside className={`portal-sidebar ${drawer ? "open" : ""}`}>
         <div className="portal-brand">
           <span>
-            <ShieldCheck size={22} />
+            <img
+              src={brandLogo}
+              alt="LaundryMate logo"
+              className="brand-logo-img"
+            />
           </span>
           <div>
             <strong>LaundryMate</strong>
@@ -185,10 +191,16 @@ export default function AdminPortalLayout() {
             <Menu size={21} />
           </button>
           <div className="portal-push" />
-          <NavLink className="portal-notice" to="/admin/notifications">
+          <button
+            type="button"
+            className="portal-notice"
+            title="Notifications"
+            aria-label="Open notifications"
+            onClick={() => setShowNotificationModal(true)}
+          >
             <Bell size={19} />
             {unreadCount > 0 && <i>{unreadCount > 99 ? "99+" : unreadCount}</i>}
-          </NavLink>
+          </button>
           <div className="portal-profile">
             <div className="portal-profile-identity">
               <b>{name[0].toUpperCase()}</b>
@@ -203,6 +215,14 @@ export default function AdminPortalLayout() {
           <Outlet context={{ name }} />
         </main>
       </div>
+
+      <NotificationModal
+        open={showNotificationModal}
+        onClose={() => setShowNotificationModal(false)}
+        role="admin"
+        userId={user?.uid}
+        onUnreadCountChange={setUnreadCount}
+      />
 
       <LogoutConfirmModal
         open={showLogoutModal}

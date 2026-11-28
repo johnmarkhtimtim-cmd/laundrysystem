@@ -5,7 +5,9 @@ import { logout } from "../services/authService";
 import { subscribeToUserNotifications } from "../services/notificationService";
 import { subscribeToCustomerPayments } from "../services/paymentService";
 import LogoutConfirmModal from "../components/LogoutConfirmModal";
+import NotificationModal from "../components/NotificationModal";
 import ThemeToggleBar from "../components/ThemeToggleBar";
+import brandLogo from "../assets/laundrymate-logo.jpg";
 
 import {
   Menu,
@@ -28,6 +30,7 @@ function CustomerLayout() {
     () => typeof window !== "undefined" && window.innerWidth > 900
   );
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [showNotificationModal, setShowNotificationModal] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const visibleUnreadNotifications = user?.uid ? unreadNotifications : 0;
@@ -202,7 +205,8 @@ function CustomerLayout() {
             type="button"
             className="notification-button"
             title="Notifications"
-            onClick={() => navigate("/customer/notification")}
+            aria-label="Open notifications"
+            onClick={() => setShowNotificationModal(true)}
           >
             <Bell size={19} />
             {visibleUnreadNotifications > 0 && (
@@ -249,7 +253,11 @@ function CustomerLayout() {
           <div className="sidebar-brand">
 
             <div className="brand-logo">
-              LM
+              <img
+                src={brandLogo}
+                alt="LaundryMate logo"
+                className="brand-logo-img"
+              />
             </div>
 
             <div className="brand-text">
@@ -471,6 +479,14 @@ function CustomerLayout() {
         </main>
 
       </div>
+
+      <NotificationModal
+        open={showNotificationModal}
+        onClose={() => setShowNotificationModal(false)}
+        role="customer"
+        userId={user?.uid}
+        onUnreadCountChange={setUnreadNotifications}
+      />
 
       <LogoutConfirmModal
         open={showLogoutModal}

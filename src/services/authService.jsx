@@ -83,7 +83,7 @@ export const logout = async () => {
  * @returns {string|null} Navigation path or null if invalid role
  */
 export const getNavigationPathByRole = (role) => {
-    switch (role) {
+    switch (String(role || "").trim().toLowerCase()) {
         case "admin":
             return "/admin";
         case "customer":
@@ -91,7 +91,7 @@ export const getNavigationPathByRole = (role) => {
         case "staff":
             return "/staff";
         case "rider":
-            return "/rider";
+            return "/rider/transactions";
         default:
             return null;
     }

@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
-import { Menu } from "lucide-react";
+import { Bell, Menu } from "lucide-react";
 import { logout } from "../services/authService";
 import { useAuth } from "../context/AuthContext";
 import LogoutConfirmModal from "../components/LogoutConfirmModal";
+import NotificationModal from "../components/NotificationModal";
 import ThemeToggleBar from "../components/ThemeToggleBar";
+import brandLogo from "../assets/laundrymate-logo.jpg";
 import "../styles/RiderLayout.css";
 
 const MOBILE_BREAKPOINT = 900;
@@ -13,6 +15,8 @@ function RiderLayout() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [showNotificationModal, setShowNotificationModal] = useState(false);
+  const [riderUnreadCount, setRiderUnreadCount] = useState(0);
   const [loggingOut, setLoggingOut] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(
     () => typeof window !== "undefined" && window.innerWidth > MOBILE_BREAKPOINT,
@@ -67,13 +71,31 @@ function RiderLayout() {
           >
             <Menu size={21} />
           </button>
-          <span className="rider-brand-mark">🚲</span>
+          <span className="rider-brand-mark">
+            <img
+              src={brandLogo}
+              alt="LaundryMate logo"
+              className="brand-logo-img"
+            />
+          </span>
           <span>
             <strong>LaundryMate</strong>
             <small>Rider Portal</small>
           </span>
         </div>
         <div className="rider-account">
+          <button
+            type="button"
+            className="rider-header-notice"
+            title="Notifications"
+            aria-label="Open notifications"
+            onClick={() => setShowNotificationModal(true)}
+          >
+            <Bell size={19} />
+            {riderUnreadCount > 0 && (
+              <i>{riderUnreadCount > 99 ? "99+" : riderUnreadCount}</i>
+            )}
+          </button>
           <span className="rider-avatar">{initial}</span>
           <span>{displayName}</span>
         </div>
@@ -111,6 +133,14 @@ function RiderLayout() {
           <Outlet />
         </main>
       </div>
+
+      <NotificationModal
+        open={showNotificationModal}
+        onClose={() => setShowNotificationModal(false)}
+        role="rider"
+        userId={user?.uid}
+        onUnreadCountChange={setRiderUnreadCount}
+      />
 
       <LogoutConfirmModal
         open={showLogoutModal}

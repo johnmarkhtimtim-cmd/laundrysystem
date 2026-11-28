@@ -12,7 +12,9 @@ import {
 import { logout } from "../services/authService";
 import { useAuth } from "../context/AuthContext";
 import LogoutConfirmModal from "../components/LogoutConfirmModal";
+import NotificationModal from "../components/NotificationModal";
 import ThemeToggleBar from "../components/ThemeToggleBar";
+import brandLogo from "../assets/laundrymate-logo.jpg";
 import { subscribeToStaffBookings } from "../services/bookingService";
 import { subscribeToUserNotifications } from "../services/notificationService";
 import { subscribeToAllPayments } from "../services/paymentService";
@@ -29,6 +31,8 @@ function StaffLayout() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [showNotificationModal, setShowNotificationModal] = useState(false);
+  const [modalUnreadCount, setModalUnreadCount] = useState(0);
   const [loggingOut, setLoggingOut] = useState(false);
   const [pendingBookings, setPendingBookings] = useState(0);
   const [pendingPayments, setPendingPayments] = useState(0);
@@ -130,6 +134,7 @@ function StaffLayout() {
   const pendingBookingsBadge = formatBadgeCount(pendingBookings);
   const pendingPaymentsBadge = formatBadgeCount(pendingPayments);
   const unreadBadge = formatBadgeCount(unreadNotifications);
+  const headerNoticeBadge = formatBadgeCount(modalUnreadCount);
 
   return (
     <div
@@ -146,7 +151,13 @@ function StaffLayout() {
           >
             <Menu size={21} />
           </button>
-          <div className="brand-logo">🧺</div>
+          <div className="brand-logo">
+            <img
+              src={brandLogo}
+              alt="LaundryMate logo"
+              className="brand-logo-img"
+            />
+          </div>
           <div className="brand-info">
             <h2>LaundryMate</h2>
             <span>Staff Portal</span>
@@ -157,12 +168,12 @@ function StaffLayout() {
           <button
             type="button"
             className="staff-header-notice"
-            onClick={() => navigate("/staff/notifications")}
+            onClick={() => setShowNotificationModal(true)}
             aria-label="Open notifications"
             title="Notifications"
           >
             <Bell size={19} />
-            {unreadBadge && <i>{unreadBadge}</i>}
+            {headerNoticeBadge && <i>{headerNoticeBadge}</i>}
           </button>
 
           <div className="staff-user">
@@ -291,6 +302,14 @@ function StaffLayout() {
           <Outlet />
         </main>
       </div>
+
+      <NotificationModal
+        open={showNotificationModal}
+        onClose={() => setShowNotificationModal(false)}
+        role="staff"
+        userId={user?.uid}
+        onUnreadCountChange={setModalUnreadCount}
+      />
 
       <LogoutConfirmModal
         open={showLogoutModal}

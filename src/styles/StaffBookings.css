@@ -469,7 +469,14 @@
   color: #0891b2;
 }
 
-.status.delivered {
+.status.ready-for-pick-up,
+.status.ready-for-customer-pickup {
+  background: #ccfbf1;
+  color: #0f766e;
+}
+
+.status.delivered,
+.status.completed {
   background: #f0fdf4;
   color: #16a34a;
 }
@@ -1405,6 +1412,29 @@
 
 .to-deliver-screen .full-btn {
   margin-top: 10px;
+}
+
+.pickup-only-ready-notice {
+  margin: 12px 0 4px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid #99f6e4;
+  background: #f0fdfa;
+  color: #115e59;
+}
+
+.pickup-only-ready-notice strong {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  color: #0f766e;
+}
+
+.pickup-only-ready-notice p {
+  margin: 4px 0 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: #134e4a;
 }
 
 /* =========================================================

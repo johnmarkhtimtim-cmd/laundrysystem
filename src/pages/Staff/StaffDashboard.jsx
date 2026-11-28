@@ -10,12 +10,15 @@ import {
   formatCurrency,
   formatDate,
   formatShortBookingId,
+  getBookingDisplayStatus,
   getBookingId,
   getCustomerName,
   getInitials,
   getServices,
   getStatusClass,
   getTotalAmount,
+  isReadyForCustomerPickupStage,
+  READY_FOR_PICKUP_ONLY_LABEL,
 } from "./bookingHelpers";
 import "../../styles/StaffBookings.css";
 import "../../styles/StaffDashboard.css";
@@ -25,6 +28,7 @@ const STATUS_FLOW = [
   "Accepted",
   "Ready for Pickup",
   "In Laundry",
+  READY_FOR_PICKUP_ONLY_LABEL,
   "To Deliver",
   "Delivered",
 ];
@@ -34,6 +38,7 @@ const STATUS_COLORS = {
   Accepted: "#3b82f6",
   "Ready for Pickup": "#06b6d4",
   "In Laundry": "#8b5cf6",
+  [READY_FOR_PICKUP_ONLY_LABEL]: "#14b8a6",
   "To Deliver": "#0ea5e9",
   Delivered: "#22c55e",
 };
@@ -51,8 +56,8 @@ function getBookingStatus(booking) {
     return "In Laundry";
   }
 
-  if (status === "Ready for Customer Pickup") {
-    return "To Deliver";
+  if (isReadyForCustomerPickupStage(booking)) {
+    return READY_FOR_PICKUP_ONLY_LABEL;
   }
 
   if (status === "Completed") {
@@ -85,9 +90,11 @@ function StatusPipelineChart({ counts, maxValue }) {
               ? "Pickup"
               : status === "In Laundry"
                 ? "Laundry"
-                : status === "To Deliver"
-                  ? "Deliver"
-                  : status;
+                : status === READY_FOR_PICKUP_ONLY_LABEL
+                  ? "Ready"
+                  : status === "To Deliver"
+                    ? "Deliver"
+                    : status;
 
           return (
             <g key={status}>
@@ -258,6 +265,7 @@ function StaffDashboard() {
       statusCounts.Accepted +
       statusCounts["Ready for Pickup"] +
       statusCounts["In Laundry"] +
+      statusCounts[READY_FOR_PICKUP_ONLY_LABEL] +
       statusCounts["To Deliver"];
     const completed = statusCounts.Delivered;
 
@@ -568,9 +576,11 @@ function StaffDashboard() {
                       </td>
                       <td>
                         <span
-                          className={`status ${getStatusClass(booking.status)}`}
+                          className={`status ${getStatusClass(
+                            getBookingDisplayStatus(booking)
+                          )}`}
                         >
-                          {booking.status || "Pending"}
+                          {getBookingDisplayStatus(booking)}
                         </span>
                       </td>
                       <td>

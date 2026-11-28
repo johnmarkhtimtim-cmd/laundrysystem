@@ -491,6 +491,7 @@
 
 /* Ready */
 
+.status-ready-for-pick-up,
 .status-ready-for-customer-pickup {
   color: #087f5b;
 
@@ -500,7 +501,9 @@
 
 /* Completed */
 
-.status-completed {
+.status-completed,
+.status-delivered,
+.status-pick-up {
   color: #16803c;
 
   background: #e9f8ee;

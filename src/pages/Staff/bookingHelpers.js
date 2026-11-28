@@ -56,6 +56,18 @@ export {
   getBookingId,
 } from "../../utils/bookingId";
 
+export {
+  PICKUP_AND_DELIVERY_OPTION,
+  PICKUP_ONLY_OPTION,
+  READY_FOR_CUSTOMER_PICKUP_STATUS,
+  READY_FOR_PICKUP_ONLY_LABEL,
+  getBookingDisplayStatus,
+  getPickupOption,
+  isPickupOnlyBooking,
+  isReadyForCustomerPickupStage,
+} from "../../utils/bookingFlow";
+import { getPickupOption } from "../../utils/bookingFlow";
+
 export function getCustomerName(booking) {
   if (!booking) return "Unknown Customer";
 
@@ -189,10 +201,7 @@ export function getDeliveryFee(booking) {
     }
   }
 
-  const pickupType =
-    booking.pickupType ||
-    booking.deliveryType ||
-    "Pickup & Delivery";
+  const pickupType = getPickupOption(booking);
 
   return DELIVERY_FEES[pickupType] || 0;
 }

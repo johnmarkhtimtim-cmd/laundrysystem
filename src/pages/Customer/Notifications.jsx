@@ -130,6 +130,13 @@ function Notification() {
         }
 
         if (
+          bookingStatus.toLowerCase() === "ready for customer pickup"
+        ) {
+          title = "Ready for pick up";
+          message = `Your laundry from booking #${shortBookingId} is ready for pick up.`;
+        }
+
+        if (
           bookingStatus.toLowerCase() === "ready" ||
           bookingStatus.toLowerCase() === "ready for pickup"
         ) {

@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Navigate, Routes, Route } from "react-router-dom";
 import Landing from "../pages/Landing";
 import Login from "../pages/Login";
 import Registration from "../pages/Registration";
@@ -102,6 +102,7 @@ function AppRoutes() {
             </RiderRoute>
           }
         >
+          <Route index element={<Navigate to="transactions" replace />} />
           <Route path="transactions" element={<RiderTransaction />} />
           <Route path="profile" element={<RiderProfile />} />
         </Route>

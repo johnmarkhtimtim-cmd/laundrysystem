@@ -15,6 +15,10 @@ import {
 import { db } from "./firebase";
 import { getBookingStatusNotificationDetails } from "./notificationService";
 import { getGeneralSettings } from "./paymentService";
+import {
+  READY_FOR_CUSTOMER_PICKUP_STATUS,
+  isPickupOnlyBooking,
+} from "../utils/bookingFlow";
 
 const CAPACITY_EXCLUDED_STATUSES = new Set([
   "Declined",
@@ -288,13 +292,13 @@ const getTimestampMilliseconds = (value) => {
 const STAFF_BOOKING_TRANSITIONS = {
   Accepted: ["Ready for Pickup"],
   "Ready for Pickup": ["In Laundry"],
-  "In Laundry": ["To Deliver"],
-  "Picked Up": ["To Deliver"],
-  Washing: ["To Deliver"],
-  Drying: ["To Deliver"],
-  Folding: ["To Deliver"],
-  "To Deliver": ["Delivered"],
-  "Ready for Customer Pickup": ["Delivered"],
+  "In Laundry": ["To Deliver", READY_FOR_CUSTOMER_PICKUP_STATUS],
+  "Picked Up": ["To Deliver", READY_FOR_CUSTOMER_PICKUP_STATUS],
+  Washing: ["To Deliver", READY_FOR_CUSTOMER_PICKUP_STATUS],
+  Drying: ["To Deliver", READY_FOR_CUSTOMER_PICKUP_STATUS],
+  Folding: ["To Deliver", READY_FOR_CUSTOMER_PICKUP_STATUS],
+  "To Deliver": ["Delivered", "Completed"],
+  [READY_FOR_CUSTOMER_PICKUP_STATUS]: ["Completed", "Delivered"],
 };
 
 const isActiveRiderAccount = (riderData = {}) => {
@@ -881,8 +885,32 @@ export const updateStaffBookingStatus = async (
         );
       }
 
+      const isLaundryStage = [
+        "In Laundry",
+        "Picked Up",
+        "Washing",
+        "Drying",
+        "Folding",
+      ].includes(booking.status);
+      const pickupOnly = isPickupOnlyBooking(booking);
+
+      if (isLaundryStage && pickupOnly && newStatus === "To Deliver") {
+        throw new Error(
+          'Pickup Only bookings must move to "Ready for pick up" instead of delivery.'
+        );
+      }
+      if (
+        isLaundryStage &&
+        !pickupOnly &&
+        newStatus === READY_FOR_CUSTOMER_PICKUP_STATUS
+      ) {
+        throw new Error(
+          'Pickup & Delivery bookings must use the "Deliver" workflow.'
+        );
+      }
+
       const riderRef =
-        newStatus === "Delivered" && booking.rider_id
+        ["Delivered", "Completed"].includes(newStatus) && booking.rider_id
           ? doc(db, "users", booking.rider_id)
           : null;
       const riderSnapshot = riderRef ? await transaction.get(riderRef) : null;
@@ -1198,6 +1226,12 @@ export const updateRiderBookingStatus = async (bookingId, riderId, newStatus) =>
       const booking = bookingSnapshot.data();
       if (booking.rider_id !== riderId) {
         throw new Error("This booking is not assigned to the current rider.");
+      }
+
+      if (isPickupOnlyBooking(booking) && booking.status !== "Ready for Pickup") {
+        throw new Error(
+          "Pickup Only orders are collected by the customer and do not use rider delivery."
+        );
       }
 
       if (allowedTransitions[booking.status] !== newStatus) {
